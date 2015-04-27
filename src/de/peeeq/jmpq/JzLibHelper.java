@@ -8,10 +8,10 @@ import com.jcraft.jzlib.JZlib;
 public class JzLibHelper {
 
 	@SuppressWarnings("deprecation")
-	public static byte[] inflate(byte[] bytes, int uncompSize) {
+	public static byte[] inflate(byte[] bytes, int offset,int uncompSize) {
 		byte[] uncomp = new byte[uncompSize];
 		Inflater inf = new Inflater();
-		inf.setInput(bytes);
+		inf.setInput(bytes, offset, bytes.length - 1, false);
 		inf.setOutput(uncomp);
 		while (inf.total_out < uncompSize && inf.total_in < bytes.length) {
 			inf.avail_in = inf.avail_out = 1;

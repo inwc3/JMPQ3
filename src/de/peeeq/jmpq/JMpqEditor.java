@@ -199,7 +199,10 @@ public class JMpqEditor {
 		try {
 			int pos = hashTable.getBlockIndexOfFile(name);
 			Block b = blockTable.getBlockAtPos(pos);
-			System.out.println(b);
+			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size());
+			buf.order(ByteOrder.LITTLE_ENDIAN);
+			MpqFile f = new MpqFile(buf , b, discBlockSize, name);
+			f.extractToFile(new File("test.txt"));
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}

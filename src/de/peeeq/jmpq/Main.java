@@ -10,7 +10,6 @@ public class Main {
 		JMpqEditor e = new JMpqEditor(new File("testmap.w3x"));
 		e.printHeader();
 		e.extractFile("war3map.j", null);
-		Thread.sleep(10000);
 //		e.extractFile("Abilities\\Spells\\Other\\Transmute\\Sparkle_Anim128.blp", new File("test.blp"));
 		// e.insertFile(new
 		// File("C:\\Users\\Crigges\\Desktop\\WurstPack alt\\lep.txt"),
