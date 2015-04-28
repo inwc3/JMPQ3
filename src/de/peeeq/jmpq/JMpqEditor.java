@@ -3,6 +3,7 @@ package de.peeeq.jmpq;
 import java.io.ByteArrayInputStream;
 import java.io.DataInput;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -12,6 +13,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -41,6 +43,7 @@ public class JMpqEditor {
 
 	private HashTable hashTable;
 	private BlockTable blockTable;
+	private ArrayList<File> filesToAdd = new ArrayList<>();
 	private Listfile listFile;
 	private HashMap<String, MpqFile> filesByName = new HashMap<>();
 	private boolean useBestCompression = false;
@@ -224,6 +227,36 @@ public class JMpqEditor {
 			int pos = hashTable.getBlockIndexOfFile(name);
 			hashTable.deleteFile(name);
 			blockTable.deleteBlockAtPos(pos);
+		} catch (IOException e) {
+			throw new JMpqException(e);
+		}
+		
+	}
+	
+	/**
+	 * Inserts the specified file out of the mpq once you rebuild the mpq
+	 * 
+	 * @param name
+	 *            of the file
+	 * @param dest
+	 *            to that the files content get copyed
+	 * @throws JMpqException
+	 *             if file is not found or access errors occur
+	 */
+	public void insertFile(String name, File f) throws JMpqException {
+		try {
+			FileInputStream in = new FileInputStream(f);
+			File temp = File.createTempFile(name, "crig");
+			temp = new File("sample.txt");
+			FileOutputStream out = new FileOutputStream(temp);
+			int i = in.read();
+			while(i != -1){
+				out.write(i);
+				i = in.read();
+			}
+			in.close();
+			out.flush();
+			out.close();
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}

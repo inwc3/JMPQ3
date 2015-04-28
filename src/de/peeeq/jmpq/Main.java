@@ -7,8 +7,9 @@ public class Main {
 
 	public static void main(String[] args) throws JMpqException, IOException, InterruptedException {
 		// before 118.052 bytes
-		JMpqEditor e = new JMpqEditor(new File("war3.mpq"));
+		JMpqEditor e = new JMpqEditor(new File("testmap.w3x"));
 		e.printHeader();
+		e.insertFile("wurst", new File("test.txt"));
 		e.extractFile("A.mpq", new File("a.mpq"));
 		e.deleteFile("A.mpq");
 //		Thread.sleep(1000000);
