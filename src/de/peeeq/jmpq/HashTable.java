@@ -90,6 +90,29 @@ public class HashTable {
 		}
 		throw new JMpqException("File Not Found");
 	}
+	
+	public void deleteFile(String name) throws IOException{
+		int index = c.hash(name, MpqCrypto.MPQ_HASH_TABLE_INDEX);
+		int name1 = c.hash(name, MpqCrypto.MPQ_HASH_NAME_A);
+		int name2 = c.hash(name, MpqCrypto.MPQ_HASH_NAME_B);
+		int start = index & (hashSize - 1);
+		for (int c = 0; c <= hashSize; c++) {
+			hashMap.position(start * 16);
+			Entry cur = new Entry(hashMap);
+			if (cur.dwName1 == name1 && cur.dwName2 == name2) {
+				hashMap.position(start * 16);
+				for(int i = 1; i <= 16; i++){
+					hashMap.put((byte) 0);
+				}
+				return;
+			} else if (cur.wPlatform != 0) {
+				throw new JMpqException("File Not Found");
+			}
+			start++;
+			start %= hashSize;
+		}
+		throw new JMpqException("File Not Found");
+	}
 
 	public static class Entry {
 		private int dwName1;
@@ -114,18 +137,12 @@ public class HashTable {
 			this.dwBlockIndex = in.getInt();
 		}
 
-		public byte[] asByteArray() {
-			byte[] temp = new byte[16];
-			ByteBuffer bb = ByteBuffer.allocate(16);
-			bb.order(ByteOrder.LITTLE_ENDIAN);
+		public void writeToBuffer(ByteBuffer bb) {
 			bb.putInt(dwName1);
 			bb.putInt(dwName2);
 			bb.putShort((short) lcLocale);
 			bb.putShort((short) wPlatform);
 			bb.putInt(dwBlockIndex);
-			bb.position(0);
-			bb.get(temp);
-			return temp;
 		}
 
 		@Override

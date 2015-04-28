@@ -3,6 +3,7 @@ package de.peeeq.jmpq;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -73,6 +74,18 @@ public class BlockTable {
 		}
 		
 	}
+	
+	public void deleteBlockAtPos(int pos) throws JMpqException {
+		if(pos < 0 || pos > size){
+			throw new JMpqException("Invaild block position");
+		}else{
+			blockMap.position(pos * 16);
+			for(int i = 1; i <= 16; i++){
+				blockMap.put((byte) 0);
+			}
+		}
+		
+	}
 
 	public class Block {
 		private int filePos;
@@ -88,25 +101,18 @@ public class BlockTable {
 		}
 
 		public Block(int filePos, int compressedSize, int normalSize, int flags) {
-//			super();
-//			this.filePos = filePos;
-//			this.compressedSize = compressedSize;
-//			this.normalSize = normalSize;
-//			this.flags = flags;
+			super();
+			this.filePos = filePos;
+			this.compressedSize = compressedSize;
+			this.normalSize = normalSize;
+			this.flags = flags;
 		}
 
-		public byte[] asByteArray() {
-//			byte[] temp = new byte[16];
-//			ByteBuffer bb = ByteBuffer.allocate(16);
-//			bb.order(ByteOrder.LITTLE_ENDIAN);
-//			bb.putInt(filePos);
-//			bb.putInt(compressedSize);
-//			bb.putInt(normalSize);
-//			bb.putInt(flags);
-//			bb.position(0);
-//			bb.get(temp);
-//			return temp;
-			return null;
+		public void writeToBuffer(ByteBuffer bb) {
+			bb.putInt(filePos);
+			bb.putInt(compressedSize);
+			bb.putInt(normalSize);
+			bb.putInt(flags);
 		}
 
 		public int getFilePos() {

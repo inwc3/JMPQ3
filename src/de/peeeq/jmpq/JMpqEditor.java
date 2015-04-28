@@ -202,7 +202,28 @@ public class JMpqEditor {
 			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size());
 			buf.order(ByteOrder.LITTLE_ENDIAN);
 			MpqFile f = new MpqFile(buf , b, discBlockSize, name);
-			f.extractToFile(new File("test.txt"));
+			f.extractToFile(dest);
+		} catch (IOException e) {
+			throw new JMpqException(e);
+		}
+		
+	}
+	
+	/**
+	 * Deletes the specified file out of the mpq once you rebuild the mpq
+	 * 
+	 * @param name
+	 *            of the file
+	 * @param dest
+	 *            to that the files content get copyed
+	 * @throws JMpqException
+	 *             if file is not found or access errors occur
+	 */
+	public void deleteFile(String name) throws JMpqException {
+		try {
+			int pos = hashTable.getBlockIndexOfFile(name);
+			hashTable.deleteFile(name);
+			blockTable.deleteBlockAtPos(pos);
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}

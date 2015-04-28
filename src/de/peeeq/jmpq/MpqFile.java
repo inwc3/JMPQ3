@@ -100,7 +100,6 @@ public class MpqFile {
 		this.sepIndex = name.lastIndexOf('\\');
 		String pathlessName = name.substring(sepIndex + 1);
 		if ((b.getFlags() & ENCRYPTED) == ENCRYPTED) {
-			System.out.println("is encrypted");
 			crypto = new MpqCrypto();
 			baseKey = crypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
 			if ((b.getFlags() & ADJUSTED_ENCRYPTED) == ADJUSTED_ENCRYPTED) {
@@ -146,13 +145,11 @@ public class MpqFile {
 			for (int i = 0; i < sectorCount - 1; i++) {
 				buf.position(block.getFilePos() + start);
 				byte[] arr = getSectorAsByteArray(buf, end - start);
-				System.out.println(DebugHelper.bytesToHex(arr));
 				if(crypto != null){
 					arr = crypto.decryptBlock(arr, baseKey + i);
 				}
 				if (block.getNormalSize() - finalSize <= sectorSize) {
 					arr = decompressSector(arr, end - start, block.getNormalSize()- finalSize);
-					break; //just for safety
 				} else {
 					arr = decompressSector(arr, end - start, sectorSize);
 				}
@@ -174,7 +171,6 @@ public class MpqFile {
 			if(crypto != null){
 				arr = crypto.decryptBlock(arr, baseKey);
 			}
-			arr = decompressSector(arr, compSize, normalSize);
 			FileOutputStream writer = new FileOutputStream(f);
 			writer.write(arr);
 			writer.flush();
@@ -193,11 +189,8 @@ public class MpqFile {
 		if(normalSize == uncompSize){
 			return sector;
 		}else{
-			System.out.println("wröken");
 			byte compressionType = sector[0];
-			System.out.println("wröken");
 			if (((compressionType & 2) == 2)){
-				System.out.println("wröken");
 				return JzLibHelper.inflate(sector, 1 ,uncompSize);
 			}
 			return null;
