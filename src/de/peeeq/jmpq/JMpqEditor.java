@@ -125,66 +125,6 @@ public class JMpqEditor {
 		System.out.println("Blocktable size: " + blockSize);
 	}
 
-//	/**
-//	 * Inserts a new file into the mpq with the specidied name. If a file
-//	 * already exists it will get overwritten
-//	 * 
-//	 * @param source
-//	 *            file which shold be inserted into the mpq
-//	 * @param archiveName
-//	 *            only use \ as file seperator / will fail
-//	 * @throws JMpqException
-//	 *             if file can't be read
-//	 */
-//	public void insertFile(File source, String archiveName) throws JMpqException {
-//		if (readOnlyMode){
-//			throw new JMpqException("Can't insert files in read only mode");
-//		}
-//		MpqFile f = new MpqFile(source, archiveName, discBlockSize);
-//		listFile.addFile(archiveName);
-//		filesByName.put(archiveName, f);
-//	}
-//
-//	/**
-//	 * Inserts a new file into the mpq with the specidied name. If a file
-//	 * already exists it will get overwritten
-//	 * 
-//	 * @param source
-//	 *            as byte array
-//	 * @param archiveName
-//	 *            only use \ as file seperator / will fail
-//	 * @throws JMpqException
-//	 */
-//	public void insertFile(byte[] source, String archiveName) throws JMpqException {
-//		if (readOnlyMode){
-//			throw new JMpqException("Can't insert files in read only mode");
-//		}
-//		MpqFile f = new MpqFile(source, archiveName, discBlockSize);
-//		listFile.addFile(archiveName);
-//		filesByName.put(archiveName, f);
-//	}
-//
-//	/**
-//	 * Deletes the specified file from the mpq
-//	 * 
-//	 * @param name
-//	 *            of the file, only use \ as file seperator / will fail
-//	 * @throws JMpqException
-//	 *             if file is not found
-//	 */
-//	public void deleteFile(String name) throws JMpqException {
-//		if (readOnlyMode){
-//			throw new JMpqException("Can't delete files in read only mode");
-//		}
-//		MpqFile f = filesByName.get(name);
-//		if (f != null) {
-//			listFile.removeFile(name);
-//			filesByName.remove(name);
-//		} else {
-//			throw new JMpqException("Could not find file: " + name);
-//		}
-//	}
-//
 	/**
 	 * Extracts the specified file out of the mpq
 	 * 
@@ -227,45 +167,9 @@ public class JMpqEditor {
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}
-		
 	}
-//
-//	/**
-//	 * Extracts the specified file out of the mpq
-//	 * 
-//	 * @param name
-//	 *            of the file
-//	 * @return the file as byte array
-//	 * @throws JMpqException
-//	 *             if file is not found
-//	 */
-//	public byte[] extractFile(String name) throws JMpqException {
-//		try {
-//			MpqFile f = filesByName.get(name);
-//			if (f != null) {
-//				return f.asFileArray();
-//			} else {
-//				try {
-//					MpqFile fil = new MpqFile(Arrays.copyOfRange(fileAsArray, headerOffset, fileAsArray.length),
-//							blockTable.getBlockAtPos(hashTable.getBlockIndexOfFile(name)), discBlockSize, name);
-//					return fil.asFileArray();
-//				} catch (Exception e) {
-//					throw new JMpqException("Could not find file: " + name);
-//				}
-//			}
-//		} catch (IOException e) {
-//			throw new JMpqException(e);
-//		}
-//	}
-//
-//	private String readString(DataInput reader, int size) throws IOException {
-//		byte[] start = new byte[size];
-//		reader.readFully(start);
-//		String startString = new String(start);
-//		return startString;
-//	}
-//
-//	private void build(boolean bestCompression) throws JMpqException {
+
+	private void build(boolean bestCompression) throws JMpqException {
 //		// Write start offset -> Caluclate header -> WriteFiles and save their
 //		// offsets -> Generate Blocktable -> Generate Hastable -> Write
 //		// HashTable -> Write BlockTable
@@ -276,9 +180,10 @@ public class JMpqEditor {
 //		} catch (IOException e) {
 //			throw new JMpqException("Could not create buildfile, reason: " + e.getCause());
 //		}
-//		try (FileOutputStream out = new FileOutputStream(temp)) {
-//			// Write start offset
-//			out.write(fileAsArray, 0, headerOffset);
+//		FileChannel outFc = FileChannel.open(mpq.toPath(), StandardOpenOption.CREATE, 
+//				StandardOpenOption.WRITE, StandardOpenOption.READ);
+//		MappedByteBuffer headerStart = fc.map(MapMode.READ_ONLY, 0, headerOffset);
+//		outFc.write(headerStart);
 //			// Calculate Header
 //			// Get Hash and Block Table Size
 //			int lines = listFile.getFiles().size() + 1;
@@ -359,7 +264,7 @@ public class JMpqEditor {
 //		} catch (IOException e) {
 //			throw new JMpqException("Could not overwrite the orginal mpq: " + e.getCause());
 //		}
-//	}
+	}
 //
 //	/**
 //	 * Closes the mpq and write the changes to the file
