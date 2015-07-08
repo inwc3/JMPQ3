@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -127,8 +128,12 @@ public class MpqFile {
 	public String getName() {
 		return name;
 	}
-
+	
 	public void extractToFile(File f) throws IOException {
+		extractToOutputStream(new FileOutputStream(f));
+	}
+
+	public void extractToOutputStream(OutputStream writer) throws IOException {
 		if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
 			ByteBuffer sotBuffer = null;
 			buf.position(block.getFilePos());
@@ -141,7 +146,6 @@ public class MpqFile {
 			int start = sotBuffer.getInt();
 			int end = sotBuffer.getInt();
 			int finalSize = 0;
-			FileOutputStream writer = new FileOutputStream(f);
 			for (int i = 0; i < sectorCount - 1; i++) {
 				buf.position(block.getFilePos() + start);
 				byte[] arr = getSectorAsByteArray(buf, end - start);
@@ -171,7 +175,6 @@ public class MpqFile {
 			if(crypto != null){
 				arr = crypto.decryptBlock(arr, baseKey);
 			}
-			FileOutputStream writer = new FileOutputStream(f);
 			writer.write(arr);
 			writer.flush();
 			writer.close();
@@ -195,29 +198,5 @@ public class MpqFile {
 			}
 			return null;
 		}
-	}
-
-	public class Sector {
-		boolean isCompressed = true;
-		byte compressionType;
-		byte[] contentUnCompressed;
-		byte[] contentCompressed;
-
-		public Sector(MappedByteBuffer buf, int sectorSize, int uncomSectorSize, MpqCrypto crypto, int key){
-		}
-
-		public Sector(byte[] data) {
-			contentUnCompressed = data;
-			try {
-				contentCompressed = JzLibHelper.deflate(data);
-			} catch (Exception e) {
-				contentCompressed = data;
-				isCompressed = false;
-			}
-		}
-	}
-
-	public int getSectorSize() {
-		return sectorSize;
 	}
 }

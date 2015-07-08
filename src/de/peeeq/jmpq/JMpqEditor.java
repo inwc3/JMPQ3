@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -146,6 +147,30 @@ public class JMpqEditor {
 			buf.order(ByteOrder.LITTLE_ENDIAN);
 			MpqFile f = new MpqFile(buf , b, discBlockSize, name);
 			f.extractToFile(dest);
+		} catch (IOException e) {
+			throw new JMpqException(e);
+		}
+		
+	}
+	
+	/**
+	 * Extracts the specified file out of the mpq
+	 * 
+	 * @param name
+	 *            of the file
+	 * @param dest
+	 *            the outputstream where the file's content is written
+	 * @throws JMpqException
+	 *             if file is not found or access errors occur
+	 */
+	public void extractFile(String name, OutputStream dest) throws JMpqException {
+		try {
+			int pos = hashTable.getBlockIndexOfFile(name);
+			Block b = blockTable.getBlockAtPos(pos);
+			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size());
+			buf.order(ByteOrder.LITTLE_ENDIAN);
+			MpqFile f = new MpqFile(buf , b, discBlockSize, name);
+			f.extractToOutputStream(dest);
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}
