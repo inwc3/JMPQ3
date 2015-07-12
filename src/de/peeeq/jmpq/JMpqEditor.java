@@ -153,6 +153,15 @@ public class JMpqEditor {
 		
 	}
 	
+	public boolean hasFile(String name){
+		try {
+			hashTable.getBlockIndexOfFile(name);
+		} catch (IOException e) {
+			return false;
+		}
+		return true;
+	}
+	
 	/**
 	 * Extracts the specified file out of the mpq
 	 * 
