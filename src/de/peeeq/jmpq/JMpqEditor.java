@@ -63,8 +63,7 @@ public class JMpqEditor {
 	public JMpqEditor(File mpq) throws JMpqException {
 		this.mpq = mpq;
 		try {
-			fc = FileChannel.open(mpq.toPath(), StandardOpenOption.CREATE, 
-					StandardOpenOption.WRITE, StandardOpenOption.READ);
+			fc = FileChannel.open(mpq.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ);
 			
 			headerOffset = searchHeader();
 			
