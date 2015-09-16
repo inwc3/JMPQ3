@@ -136,17 +136,24 @@ public class JMpqEditor {
 	
 	private void writeHeader(MappedByteBuffer buffer){
 		buffer.putInt(newHeaderSize);
+		buffer.putInt(newArchiveSize);
 		buffer.putShort((short) newFormatVersion);
 		buffer.putShort((short) 3);
-		buffer.putInt(headerSize);
-		buffer.putInt(headerSize);
-		buffer.putInt(headerSize);
-		buffer.putInt(headerSize);
+		buffer.putInt(newHashPos);
+		buffer.putInt(newBlockPos);
+		buffer.putInt(newHashSize);
+		buffer.putInt(newBlockSize);
 	}
 	
 	public void close() throws IOException{
 		File temp = File.createTempFile("crig", "mpq");
+		temp = new File(".\\buildtest.mpq");
 		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+		
+		if(keepHeaderOffset){
+			MappedByteBuffer headerReader = writeChannel.map(MapMode.READ_ONLY, 0, headerOffset + 4);
+			writeChannel.write(headerReader);
+		}
 		
 		newHeaderSize = headerSize;
 		newFormatVersion = formatVersion;
@@ -156,41 +163,42 @@ public class JMpqEditor {
 		newBlockPos = headerSize + 8 + newHashSize * 16;
 		
 		ArrayList<Block> newBlocks = new ArrayList<>();
-		int currentPos = headerSize + 8 + newHashSize * 16 + newBlockSize * 16;
+		ArrayList<String> newFiles = new ArrayList<>();
+		int currentPos = headerOffset + headerSize + 8 + newHashSize * 16 + newBlockSize * 16;
 		for(String s : listFile.getFiles()){
 			if(!hasFile(s)){
 				continue;
 			}
+			newFiles.add(s);
 			int pos = hashTable.getBlockIndexOfFile(s);
 			Block b = blockTable.getBlockAtPos(pos);
 			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size());
 			buf.order(ByteOrder.LITTLE_ENDIAN);
 			MpqFile f = new MpqFile(buf , b, discBlockSize, s);
-			MappedByteBuffer fileWriter = fc.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+			MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
 			Block newBlock = new Block(currentPos, 0, 0, 0);
 			newBlocks.add(newBlock);
-			blockToFilename.put(newBlock, s);
 			f.writeFileAndBlock(newBlock, fileWriter);
 			currentPos += b.getCompressedSize();
 		}
 		for(File f : filesToAdd){
-			MappedByteBuffer fileWriter = fc.map(MapMode.READ_WRITE, currentPos, f.length());
+			newFiles.add(internalFilename.get(f));
+			MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length());
 			Block newBlock = new Block(currentPos, 0, 0, 0);
 			newBlocks.add(newBlock);
-			blockToFilename.put(newBlock, internalFilename.get(f));
 			MpqFile.writeFileAndBlock(f, newBlock, fileWriter);
 			currentPos += newBlock.getCompressedSize();
 		}
 		
-		
-		
 		newArchiveSize = currentPos;
 		
-		if(keepHeaderOffset){
-			MappedByteBuffer headerReader = fc.map(MapMode.READ_ONLY, 0, headerOffset + 4);
-			writeChannel.write(headerReader);
-		}
-		MappedByteBuffer headerWriter = fc.map(MapMode.READ_WRITE, headerOffset + 4, headerSize + 4);
+		MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newHashPos, newHashSize * 16);
+		HashTable.writeNewHashTable(newHashSize, newFiles, hashtableWriter);
+		
+		MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newBlockPos, newBlockSize * 16);
+		BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
+		
+		MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + 4, headerSize + 4);
 		headerWriter.order(ByteOrder.LITTLE_ENDIAN);
 		writeHeader(headerWriter);
 		
@@ -204,7 +212,7 @@ public class JMpqEditor {
 			current *= 2;
 		}
 		newHashSize = current;
-		newBlockSize = current;
+		newBlockSize = listFile.getFiles().size();
 	}
 	
 	

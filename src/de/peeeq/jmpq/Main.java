@@ -10,11 +10,8 @@ public class Main {
 
 //		JMpqEditor e = new JMpqEditor(new File("war3.mpq"));
 		
-		JMpqEditor e = new JMpqEditor(new File("testmap.w3x"));
-		e.printHeader();
-		e.insertFile("wurst", new File("test.txt"));
-		e.extractFile("A.mpq", new File("a.mpq"));
-		e.deleteFile("A.mpq");
+		JMpqEditor e = new JMpqEditor(new File("newTestMap.w3x"));
+		e.close();
 //		Thread.sleep(1000000);
 //		e.extractFile("Abilities\\Spells\\Other\\Transmute\\Sparkle_Anim128.blp", new File("test.blp"));
 		// e.insertFile(new

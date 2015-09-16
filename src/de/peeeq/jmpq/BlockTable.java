@@ -34,33 +34,12 @@ public class BlockTable {
 		
 	}
 
-	public BlockTable(LinkedList<MpqFile> files, int size) {
-//		content = new Block[size];
-//		int c = 0;
-//		for (MpqFile f : files) {
-//			content[c] = new Block(f.getOffset(), f.getCompSize(), f.getNormalSize(), MpqFile.COMPRESSED
-//					| MpqFile.EXISTS);
-//			ht.put(f, content[c]);
-//			f.setBlockIndex(c);
-//			c++;
-//		}
-//		while (c < size) {
-//			content[c] = new Block(0, 0, 0, 0);
-//			c++;
-//		}
+	public static void writeNewBlocktable(ArrayList<Block> blocks, int size, MappedByteBuffer buf) {
+		for (Block b : blocks) {
+			b.writeToBuffer(buf);
+		}
 	}
 
-	public void writeToFile(FileOutputStream out) throws IOException {
-//		byte[] temp = new byte[content.length * 16];
-//		int i = 0;
-//		for (Block b : content) {
-//			System.arraycopy(b.asByteArray(), 0, temp, i * 16, 16);
-//			i++;
-//		}
-//		MpqCrypto crypt = new MpqCrypto();
-//		temp = crypt.encryptMpqBlock(temp, temp.length, MpqCrypto.MPQ_KEY_BLOCK_TABLE);
-//		out.write(temp);
-	}
 
 	public Block getBlockAtPos(int pos) throws JMpqException {
 		if(pos < 0 || pos > size){

@@ -41,37 +41,36 @@ public class HashTable {
 		hashMap.order(ByteOrder.LITTLE_ENDIAN);
 	}
 
-	public static void writeNewHashTable(LinkedList<MpqFile> files, HashMap<MpqFile, Block> blockForFile, int size,
-		FileOutputStream out, HashTable orginal) throws IOException, JMpqException {
-//		Entry[] content = new Entry[size];
-//		for (int i = 0; i < size; i++) {
-//			content[i] = new Entry(-1, -1, -1, -1, -1);
-//		}
-//		MpqCrypto c = new MpqCrypto();
-//		for (MpqFile f : files) {
-//			int index = c.hash(f.getName(), MpqCrypto.MPQ_HASH_TABLE_INDEX);
-//			int name1 = c.hash(f.getName(), MpqCrypto.MPQ_HASH_NAME_A);
-//			int name2 = c.hash(f.getName(), MpqCrypto.MPQ_HASH_NAME_B);
-//			int start = index & (size - 1);
-//			while (true) {
-//				if (content[start].wPlatform == -1) {
-//					content[start] = new Entry(name1, name2, 0, 0, f.getBlockIndex());
-//					break;
-//				}
-//				start++;
-//				start = start % size;
-//			}
-//		}
-//		byte[] temp = new byte[size * 4 * 4];
-//		int i = 0;
-//		for (Entry e : content) {
-//			System.arraycopy(e.asByteArray(), 0, temp, i * 16, 16);
-//			i++;
-//		}
-//		temp = c.encryptMpqBlock(temp, temp.length, MpqCrypto.MPQ_KEY_HASH_TABLE);
-//		@SuppressWarnings("unused") // TODO maybe rewrite this, so that no constructor is needed
-//		HashTable ht = new HashTable(temp, 0, size);
-//		out.write(temp);
+	public static void writeNewHashTable(int size, ArrayList<String> names, MappedByteBuffer writeBuffer) throws IOException, JMpqException {
+		Entry[] content = new Entry[size];
+		for (int i = 0; i < size; i++) {
+			content[i] = new Entry(-1, -1, -1, -1, -1);
+		}
+		MpqCrypto c = new MpqCrypto();
+		int blockIndex = 0;
+		for (String s : names) {
+			int index = c.hash(s, MpqCrypto.MPQ_HASH_TABLE_INDEX);
+			int name1 = c.hash(s, MpqCrypto.MPQ_HASH_NAME_A); 
+			int name2 = c.hash(s, MpqCrypto.MPQ_HASH_NAME_B);
+			int start = index & (size - 1);
+			while (true) {
+				if (content[start].wPlatform == -1) {
+					content[start] = new Entry(name1, name2, 0, 0, blockIndex);
+					break;
+				}
+				start++;
+				start = start % size;
+			}
+			blockIndex++;
+		}
+		ByteBuffer temp = ByteBuffer.allocate(size * 16);
+		temp.position(0);
+		for (Entry e : content) {
+			e.writeToBuffer(temp);
+		}
+		byte[] arr = temp.array();
+		arr = c.encryptMpqBlock(arr, arr.length, MpqCrypto.MPQ_KEY_HASH_TABLE);
+		writeBuffer.put(arr);
 	}
 
 	public int getBlockIndexOfFile(String name) throws IOException {
@@ -81,7 +80,7 @@ public class HashTable {
 		int start = index & (hashSize - 1);
 		for (int c = 0; c <= hashSize; c++) {
 			hashMap.position(start * 16);
-			Entry cur = new Entry(hashMap, start);
+			Entry cur = new Entry(hashMap);
 			if (cur.dwName1 == name1 && cur.dwName2 == name2) {
 				return cur.dwBlockIndex;
 			} else if (cur.wPlatform != 0) {
@@ -92,66 +91,23 @@ public class HashTable {
 		}
 		throw new JMpqException("File Not Found");
 	}
-	
-	public void deleteFile(String name) throws IOException{
-		int index = c.hash(name, MpqCrypto.MPQ_HASH_TABLE_INDEX);
-		int name1 = c.hash(name, MpqCrypto.MPQ_HASH_NAME_A);
-		int name2 = c.hash(name, MpqCrypto.MPQ_HASH_NAME_B);
-		int start = index & (hashSize - 1);
-		for (int c = 0; c <= hashSize; c++) {
-			hashMap.position(start * 16);
-			Entry cur = new Entry(hashMap, index);
-			if (cur.dwName1 == name1 && cur.dwName2 == name2) {
-				hashMap.position(start * 16);
-				for(int i = 1; i <= 16; i++){
-					hashMap.put((byte) 0);
-				}
-				return;
-			} else if (cur.wPlatform != 0) {
-				throw new JMpqException("File Not Found");
-			}
-			start++;
-			start %= hashSize;
-		}
-		throw new JMpqException("File Not Found");
-	}
-	
-	public void saveEntryForFile(String name){
-		int index = c.hash(name, MpqCrypto.MPQ_HASH_TABLE_INDEX);
-		int name1 = c.hash(name, MpqCrypto.MPQ_HASH_NAME_A);
-		int name2 = c.hash(name, MpqCrypto.MPQ_HASH_NAME_B);
-		content.add(new Entry(name1, name2, 0, 0, 0, index));
-	}
-	
-	private void loadExistingEntrys() throws IOException{
-//		hashMap.position(0);
-//		for (int c = 0; c <= hashSize; c++) {
-//			Entry cur = new Entry(hashMap);
-//			if(cur.wPlatform == 0){
-//				content.add(cur);
-//			}
-//		}
-	}
 
 	public static class Entry {
-		private int hashIndex;
 		private int dwName1;
 		private int dwName2;
 		private int lcLocale;
 		private int wPlatform;
 		private int dwBlockIndex;
 
-		public Entry(int dwName1, int dwName2, int lcLocale, int wPlatform, int dwBlockIndex, int hashIndex) {
+		public Entry(int dwName1, int dwName2, int lcLocale, int wPlatform, int dwBlockIndex) {
 			this.dwName1 = dwName1;
 			this.dwName2 = dwName2;
 			this.lcLocale = lcLocale;
 			this.wPlatform = wPlatform;
 			this.dwBlockIndex = dwBlockIndex;
-			this.hashIndex = hashIndex;
 		}
 
-		public Entry(MappedByteBuffer in, int hashIndex) throws IOException {
-			this.hashIndex = hashIndex;
+		public Entry(MappedByteBuffer in) throws IOException {
 			this.dwName1 = in.getInt();
 			this.dwName2 = in.getInt();
 			this.lcLocale = in.getShort();
