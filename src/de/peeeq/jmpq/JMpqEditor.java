@@ -17,6 +17,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 import com.google.common.io.LittleEndianDataInputStream;
@@ -44,11 +45,22 @@ public class JMpqEditor {
 
 	private HashTable hashTable;
 	private BlockTable blockTable;
-	private ArrayList<File> filesToAdd = new ArrayList<>();
 	private Listfile listFile;
-	private HashMap<String, MpqFile> filesByName = new HashMap<>();
+	private HashMap<File, String> internalFilename = new HashMap<>();
+	private HashMap<Block, String> blockToFilename = new HashMap<>();
 	private boolean useBestCompression = false;
-	private boolean readOnlyMode = false;
+	
+	//BuildData
+	private ArrayList<File> filesToAdd = new ArrayList<>();
+	private boolean keepHeaderOffset = true;
+	private int newHeaderSize;
+	private int newArchiveSize;
+	private int newFormatVersion;
+	private int newDiscBlockSize;
+	private int newHashPos;
+	private int newBlockPos;
+	private int newHashSize;
+	private int newBlockSize;
 	
 	/**
 	 * Creates a new editor by parsing an exisiting mpq.
@@ -82,7 +94,12 @@ public class JMpqEditor {
 			MappedByteBuffer blockBuffer = fc.map(MapMode.READ_ONLY, blockPos + headerOffset, blockSize * 16);
 			blockBuffer.order(ByteOrder.LITTLE_ENDIAN);
 			blockTable = new BlockTable(blockBuffer);
-		
+			
+			if(hasFile("listfile")){
+				File tempFile = File.createTempFile("list", "file");
+				extractFile("listfile", tempFile);
+				listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+			}
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}
@@ -116,6 +133,80 @@ public class JMpqEditor {
 		hashSize = buffer.getInt();
 		blockSize = buffer.getInt();
 	}
+	
+	private void writeHeader(MappedByteBuffer buffer){
+		buffer.putInt(newHeaderSize);
+		buffer.putShort((short) newFormatVersion);
+		buffer.putShort((short) 3);
+		buffer.putInt(headerSize);
+		buffer.putInt(headerSize);
+		buffer.putInt(headerSize);
+		buffer.putInt(headerSize);
+	}
+	
+	public void close() throws IOException{
+		File temp = File.createTempFile("crig", "mpq");
+		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+		
+		newHeaderSize = headerSize;
+		newFormatVersion = formatVersion;
+		newDiscBlockSize = discBlockSize;
+		calcNewTableSize();
+		newHashPos = headerSize + 8;
+		newBlockPos = headerSize + 8 + newHashSize * 16;
+		
+		ArrayList<Block> newBlocks = new ArrayList<>();
+		int currentPos = headerSize + 8 + newHashSize * 16 + newBlockSize * 16;
+		for(String s : listFile.getFiles()){
+			if(!hasFile(s)){
+				continue;
+			}
+			int pos = hashTable.getBlockIndexOfFile(s);
+			Block b = blockTable.getBlockAtPos(pos);
+			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size());
+			buf.order(ByteOrder.LITTLE_ENDIAN);
+			MpqFile f = new MpqFile(buf , b, discBlockSize, s);
+			MappedByteBuffer fileWriter = fc.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+			Block newBlock = new Block(currentPos, 0, 0, 0);
+			newBlocks.add(newBlock);
+			blockToFilename.put(newBlock, s);
+			f.writeFileAndBlock(newBlock, fileWriter);
+			currentPos += b.getCompressedSize();
+		}
+		for(File f : filesToAdd){
+			MappedByteBuffer fileWriter = fc.map(MapMode.READ_WRITE, currentPos, f.length());
+			Block newBlock = new Block(currentPos, 0, 0, 0);
+			newBlocks.add(newBlock);
+			blockToFilename.put(newBlock, internalFilename.get(f));
+			MpqFile.writeFileAndBlock(f, newBlock, fileWriter);
+			currentPos += newBlock.getCompressedSize();
+		}
+		
+		
+		
+		newArchiveSize = currentPos;
+		
+		if(keepHeaderOffset){
+			MappedByteBuffer headerReader = fc.map(MapMode.READ_ONLY, 0, headerOffset + 4);
+			writeChannel.write(headerReader);
+		}
+		MappedByteBuffer headerWriter = fc.map(MapMode.READ_WRITE, headerOffset + 4, headerSize + 4);
+		headerWriter.order(ByteOrder.LITTLE_ENDIAN);
+		writeHeader(headerWriter);
+		
+		
+	}
+	
+	private void calcNewTableSize(){
+		int target = listFile.getFiles().size();
+		int current = 2;
+		while(current < target){
+			current *= 2;
+		}
+		newHashSize = current;
+		newBlockSize = current;
+	}
+	
 	
 	public void printHeader(){
 		System.out.println("Header offset: " + headerOffset);
@@ -181,8 +272,7 @@ public class JMpqEditor {
 			f.extractToOutputStream(dest);
 		} catch (IOException e) {
 			throw new JMpqException(e);
-		}
-		
+		}	
 	}
 	
 	/**
@@ -196,17 +286,9 @@ public class JMpqEditor {
 	 *             if file is not found or access errors occur
 	 */
 	public void deleteFile(String name) throws JMpqException {
-		try {
-			int pos = hashTable.getBlockIndexOfFile(name);
-			hashTable.deleteFile(name);
-			blockTable.deleteBlockAtPos(pos);
-		} catch (IOException e) {
-			throw new JMpqException(e);
-		}
+		listFile.removeFile(name);
 	}
 
-	private void build(boolean bestCompression) throws JMpqException {}
-	
 	/**
 	 * Inserts the specified file out of the mpq once you rebuild the mpq
 	 * 
@@ -219,8 +301,9 @@ public class JMpqEditor {
 	 */
 	public void insertFile(String name, File f) throws JMpqException {
 		try {
+			listFile.addFile(name);
 			FileInputStream in = new FileInputStream(f);
-			File temp = File.createTempFile(name, "crig");
+			File temp = File.createTempFile("wurst", "crig");
 			temp = new File("sample.txt");
 			FileOutputStream out = new FileOutputStream(temp);
 			int i = in.read();
@@ -231,6 +314,8 @@ public class JMpqEditor {
 			in.close();
 			out.flush();
 			out.close();
+			filesToAdd.add(temp);
+			internalFilename.put(temp, name);
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}

@@ -9,6 +9,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.LinkedList;
 
 public class BlockTable {
@@ -75,19 +76,18 @@ public class BlockTable {
 		
 	}
 	
-	public void deleteBlockAtPos(int pos) throws JMpqException {
-		if(pos < 0 || pos > size){
-			throw new JMpqException("Invaild block position");
-		}else{
-			blockMap.position(pos * 16);
-			for(int i = 1; i <= 16; i++){
-				blockMap.put((byte) 0);
+	public ArrayList<Block> getAllVaildBlocks() throws JMpqException{
+		ArrayList<Block> list = new ArrayList<>();
+		for(int i = 0; i < size; i++){
+			Block b = getBlockAtPos(i);
+			if((b.getFlags() & MpqFile.EXISTS) == MpqFile.EXISTS){
+				list.add(b);
 			}
 		}
-		
+		return list;
 	}
 
-	public class Block {
+	public static class Block {
 		private int filePos;
 		private int compressedSize;
 		private int normalSize;
@@ -131,6 +131,23 @@ public class BlockTable {
 			return flags;
 		}
 
+		public void setFilePos(int filePos) {
+			this.filePos = filePos;
+		}
+
+		public void setCompressedSize(int compressedSize) {
+			this.compressedSize = compressedSize;
+		}
+
+		public void setNormalSize(int normalSize) {
+			this.normalSize = normalSize;
+		}
+
+		public void setFlags(int flags) {
+			this.flags = flags;
+		}
+
+		
 		@Override
 		public String toString() {
 			return "Block [filePos=" + filePos + ", compressedSize=" + compressedSize + ", normalSize=" + normalSize

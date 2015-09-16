@@ -23,7 +23,8 @@ public class MpqFile {
 	public static final int SINGLEUNIT = 0x01000000;
 	public static final int ADJUSTED_ENCRYPTED = 0x00020000;
 	public static final int EXISTS = 0x80000000;
-
+	public static final int DELETED = 0x02000000;
+	
 	private MappedByteBuffer buf;
 	private Block block;
 	private MpqCrypto crypto = null;
@@ -45,38 +46,6 @@ public class MpqFile {
 	public void setBlockIndex(int blockIndex) {
 		this.blockIndex = blockIndex;
 	}
-
-//	public MpqFile(File f, String name, int sectorSize) throws JMpqException {
-//		byte[] arr = null;
-//		try {
-//			arr = Files.readAllBytes(f.toPath());
-//		} catch (IOException e) {
-//			throw new JMpqException("Could not read File: " + f.getName());
-//		}
-//		normalSize = arr.length;
-//		this.name = name;
-//		this.sectorSize = sectorSize;
-//		int sectorCount = (int) (Math.ceil(((double) normalSize / (double) sectorSize)));
-//		sectors = new Sector[sectorCount];
-//		for (int i = 0; i < arr.length; i += sectorSize) {
-//			int length = sectorSize;
-//			if (normalSize - i < sectorSize) {
-//				length = normalSize - i;
-//			}
-//			byte[] temp = new byte[length];
-//			System.arraycopy(arr, i, temp, 0, length);
-//			sectors[i / sectorSize] = new Sector(temp);
-//
-//		}
-//		compSize = 0;
-//		for (Sector s : sectors) {
-//			// + 4 for int in sot + 1 for compression flag
-//			compSize += s.contentCompressed.length + 5;
-//		}
-//		// + 4 for end in sot
-//		compSize += 4;
-//		flags = COMPRESSED | EXISTS;
-//	}
 
 	@Override
 	public String toString() {
@@ -108,7 +77,9 @@ public class MpqFile {
 			}
 		}
 	}
-
+	
+	
+	
 	public int getOffset() {
 		return offset;
 	}
@@ -132,7 +103,7 @@ public class MpqFile {
 	public void extractToFile(File f) throws IOException {
 		extractToOutputStream(new FileOutputStream(f));
 	}
-
+	//TODO method way to unstable
 	public void extractToOutputStream(OutputStream writer) throws IOException {
 		if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
 			ByteBuffer sotBuffer = null;
@@ -178,6 +149,78 @@ public class MpqFile {
 			writer.write(arr);
 			writer.flush();
 			writer.close();
+		}
+	}
+	
+	public void writeFileAndBlock(Block newBlock,  MappedByteBuffer writeBuffer){
+		newBlock.setNormalSize(normalSize);
+		newBlock.setCompressedSize(compSize);
+		if ((block.getFlags() & SINGLEUNIT) == SINGLEUNIT) {
+			if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
+				buf.position(block.getFilePos());
+				byte[] arr = getSectorAsByteArray(buf, compSize);
+				arr = crypto.decryptBlock(arr, baseKey);
+				writeBuffer.put(arr);
+			}
+			if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
+				newBlock.setFlags(EXISTS | SINGLEUNIT | COMPRESSED);
+			}else{;
+				newBlock.setFlags(EXISTS | SINGLEUNIT);
+			}
+		}else{
+			ByteBuffer sotBuffer = null;
+			buf.position(block.getFilePos());
+			byte[] sot = new byte[sectorCount * 4];
+			buf.get(sot);
+			if (crypto != null) {
+				sot = crypto.decryptBlock(sot, baseKey - 1);
+			}
+			writeBuffer.put(sot);
+			sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
+			int start = sotBuffer.getInt();
+			int end = sotBuffer.getInt();
+			int finalSize = 0;
+			for (int i = 0; i < sectorCount - 1; i++) {
+				buf.position(block.getFilePos() + start);
+				byte[] arr = getSectorAsByteArray(buf, end - start);
+				if(crypto != null){
+					arr = crypto.decryptBlock(arr, baseKey + i);
+				}
+				writeBuffer.put(arr);
+				
+				finalSize += sectorSize;
+				start = end;
+				try {
+					end = sotBuffer.getInt();
+				} catch (BufferUnderflowException e) {
+					break;
+				}
+			}
+			if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
+				newBlock.setFlags(EXISTS | COMPRESSED);
+			}else{;
+				newBlock.setFlags(EXISTS);
+			}
+		}
+	}
+	
+	public static void writeFileAndBlock(File f, Block b, MappedByteBuffer buf){
+		byte[] fileArr;
+		try {
+			fileArr = Files.readAllBytes(f.toPath());
+		} catch (IOException e) {
+			throw new RuntimeException("Internal JMpq Error");
+		}
+		b.setNormalSize(fileArr.length);
+		byte[] compressedFile = JzLibHelper.deflate(fileArr);
+		b.setCompressedSize(compressedFile.length);
+		if(compressedFile.length >= fileArr.length){
+			b.setFlags(EXISTS | SINGLEUNIT);
+			buf.put(fileArr);
+		}else{
+			buf.put((byte) 2);
+			buf.put(compressedFile);
+			b.setFlags(EXISTS | SINGLEUNIT | COMPRESSED);
 		}
 	}
 	
