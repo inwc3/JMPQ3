@@ -101,10 +101,40 @@ public class MpqFile {
 	}
 	
 	public void extractToFile(File f) throws IOException {
+		if(sectorCount == 1){
+			f.createNewFile();
+		}
 		extractToOutputStream(new FileOutputStream(f));
 	}
 	//TODO method way to unstable
 	public void extractToOutputStream(OutputStream writer) throws IOException {
+		if(sectorCount == 1){
+			writer.close();
+			return;
+		}
+		if((block.getFlags() & SINGLEUNIT) == SINGLEUNIT) {
+			if((block.getFlags() & COMPRESSED) == COMPRESSED) {
+				buf.position(block.getFilePos());
+				byte[] arr = getSectorAsByteArray(buf, compSize);
+				if(crypto != null){
+					arr = crypto.decryptBlock(arr, baseKey);
+				}
+				arr = decompressSector(arr, block.getCompressedSize(), block.getNormalSize());
+				writer.write(arr);
+				writer.flush();
+				writer.close();
+			}else{
+				buf.position(block.getFilePos());
+				byte[] arr = getSectorAsByteArray(buf, compSize);
+				if(crypto != null){
+					arr = crypto.decryptBlock(arr, baseKey);
+				}
+				writer.write(arr);
+				writer.flush();
+				writer.close();
+			}
+			return;
+		}
 		if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
 			ByteBuffer sotBuffer = null;
 			buf.position(block.getFilePos());
@@ -155,6 +185,10 @@ public class MpqFile {
 	public void writeFileAndBlock(Block newBlock,  MappedByteBuffer writeBuffer){
 		newBlock.setNormalSize(normalSize);
 		newBlock.setCompressedSize(compSize);
+		if(normalSize == 0){
+			newBlock.setFlags(block.getFlags());
+			return;
+		}
 		if ((block.getFlags() & SINGLEUNIT) == SINGLEUNIT) {
 			if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
 				buf.position(block.getFilePos());
@@ -179,7 +213,6 @@ public class MpqFile {
 			sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
 			int start = sotBuffer.getInt();
 			int end = sotBuffer.getInt();
-			int finalSize = 0;
 			for (int i = 0; i < sectorCount - 1; i++) {
 				buf.position(block.getFilePos() + start);
 				byte[] arr = getSectorAsByteArray(buf, end - start);
@@ -187,8 +220,7 @@ public class MpqFile {
 					arr = crypto.decryptBlock(arr, baseKey + i);
 				}
 				writeBuffer.put(arr);
-				
-				finalSize += sectorSize;
+
 				start = end;
 				try {
 					end = sotBuffer.getInt();
@@ -204,23 +236,61 @@ public class MpqFile {
 		}
 	}
 	
-	public static void writeFileAndBlock(File f, Block b, MappedByteBuffer buf){
-		byte[] fileArr;
+	public static void writeFileAndBlock(File f, Block b, MappedByteBuffer buf, int sectorSize){
 		try {
-			fileArr = Files.readAllBytes(f.toPath());
+			writeFileAndBlock(Files.readAllBytes(f.toPath()), b, buf, sectorSize);
 		} catch (IOException e) {
 			throw new RuntimeException("Internal JMpq Error");
 		}
+		
+	}
+	
+	public static void writeFileAndBlock(byte[] fileArr, Block b, MappedByteBuffer buf, int sectorSize){
+		ByteBuffer fileBuf = ByteBuffer.wrap(fileArr);
+		fileBuf.position(0);
 		b.setNormalSize(fileArr.length);
-		byte[] compressedFile = JzLibHelper.deflate(fileArr);
-		b.setCompressedSize(compressedFile.length);
-		if(compressedFile.length >= fileArr.length){
-			b.setFlags(EXISTS | SINGLEUNIT);
-			buf.put(fileArr);
-		}else{
-			buf.put((byte) 2);
-			buf.put(compressedFile);
-			b.setFlags(EXISTS | SINGLEUNIT | COMPRESSED);
+		b.setFlags(EXISTS | COMPRESSED);
+		int sectorCount = (int) (Math.ceil(((double) fileArr.length / (double) sectorSize)) + 1);
+		ByteBuffer sot = ByteBuffer.allocate(sectorCount * 4);
+		sot.order(ByteOrder.LITTLE_ENDIAN);
+		sot.position(0);
+		sot.putInt(sectorCount * 4);
+		buf.position(sectorCount * 4);
+		int sotPos = sectorCount * 4;
+		byte[] temp = new byte[sectorSize];
+		for(int i = 1; i <= sectorCount - 1; i++){
+			if(fileBuf.position() + sectorSize > fileArr.length){
+				temp = new byte[fileArr.length - fileBuf.position()];
+			}
+			fileBuf.get(temp);
+			byte[] compSector = JzLibHelper.deflate(temp);
+			if(compSector.length < temp.length){
+				buf.put((byte) 2);
+				buf.put(compSector);
+				sotPos += compSector.length + 1;
+			}else{
+				buf.put(temp);
+				sotPos += sectorSize;
+			}
+			sot.putInt(sotPos);
+		}
+		b.setCompressedSize(sotPos );
+		buf.position(0);
+		sot.position(0);
+		buf.order(ByteOrder.LITTLE_ENDIAN);
+		buf.put(sot);
+	}
+	
+	private void debugByteArrToFile(byte[] arr, File f){
+		f.delete();
+		try {
+			FileOutputStream hashStream = new FileOutputStream(f);
+			hashStream.write(arr);
+			hashStream.flush();
+			hashStream.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
@@ -231,7 +301,7 @@ public class MpqFile {
 		return arr;
 	}
 	
-	private byte[] decompressSector(byte[] sector, int normalSize, int uncompSize){
+	private byte[] decompressSector(byte[] sector, int normalSize, int uncompSize) throws JMpqException{
 		if(normalSize == uncompSize){
 			return sector;
 		}else{
@@ -239,7 +309,7 @@ public class MpqFile {
 			if (((compressionType & 2) == 2)){
 				return JzLibHelper.inflate(sector, 1 ,uncompSize);
 			}
-			return null;
+			throw new JMpqException("Unsupported compression algorithm");
 		}
 	}
 }

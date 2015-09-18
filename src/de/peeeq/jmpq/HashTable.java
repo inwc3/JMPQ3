@@ -64,6 +64,7 @@ public class HashTable {
 			blockIndex++;
 		}
 		ByteBuffer temp = ByteBuffer.allocate(size * 16);
+		temp.order(ByteOrder.LITTLE_ENDIAN);
 		temp.position(0);
 		for (Entry e : content) {
 			e.writeToBuffer(temp);

@@ -16,6 +16,7 @@ public class BlockTable {
 	private MappedByteBuffer blockMap;
 	private int size;
 
+
 	public BlockTable(MappedByteBuffer buf) throws IOException {
 		size = buf.capacity() / 16;
 		
@@ -35,9 +36,16 @@ public class BlockTable {
 	}
 
 	public static void writeNewBlocktable(ArrayList<Block> blocks, int size, MappedByteBuffer buf) {
+		ByteBuffer temp = ByteBuffer.allocate(size * 16);
+		temp.order(ByteOrder.LITTLE_ENDIAN);
+		temp.position(0);
 		for (Block b : blocks) {
-			b.writeToBuffer(buf);
+			b.writeToBuffer(temp);
 		}
+		byte[] arr = temp.array();
+		MpqCrypto c = new MpqCrypto();
+		arr = c.encryptMpqBlock(arr, arr.length, MpqCrypto.MPQ_KEY_BLOCK_TABLE);
+		buf.put(arr);
 	}
 
 
@@ -52,7 +60,6 @@ public class BlockTable {
 				throw new JMpqException(e);
 			}
 		}
-		
 	}
 	
 	public ArrayList<Block> getAllVaildBlocks() throws JMpqException{
@@ -106,7 +113,7 @@ public class BlockTable {
 			return normalSize;
 		}
 
-		public long getFlags() {
+		public int getFlags() {
 			return flags;
 		}
 
