@@ -214,9 +214,12 @@ public class JMpqEditor {
 		writeChannel.close();
 		FileInputStream in = new FileInputStream(temp);
 		FileOutputStream out = new FileOutputStream(mpq);
-		for(int i = 1; i < newArchiveSize; i++){
+		for(int i = 1; i <= newArchiveSize; i++){
 			out.write(in.read());
 		}
+		in.close();
+		out.flush();
+		out.close();
 	}
 	
 	private void calcNewTableSize(){
