@@ -1,0 +1,3150 @@
+﻿STRING 1
+{
+MaDOS
+}
+
+STRING 2
+{
+Any
+}
+
+STRING 3
+{
+Nondescript
+}
+
+STRING 4
+{
+Unknown
+}
+
+STRING 5
+{
+Player 1
+}
+
+STRING 6
+{
+Force 1
+}
+
+STRING 7
+// Fähigkeiten: A000 (Throw), Name (Name (anam))
+{
+Throw
+}
+
+STRING 8
+// Fähigkeiten: A000 (Throw), Hotkey (Tastaturkürzel - Normal (ahky))
+{
+R
+}
+
+STRING 9
+// Fähigkeiten: A000 (Throw), Tip (Tooltipp - Normal (atp1))
+{
+Th|cffffcc00r|row
+}
+
+STRING 10
+// Fähigkeiten: A000 (Throw), Ubertip (Tooltipp - Normal - Erweitert (aub1))
+{
+Throw grenades
+}
+
+STRING 11
+// Fähigkeiten: A001 (Jump), Name (Name (anam))
+{
+Jump
+}
+
+STRING 13
+// Fähigkeiten: A001 (Jump), Tip (Tooltipp - Normal (atp1))
+{
+|cffffcc00J|rump
+}
+
+STRING 14
+// Fähigkeiten: A001 (Jump), Ubertip (Tooltipp - Normal - Erweitert (aub1))
+{
+Jump to another place...
+}
+
+STRING 15
+// Fähigkeiten: A001 (Jump), Hotkey (Tastaturkürzel - Normal (ahky))
+{
+J
+}
+
+STRING 16
+// Gegenstände: BMIa (Attack Tome +1), Name (Name (unam))
+{
+Attack Tome +1
+}
+
+STRING 17
+// Gegenstände: BMIb (Attack Tome +2), Name (Name (unam))
+{
+Attack Tome +2
+}
+
+STRING 18
+// Gegenstände: BMIc (Attack Tome +4), Name (Name (unam))
+{
+Attack Tome +4
+}
+
+STRING 19
+// Gegenstände: BMId (Attack Tome +8), Name (Name (unam))
+{
+Attack Tome +8
+}
+
+STRING 20
+// Gegenstände: BMIe (Attack Tome +16), Name (Name (unam))
+{
+Attack Tome +16
+}
+
+STRING 21
+// Gegenstände: BMIf (Attack Tome +32), Name (Name (unam))
+{
+Attack Tome +32
+}
+
+STRING 22
+// Gegenstände: BMIg (Attack Tome +64), Name (Name (unam))
+{
+Attack Tome +64
+}
+
+STRING 23
+// Gegenstände: BMIh (Attack Tome +128), Name (Name (unam))
+{
+Attack Tome +128
+}
+
+STRING 24
+// Gegenstände: BMIi (Attack Tome +256), Name (Name (unam))
+{
+Attack Tome +256
+}
+
+STRING 25
+// Gegenstände: BMIj (Attack Tome +512), Name (Name (unam))
+{
+Attack Tome +512
+}
+
+STRING 26
+// Gegenstände: BMIk (Attack Tome +1024), Name (Name (unam))
+{
+Attack Tome +1024
+}
+
+STRING 27
+// Gegenstände: BMIl (Attack Tome +2048), Name (Name (unam))
+{
+Attack Tome +2048
+}
+
+STRING 28
+// Gegenstände: BMIm (Attack Tome +4096), Name (Name (unam))
+{
+Attack Tome +4096
+}
+
+STRING 29
+// Gegenstände: BMIn (Attack Tome +8192), Name (Name (unam))
+{
+Attack Tome +8192
+}
+
+STRING 30
+// Gegenstände: BMIC (Attack Tome -16384), Name (Name (unam))
+{
+Attack Tome -16384
+}
+
+STRING 31
+// Zerstörbare Objekte: LTe3 (Elfentor), EditorSuffix (Editor-Suffix (bsuf))
+{
+(Vertical) in use
+}
+
+STRING 32
+// Zerstörbare Objekte: OTip (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)
+}
+
+STRING 33
+// Zerstörbare Objekte: OTis (Unsichtbare Plattform), Name (Name (bnam))
+{
+Unsichtbare Plattform
+}
+
+STRING 34
+// Zerstörbare Objekte: OTis (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(2x2)
+}
+
+STRING 35
+// Zerstörbare Objekte: B006 ((Icon)), EditorSuffix (Editor-Suffix (bsuf))
+{
+Blood Mage
+}
+
+STRING 36
+// Zerstörbare Objekte: B006 ((Icon)), Name (Name (bnam))
+{
+(Icon)
+}
+
+STRING 37
+// Zerstörbare Objekte: B007 ((Backgroung)), EditorSuffix (Editor-Suffix (bsuf))
+{
+Black32
+}
+
+STRING 38
+// Zerstörbare Objekte: B007 ((Backgroung)), Name (Name (bnam))
+{
+(Backgroung)
+}
+
+STRING 39
+// Zerstörbare Objekte: B008 ((Background)), EditorSuffix (Editor-Suffix (bsuf))
+{
+Slot
+}
+
+STRING 40
+// Zerstörbare Objekte: B008 ((Background)), Name (Name (bnam))
+{
+(Background)
+}
+
+STRING 41
+// Zerstörbare Objekte: B009 ((Background)), EditorSuffix (Editor-Suffix (bsuf))
+{
+ProgressBar
+}
+
+STRING 42
+// Zerstörbare Objekte: B009 ((Background)), Name (Name (bnam))
+{
+(Background)
+}
+
+STRING 43
+// Zerstörbare Objekte: B00B (WalkableWood), Name (Name (bnam))
+{
+WalkableWood
+}
+
+STRING 44
+// Zerstörbare Objekte: B00C (Pathing Blocker Long AngledA(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long AngledA(Ground)
+}
+
+STRING 45
+// Zerstörbare Objekte: B00D (Pathing Blocker Long Horiz.(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long Horiz.(Ground)
+}
+
+STRING 46
+// Zerstörbare Objekte: B00E (Pathing Blocker Long Vert.(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long Vert.(Ground)
+}
+
+STRING 47
+// Zerstörbare Objekte: B00F (Pathing Blocker Long AngledB(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long AngledB(Ground)
+}
+
+STRING 48
+// Zerstörbare Objekte: B00G (SightBlockTree1), Name (Name (bnam))
+{
+SightBlockTree1
+}
+
+STRING 49
+// Zerstörbare Objekte: B00H (SightBlockTree2), Name (Name (bnam))
+{
+SightBlockTree2
+}
+
+STRING 50
+// Zerstörbare Objekte: B00I (SightBlockTree3), Name (Name (bnam))
+{
+SightBlockTree3
+}
+
+STRING 51
+// Zerstörbare Objekte: B00J (SightBlockerDiagonal), EditorSuffix (Editor-Suffix (bsuf))
+{
+Slot
+}
+
+STRING 52
+// Zerstörbare Objekte: B00J (SightBlockerDiagonal), Name (Name (bnam))
+{
+SightBlockerDiagonal
+}
+
+STRING 53
+// Zerstörbare Objekte: B000 (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)_tilt
+}
+
+STRING 54
+// Zerstörbare Objekte: B001 (Holz_Rampe_Arena), Name (Name (bnam))
+{
+Holz_Rampe_Arena
+}
+
+STRING 55
+// Zerstörbare Objekte: B002 (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)test1
+}
+
+STRING 56
+// Zerstörbare Objekte: B003 (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)test2
+}
+
+STRING 57
+// Zerstörbare Objekte: B004 (Holz_Boden_Arena), Name (Name (bnam))
+{
+Holz_Boden_Arena
+}
+
+STRING 58
+// Zerstörbare Objekte: B005 (Sightblocker), EditorSuffix (Editor-Suffix (bsuf))
+{
+Diagonal
+}
+
+STRING 59
+// Zerstörbare Objekte: B005 (Sightblocker), Name (Name (bnam))
+{
+Sightblocker
+}
+
+STRING 60
+// Zerstörbare Objekte: B00A (ControlPoint_LinearGlow_Red), Name (Name (bnam))
+{
+ControlPoint_LinearGlow_Red
+}
+
+STRING 61
+// Zerstörbare Objekte: B00K (ControlPoint_LinearGlow_Green), Name (Name (bnam))
+{
+ControlPoint_LinearGlow_Green
+}
+
+STRING 62
+// Zerstörbare Objekte: B00L (ControlPoint_Crystal_Red), Name (Name (bnam))
+{
+ControlPoint_Crystal_Red
+}
+
+STRING 63
+// Zerstörbare Objekte: B00M (ControlPoint_Crystal_Green), Name (Name (bnam))
+{
+ControlPoint_Crystal_Green
+}
+
+STRING 64
+// Zerstörbare Objekte: %003 (RingDesCrigges), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 65
+// Zerstörbare Objekte: %003 (RingDesCrigges), Name (Name (bnam))
+{
+RingDesCrigges
+}
+
+STRING 66
+// Zerstörbare Objekte: %004 (RingDesCrigges), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 67
+// Zerstörbare Objekte: %004 (RingDesCrigges), Name (Name (bnam))
+{
+RingDesCrigges
+}
+
+STRING 68
+// Zerstörbare Objekte: %005 (3M1), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 69
+// Zerstörbare Objekte: %005 (3M1), Name (Name (bnam))
+{
+3M1
+}
+
+STRING 70
+// Zerstörbare Objekte: %006 (3M1), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 71
+// Zerstörbare Objekte: %006 (3M1), Name (Name (bnam))
+{
+3M1
+}
+
+STRING 72
+// Zerstörbare Objekte: %007 (Bash), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 73
+// Zerstörbare Objekte: %007 (Bash), Name (Name (bnam))
+{
+Bash
+}
+
+STRING 74
+// Zerstörbare Objekte: %008 (Bash), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 75
+// Zerstörbare Objekte: %008 (Bash), Name (Name (bnam))
+{
+Bash
+}
+
+STRING 76
+// Zerstörbare Objekte: %009 (Glove), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 77
+// Zerstörbare Objekte: %009 (Glove), Name (Name (bnam))
+{
+Glove
+}
+
+STRING 78
+// Zerstörbare Objekte: %00: (Glove), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 79
+// Zerstörbare Objekte: %00: (Glove), Name (Name (bnam))
+{
+Glove
+}
+
+STRING 80
+// Zerstörbare Objekte: %00; (Buy), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 81
+// Zerstörbare Objekte: %00; (Buy), Name (Name (bnam))
+{
+Buy
+}
+
+STRING 82
+// Zerstörbare Objekte: %00< (Buy), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 83
+// Zerstörbare Objekte: %00< (Buy), Name (Name (bnam))
+{
+Buy
+}
+
+STRING 84
+// Zerstörbare Objekte: %00= (Grunt), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 85
+// Zerstörbare Objekte: %00= (Grunt), Name (Name (bnam))
+{
+Grunt
+}
+
+STRING 86
+// Zerstörbare Objekte: %00> (Grunt), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 87
+// Zerstörbare Objekte: %00> (Grunt), Name (Name (bnam))
+{
+Grunt
+}
+
+STRING 88
+// Zerstörbare Objekte: %00? (HealingSpray), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 89
+// Zerstörbare Objekte: %00? (HealingSpray), Name (Name (bnam))
+{
+HealingSpray
+}
+
+STRING 90
+// Zerstörbare Objekte: %00@ (HealingSpray), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 91
+// Zerstörbare Objekte: %00@ (HealingSpray), Name (Name (bnam))
+{
+HealingSpray
+}
+
+STRING 92
+// Zerstörbare Objekte: %00A (Hex), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 93
+// Zerstörbare Objekte: %00A (Hex), Name (Name (bnam))
+{
+Hex
+}
+
+STRING 94
+// Zerstörbare Objekte: %00B (Hex), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 95
+// Zerstörbare Objekte: %00B (Hex), Name (Name (bnam))
+{
+Hex
+}
+
+STRING 96
+// Zerstörbare Objekte: %00C (Hydra), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 97
+// Zerstörbare Objekte: %00C (Hydra), Name (Name (bnam))
+{
+Hydra
+}
+
+STRING 98
+// Zerstörbare Objekte: %00D (Hydra), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 99
+// Zerstörbare Objekte: %00D (Hydra), Name (Name (bnam))
+{
+Hydra
+}
+
+STRING 100
+// Zerstörbare Objekte: %00E (Impale), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 101
+// Zerstörbare Objekte: %00E (Impale), Name (Name (bnam))
+{
+Impale
+}
+
+STRING 102
+// Zerstörbare Objekte: %00F (Impale), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 103
+// Zerstörbare Objekte: %00F (Impale), Name (Name (bnam))
+{
+Impale
+}
+
+STRING 104
+// Zerstörbare Objekte: %00G (ManaStone), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 105
+// Zerstörbare Objekte: %00G (ManaStone), Name (Name (bnam))
+{
+ManaStone
+}
+
+STRING 106
+// Zerstörbare Objekte: %00H (ManaStone), EditorSuffix (Editor-Suffix (bsuf))
+{
+Icon
+}
+
+STRING 107
+// Zerstörbare Objekte: %00H (ManaStone), Name (Name (bnam))
+{
+ManaStone
+}
+
+STRING 108
+// Zerstörbare Objekte: %00I (|cffb9d1eaHarry Potter is a series of seven epic fantasy|nnovels written by the), EditorSuffix (Editor-Suffix (bsuf))
+{
+Tip
+}
+
+STRING 109
+// Zerstörbare Objekte: %00I (|cffb9d1eaHarry Potter is a series of seven epic fantasy|nnovels written by the), Name (Name (bnam))
+{
+|cffb9d1eaHarry Potter is a series of seven epic fantasy|nnovels written by the British author J. K.|nRowling.|n|n|cff98fb98+60 Movement Speed|n+50 Traction|n+2% Critical Hit Chance|n|n|cfff0e68cActive Ability:|nThe series was originally printed in English by|ntwo major publishers, Bloomsbury in the United|nKingdom and Scholastic Press in the United States.|nThe books have since been published by many|npublishers worldwide. The books, with the seventh|nbook split into two parts.|n|cff00ffffCooldown 30sec.|nBuy it or die!
+}
+
+STRING 110
+// Zerstörbare Objekte: %00J (|cffffa500[Q]|r |cff7cfc00Poinson Shot|r |cff696969(Skillshot, Point Target)|r|), EditorSuffix (Editor-Suffix (bsuf))
+{
+Tip
+}
+
+STRING 111
+// Zerstörbare Objekte: %00J (|cffffa500[Q]|r |cff7cfc00Poinson Shot|r |cff696969(Skillshot, Point Target)|r|), Name (Name (bnam))
+{
+|cffffa500[Q]|r |cff7cfc00Poinson Shot|r |cff696969(Skillshot, Point Target)|r|n|n|cfff0f8ff[Level 1]|r|nThe Pathfinder shoots a poisonous arrow.|nIf it hits an enemy unit, this units gets|na damage over time effect and movement slow.|n
+}
+
+STRING 112
+// Doodads: DObh (Bench), Name (Name (dnam))
+{
+Bench
+}
+
+STRING 113
+// Doodads: YObw (City_WoodBench), Name (Name (dnam))
+{
+City_WoodBench
+}
+
+STRING 114
+// Doodads: YObs (City_StoneBench), Name (Name (dnam))
+{
+City_StoneBench
+}
+
+STRING 115
+// Doodads: DOkb (BigBookshelf), Name (Name (dnam))
+{
+BigBookshelf
+}
+
+STRING 116
+// Doodads: YOfr (City_FountainRuined), Name (Name (dnam))
+{
+City_FountainRuined
+}
+
+STRING 117
+// Doodads: DObw (BookshelfWall), Name (Name (dnam))
+{
+BookshelfWall
+}
+
+STRING 118
+// Doodads: DOim (IronMaiden), Name (Name (dnam))
+{
+IronMaiden
+}
+
+STRING 119
+// Doodads: LOtz (TorchHumanOmni), Name (Name (dnam))
+{
+TorchHumanOmni
+}
+
+STRING 120
+// Doodads: LOth (TorchHuman), Name (Name (dnam))
+{
+TorchHuman
+}
+
+STRING 121
+// Doodads: NOft (Ruins_FirePitTrashed), Name (Name (dnam))
+{
+Ruins_FirePitTrashed
+}
+
+STRING 122
+// Doodads: NOfp (FirePit), Name (Name (dnam))
+{
+FirePit
+}
+
+STRING 123
+// Doodads: NOfg (FirePitPig), Name (Name (dnam))
+{
+FirePitPig
+}
+
+STRING 124
+// Doodads: COdf (Fish_Dead), Name (Name (dnam))
+{
+Fish_Dead
+}
+
+STRING 125
+// Doodads: YOwb (Banner_Long2), Name (Name (dnam))
+{
+Banner_Long2
+}
+
+STRING 126
+// Doodads: LOo2 (Banner_TutorialOrcBanner), Name (Name (dnam))
+{
+Banner_TutorialOrcBanner
+}
+
+STRING 127
+// Doodads: LOh1 (BannerHuman), Name (Name (dnam))
+{
+BannerHuman
+}
+
+STRING 128
+// Doodads: LOo1 (BannerOrc), Name (Name (dnam))
+{
+BannerOrc
+}
+
+STRING 129
+// Doodads: YObb (Banner_Long), Name (Name (dnam))
+{
+Banner_Long
+}
+
+STRING 130
+// Doodads: OOgr (City_Grate), Name (Name (dnam))
+{
+City_Grate
+}
+
+STRING 131
+// Doodads: LOfl (Flies), Name (Name (dnam))
+{
+Flies
+}
+
+STRING 132
+// Doodads: LOpg (PeasantGrave), Name (Name (dnam))
+{
+PeasantGrave
+}
+
+STRING 133
+// Doodads: NOgv (NorthrendGrave), Name (Name (dnam))
+{
+NorthrendGrave
+}
+
+STRING 134
+// Doodads: YOgr (CityGrave), Name (Name (dnam))
+{
+CityGrave
+}
+
+STRING 135
+// Doodads: NOtb (NorthrendTombstone), Name (Name (dnam))
+{
+NorthrendTombstone
+}
+
+STRING 136
+// Doodads: LOgr (Grave), Name (Name (dnam))
+{
+Grave
+}
+
+STRING 137
+// Doodads: LOhb (Hay), Name (Name (dnam))
+{
+Hay
+}
+
+STRING 138
+// Doodads: LOrh (RottenHay), Name (Name (dnam))
+{
+RottenHay
+}
+
+STRING 139
+// Doodads: OOob (Obstacle), Name (Name (dnam))
+{
+Obstacle
+}
+
+STRING 140
+// Doodads: LOsc (SittingCorpse), Name (Name (dnam))
+{
+SittingCorpse
+}
+
+STRING 141
+// Doodads: LOic (ImpaledBody), Name (Name (dnam))
+{
+ImpaledBody
+}
+
+STRING 142
+// Doodads: DOsv (SewerVent), Name (Name (dnam))
+{
+SewerVent
+}
+
+STRING 143
+// Doodads: DOsw (SewerWallpipes), Name (Name (dnam))
+{
+SewerWallpipes
+}
+
+STRING 144
+// Doodads: LOca (CauldronWithHeads), Name (Name (dnam))
+{
+CauldronWithHeads
+}
+
+STRING 145
+// Doodads: YOec (EmptyCrates), Name (Name (dnam))
+{
+EmptyCrates
+}
+
+STRING 146
+// Doodads: LOrb (RibBones), Name (Name (dnam))
+{
+RibBones
+}
+
+STRING 147
+// Doodads: BObo (Barrens_Bones), Name (Name (dnam))
+{
+Barrens_Bones
+}
+
+STRING 148
+// Doodads: NObo (North_Bones), Name (Name (dnam))
+{
+North_Bones
+}
+
+STRING 149
+// Doodads: NObt (Bats), Name (Name (dnam))
+{
+Bats
+}
+
+STRING 150
+// Doodads: LObr (Brazier), Name (Name (dnam))
+{
+Brazier
+}
+
+STRING 151
+// Doodads: LObz (brazieromni), Name (Name (dnam))
+{
+brazieromni
+}
+
+STRING 152
+// Doodads: AObr (Brazier), Name (Name (dnam))
+{
+Brazier
+}
+
+STRING 153
+// Doodads: LOsh (HeadOnSpear), Name (Name (dnam))
+{
+HeadOnSpear
+}
+
+STRING 154
+// Doodads: XOcl (CrystalLamp), Name (Name (dnam))
+{
+CrystalLamp
+}
+
+STRING 155
+// Doodads: YOlp (City_LanternPost00), Name (Name (dnam))
+{
+City_LanternPost00
+}
+
+STRING 156
+// Doodads: LOlp (City_LanternPost01), Name (Name (dnam))
+{
+City_LanternPost01
+}
+
+STRING 157
+// Doodads: LOt1 (Ruins_Trash1), Name (Name (dnam))
+{
+Ruins_Trash1
+}
+
+STRING 158
+// Doodads: NObk (Ruins_NorthrendBrokenObilisk), Name (Name (dnam))
+{
+Ruins_NorthrendBrokenObilisk
+}
+
+STRING 159
+// Doodads: COob (FelwoodObilisk), Name (Name (dnam))
+{
+FelwoodObilisk
+}
+
+STRING 160
+// Doodads: AObo (AshenBrokenObilisk), Name (Name (dnam))
+{
+AshenBrokenObilisk
+}
+
+STRING 161
+// Doodads: AOsk (AshenObilisk), Name (Name (dnam))
+{
+AshenObilisk
+}
+
+STRING 162
+// Doodads: YOob (City_Oblisk), Name (Name (dnam))
+{
+City_Oblisk
+}
+
+STRING 163
+// Doodads: CObo (FelwoodBrokenObilisk), Name (Name (dnam))
+{
+FelwoodBrokenObilisk
+}
+
+STRING 164
+// Doodads: NOok (NorthrendObilisk), Name (Name (dnam))
+{
+NorthrendObilisk
+}
+
+STRING 165
+// Doodads: LOhp (HitchingPost), Name (Name (dnam))
+{
+HitchingPost
+}
+
+STRING 166
+// Doodads: OOst (Stake), Name (Name (dnam))
+{
+Stake
+}
+
+STRING 167
+// Doodads: AOsr (ScorchedRemains), Name (Name (dnam))
+{
+ScorchedRemains
+}
+
+STRING 168
+// Doodads: DOtp (TreasurePile), Name (Name (dnam))
+{
+TreasurePile
+}
+
+STRING 169
+// Doodads: YObg (TavernSignBobsGuns), Name (Name (dnam))
+{
+TavernSignBobsGuns
+}
+
+STRING 170
+// Doodads: YOts (TavernSign), Name (Name (dnam))
+{
+TavernSign
+}
+
+STRING 171
+// Doodads: DOjp (JunkPile), Name (Name (dnam))
+{
+JunkPile
+}
+
+STRING 172
+// Doodads: LOwr (Ruins_WheelBarrelBroken), Name (Name (dnam))
+{
+Ruins_WheelBarrelBroken
+}
+
+STRING 173
+// Doodads: OOsk (Skull), Name (Name (dnam))
+{
+Skull
+}
+
+STRING 174
+// Doodads: LOss (SkullonStick), Name (Name (dnam))
+{
+SkullonStick
+}
+
+STRING 175
+// Doodads: LOsk (SkullPile), Name (Name (dnam))
+{
+SkullPile
+}
+
+STRING 176
+// Doodads: YOfn (City_Fountain), Name (Name (dnam))
+{
+City_Fountain
+}
+
+STRING 177
+// Doodads: OOsd (Standard), Name (Name (dnam))
+{
+Standard
+}
+
+STRING 178
+// Doodads: AOgs (SentinelStatue), Name (Name (dnam))
+{
+SentinelStatue
+}
+
+STRING 179
+// Doodads: AOks (KeeperStatue), Name (Name (dnam))
+{
+KeeperStatue
+}
+
+STRING 180
+// Doodads: YOst (City_Statue01), Name (Name (dnam))
+{
+City_Statue01
+}
+
+STRING 181
+// Doodads: YOks (City_KnightStatueA), Name (Name (dnam))
+{
+City_KnightStatueA
+}
+
+STRING 182
+// Doodads: KOst (BlackCitadelStatue), Name (Name (dnam))
+{
+BlackCitadelStatue
+}
+
+STRING 183
+// Doodads: YOws (WhaleStatue), Name (Name (dnam))
+{
+WhaleStatue
+}
+
+STRING 184
+// Doodads: DOas (AzsharaStatue), Name (Name (dnam))
+{
+AzsharaStatue
+}
+
+STRING 185
+// Doodads: DOcr (Chair), Name (Name (dnam))
+{
+Chair
+}
+
+STRING 186
+// Doodads: LOam (ArmorRack), Name (Name (dnam))
+{
+ArmorRack
+}
+
+STRING 187
+// Doodads: LOwp (Weapons), Name (Name (dnam))
+{
+Weapons
+}
+
+STRING 188
+// Doodads: NObc (Ruins_NorthrendBrokenColumn), Name (Name (dnam))
+{
+Ruins_NorthrendBrokenColumn
+}
+
+STRING 189
+// Doodads: IOpr (Ruins_IceCrownPillar), Name (Name (dnam))
+{
+Ruins_IceCrownPillar
+}
+
+STRING 190
+// Doodads: YOth (Throne), Name (Name (dnam))
+{
+Throne
+}
+
+STRING 191
+// Doodads: BOth (HellscreamThrone), Name (Name (dnam))
+{
+HellscreamThrone
+}
+
+STRING 192
+// Doodads: DOtb (Table), Name (Name (dnam))
+{
+Table
+}
+
+STRING 193
+// Doodads: DOtt (TortureTable), Name (Name (dnam))
+{
+TortureTable
+}
+
+STRING 194
+// Doodads: DOtc (TableNChair), Name (Name (dnam))
+{
+TableNChair
+}
+
+STRING 195
+// Doodads: AOnt (Totem), Name (Name (dnam))
+{
+Totem
+}
+
+STRING 196
+// Doodads: AObd (Bird), Name (Name (dnam))
+{
+Bird
+}
+
+STRING 197
+// Doodads: LOsw (Ruins_RubbleStoneWall), Name (Name (dnam))
+{
+Ruins_RubbleStoneWall
+}
+
+STRING 198
+// Doodads: VOfl (Village_Fencelong), Name (Name (dnam))
+{
+Village_Fencelong
+}
+
+STRING 199
+// Doodads: NOfl (NorthrendFenceStraight), Name (Name (dnam))
+{
+NorthrendFenceStraight
+}
+
+STRING 200
+// Doodads: VOfs (Village_Fenceshort), Name (Name (dnam))
+{
+Village_Fenceshort
+}
+
+STRING 201
+// Doodads: LOar (ArcheryRange), Name (Name (dnam))
+{
+ArcheryRange
+}
+
+STRING 202
+// Doodads: ZOtr (Ruins_Trash), Name (Name (dnam))
+{
+Ruins_Trash
+}
+
+STRING 203
+// Doodads: ZOst (Ruins_Statue), Name (Name (dnam))
+{
+Ruins_Statue
+}
+
+STRING 204
+// Doodads: ZObz (Ruins_Brazier), Name (Name (dnam))
+{
+Ruins_Brazier
+}
+
+STRING 205
+// Doodads: ZOsb (Ruins_StatueBroken), Name (Name (dnam))
+{
+Ruins_StatueBroken
+}
+
+STRING 206
+// Doodads: ZOss (Ruins_Stone), Name (Name (dnam))
+{
+Ruins_Stone
+}
+
+STRING 207
+// Doodads: ZOob (Ruins_Obelisk), Name (Name (dnam))
+{
+Ruins_Obelisk
+}
+
+STRING 208
+// Doodads: ZOrp (Ruins_Pillar), Name (Name (dnam))
+{
+Ruins_Pillar
+}
+
+STRING 209
+// Doodads: ZOls (Ruins_LibraryShelf), Name (Name (dnam))
+{
+Ruins_LibraryShelf
+}
+
+STRING 210
+// Doodads: ZOfp (Ruins_Firepot), Name (Name (dnam))
+{
+Ruins_Firepot
+}
+
+STRING 211
+// Doodads: ZOba (Ruins_BloodyAltar), Name (Name (dnam))
+{
+Ruins_BloodyAltar
+}
+
+STRING 212
+// Doodads: ZOrt (Ruins_RuinedThrone), Name (Name (dnam))
+{
+Ruins_RuinedThrone
+}
+
+STRING 213
+// Doodads: ASbl (Ruins_AshenRuinsBlocks), Name (Name (dnam))
+{
+Ruins_AshenRuinsBlocks
+}
+
+STRING 214
+// Doodads: CSbl (Ruins_FelwoodRuinsBlocks), Name (Name (dnam))
+{
+Ruins_FelwoodRuinsBlocks
+}
+
+STRING 215
+// Doodads: JSax (Ruins_Archway1_Ruined (in use)), Name (Name (dnam))
+{
+Ruins_Archway1_Ruined (in use)
+}
+
+STRING 216
+// Doodads: JSar (Ruins_Archway2_Ruined (in use)), Name (Name (dnam))
+{
+Ruins_Archway2_Ruined (in use)
+}
+
+STRING 217
+// Doodads: ISa1 (IC_IceArch45), Name (Name (dnam))
+{
+IC_IceArch45
+}
+
+STRING 218
+// Doodads: ISar (IC_IceArch), Name (Name (dnam))
+{
+IC_IceArch
+}
+
+STRING 219
+// Doodads: YSaw (City_Archway1), Name (Name (dnam))
+{
+City_Archway1
+}
+
+STRING 220
+// Doodads: GSah (UndergroundArchway1), Name (Name (dnam))
+{
+UndergroundArchway1
+}
+
+STRING 221
+// Doodads: YSa1 (Archway Angled (in use)), Name (Name (dnam))
+{
+Archway Angled (in use)
+}
+
+STRING 222
+// Doodads: LSwl (well), Name (Name (dnam))
+{
+well
+}
+
+STRING 223
+// Doodads: CSbc (Ruins_FelwoodBrokenColumn), Name (Name (dnam))
+{
+Ruins_FelwoodBrokenColumn
+}
+
+STRING 224
+// Doodads: ASbc (Ruins_AshenBrokenColumn), Name (Name (dnam))
+{
+Ruins_AshenBrokenColumn
+}
+
+STRING 225
+// Doodads: CSbr (Ruins_FelwoodRubble), Name (Name (dnam))
+{
+Ruins_FelwoodRubble
+}
+
+STRING 226
+// Doodads: ASbr (Ruins_AshenRubble), Name (Name (dnam))
+{
+Ruins_AshenRubble
+}
+
+STRING 227
+// Doodads: ISrb (Ruins_Icecrown_Rubble), Name (Name (dnam))
+{
+Ruins_Icecrown_Rubble
+}
+
+STRING 228
+// Doodads: NSrb (Ruins_NorthrendRubble), Name (Name (dnam))
+{
+Ruins_NorthrendRubble
+}
+
+STRING 229
+// Doodads: NSct (NorthrendCrypt), Name (Name (dnam))
+{
+NorthrendCrypt
+}
+
+STRING 230
+// Doodads: LSsf (FarmScorched), Name (Name (dnam))
+{
+FarmScorched
+}
+
+STRING 231
+// Doodads: ZSrb (Ruins_Buildings), Name (Name (dnam))
+{
+Ruins_Buildings
+}
+
+STRING 232
+// Doodads: JSco (City_ColumnSingle1_Ruined (in use)), Name (Name (dnam))
+{
+City_ColumnSingle1_Ruined (in use)
+}
+
+STRING 233
+// Doodads: YSco (City_ColumnSingle), Name (Name (dnam))
+{
+City_ColumnSingle
+}
+
+STRING 234
+// Doodads: YScd (City_ColumnDouble), Name (Name (dnam))
+{
+City_ColumnDouble
+}
+
+STRING 235
+// Doodads: JScx (City_ColumnSingle2_Ruined (in use)), Name (Name (dnam))
+{
+City_ColumnSingle2_Ruined (in use)
+}
+
+STRING 236
+// Doodads: JSc4 (City_ColumnSemiCircle_Ruined (in use)), Name (Name (dnam))
+{
+City_ColumnSemiCircle_Ruined (in use)
+}
+
+STRING 237
+// Doodads: YSc2 (City_ColumnSemiCircle (in use)), Name (Name (dnam))
+{
+City_ColumnSemiCircle (in use)
+}
+
+STRING 238
+// Doodads: LSst (TowerScorched), Name (Name (dnam))
+{
+TowerScorched
+}
+
+STRING 239
+// Doodads: BSrw (RuinedWall), Name (Name (dnam))
+{
+RuinedWall
+}
+
+STRING 240
+// Doodads: BSrv (RuinedCurvedWall), Name (Name (dnam))
+{
+RuinedCurvedWall
+}
+
+STRING 241
+// Doodads: BSar (RuinedArch), Name (Name (dnam))
+{
+RuinedArch
+}
+
+STRING 242
+// Doodads: BSrc (RuinedChunk), Name (Name (dnam))
+{
+RuinedChunk
+}
+
+STRING 243
+// Doodads: YSw0 (City_LowWall02), Name (Name (dnam))
+{
+City_LowWall02
+}
+
+STRING 244
+// Doodads: DSp0 (PorticulisWall0_), Name (Name (dnam))
+{
+PorticulisWall0_
+}
+
+STRING 245
+// Doodads: GSp0 (GPorticulisWall0_), Name (Name (dnam))
+{
+GPorticulisWall0_
+}
+
+STRING 246
+// Doodads: YSls (City_Block02), Name (Name (dnam))
+{
+City_Block02
+}
+
+STRING 247
+// Doodads: YSll (City_LowWall_TallEndCapWithLantern), Name (Name (dnam))
+{
+City_LowWall_TallEndCapWithLantern
+}
+
+STRING 248
+// Doodads: YSlt (City_LowWall_TallEndCap), Name (Name (dnam))
+{
+City_LowWall_TallEndCap
+}
+
+STRING 249
+// Doodads: COlg (FelwoodLogStraight), Name (Name (dnam))
+{
+FelwoodLogStraight
+}
+
+STRING 250
+// Doodads: COla (FelwoodLogAngled), Name (Name (dnam))
+{
+FelwoodLogAngled
+}
+
+STRING 251
+// Doodads: AOla (AshenLogAngled), Name (Name (dnam))
+{
+AshenLogAngled
+}
+
+STRING 252
+// Doodads: AOlg (AshenLogStraight), Name (Name (dnam))
+{
+AshenLogStraight
+}
+
+STRING 253
+// Doodads: COhs (FelwoodHollowStump), Name (Name (dnam))
+{
+FelwoodHollowStump
+}
+
+STRING 254
+// Doodads: AOhs (AshenHollowStump), Name (Name (dnam))
+{
+AshenHollowStump
+}
+
+STRING 255
+// Doodads: ZPru (Ruins_Rush), Name (Name (dnam))
+{
+Ruins_Rush
+}
+
+STRING 256
+// Doodads: CPct (FelwoodCatTail), Name (Name (dnam))
+{
+FelwoodCatTail
+}
+
+STRING 257
+// Doodads: LPrs (RiverRushes), Name (Name (dnam))
+{
+RiverRushes
+}
+
+STRING 258
+// Doodads: APct (AshenCatTail), Name (Name (dnam))
+{
+AshenCatTail
+}
+
+STRING 259
+// Doodads: ZPfw (Ruins_Flower), Name (Name (dnam))
+{
+Ruins_Flower
+}
+
+STRING 260
+// Doodads: YPfa (FlowerBedAngled), Name (Name (dnam))
+{
+FlowerBedAngled
+}
+
+STRING 261
+// Doodads: YPfs (FlowerBedStraight), Name (Name (dnam))
+{
+FlowerBedStraight
+}
+
+STRING 262
+// Doodads: BPtw (Barrens_TreeDoodad), Name (Name (dnam))
+{
+Barrens_TreeDoodad
+}
+
+STRING 263
+// Doodads: APbs (AshenBush0), Name (Name (dnam))
+{
+AshenBush0
+}
+
+STRING 264
+// Doodads: CPbs (FelwoodBush), Name (Name (dnam))
+{
+FelwoodBush
+}
+
+STRING 265
+// Doodads: YPbs (CityBush), Name (Name (dnam))
+{
+CityBush
+}
+
+STRING 266
+// Doodads: ORmk (Rock_Outland_MagmaRock), Name (Name (dnam))
+{
+Rock_Outland_MagmaRock
+}
+
+STRING 267
+// Doodads: IRrk (Rock_Ice_Rock), Name (Name (dnam))
+{
+Rock_Ice_Rock
+}
+
+STRING 268
+// Doodads: ARrk (Rock_AshenRock), Name (Name (dnam))
+{
+Rock_AshenRock
+}
+
+STRING 269
+// Doodads: DRrk (Rock_DungeonRock), Name (Name (dnam))
+{
+Rock_DungeonRock
+}
+
+STRING 270
+// Doodads: CRrk (Rock_FelwoodRock), Name (Name (dnam))
+{
+Rock_FelwoodRock
+}
+
+STRING 271
+// Doodads: ZRrk (Ruins_Rock), Name (Name (dnam))
+{
+Ruins_Rock
+}
+
+STRING 272
+// Doodads: NRwr (Rock_North_WebRocks), Name (Name (dnam))
+{
+Rock_North_WebRocks
+}
+
+STRING 273
+// Doodads: NRrk (Rock_North_Rocks), Name (Name (dnam))
+{
+Rock_North_Rocks
+}
+
+STRING 274
+// Doodads: BRrk (Rock_Barrens_Rocks), Name (Name (dnam))
+{
+Rock_Barrens_Rocks
+}
+
+STRING 275
+// Doodads: GRrk (Rock_UndergoundRock), Name (Name (dnam))
+{
+Rock_UndergoundRock
+}
+
+STRING 276
+// Doodads: LRrk (Rock_Lords_Rock), Name (Name (dnam))
+{
+Rock_Lords_Rock
+}
+
+STRING 277
+// Doodads: BRsp (Barrens_Spires), Name (Name (dnam))
+{
+Barrens_Spires
+}
+
+STRING 278
+// Doodads: BRrs (Barrens_Spires2), Name (Name (dnam))
+{
+Barrens_Spires2
+}
+
+STRING 279
+// Doodads: ZRsp (Ruins_Spires2), Name (Name (dnam))
+{
+Ruins_Spires2
+}
+
+STRING 280
+// Doodads: ZRrs (Ruins_Spires), Name (Name (dnam))
+{
+Ruins_Spires
+}
+
+STRING 281
+// Doodads: CRrs (Felwood_Spires), Name (Name (dnam))
+{
+Felwood_Spires
+}
+
+STRING 282
+// Doodads: BRfs (BarrensFissure), Name (Name (dnam))
+{
+BarrensFissure
+}
+
+STRING 283
+// Doodads: CRfs (FelwoodFissure), Name (Name (dnam))
+{
+FelwoodFissure
+}
+
+STRING 284
+// Doodads: NRfs (NorthrendFissure), Name (Name (dnam))
+{
+NorthrendFissure
+}
+
+STRING 285
+// Doodads: BRrp (RockPillar), Name (Name (dnam))
+{
+RockPillar
+}
+
+STRING 286
+// Doodads: OPop (Outland_Plant), Name (Name (dnam))
+{
+Outland_Plant
+}
+
+STRING 287
+// Doodads: ZRbd (CliffRubble_Double), Name (Name (dnam))
+{
+CliffRubble_Double
+}
+
+STRING 288
+// Doodads: ZRbs (CliffRubble_Single), Name (Name (dnam))
+{
+CliffRubble_Single
+}
+
+STRING 289
+// Doodads: ORrr (RubbleRock), Name (Name (dnam))
+{
+RubbleRock
+}
+
+STRING 290
+// Doodads: BRgs (Geyser), Name (Name (dnam))
+{
+Geyser
+}
+
+STRING 291
+// Doodads: LPcw (CornWheatScorched), Name (Name (dnam))
+{
+CornWheatScorched
+}
+
+STRING 292
+// Doodads: DRfc (Cave_FieryCrator), Name (Name (dnam))
+{
+Cave_FieryCrator
+}
+
+STRING 293
+// Doodads: BRcr (Crator), Name (Name (dnam))
+{
+Crator
+}
+
+STRING 294
+// Doodads: GRfc (Underground_FieryCrator), Name (Name (dnam))
+{
+Underground_FieryCrator
+}
+
+STRING 295
+// Doodads: IRcy (Icecrown_Crystal), Name (Name (dnam))
+{
+Icecrown_Crystal
+}
+
+STRING 296
+// Doodads: LPcr (Corn), Name (Name (dnam))
+{
+Corn
+}
+
+STRING 297
+// Doodads: ZPms (Ruins_Shroom), Name (Name (dnam))
+{
+Ruins_Shroom
+}
+
+STRING 298
+// Doodads: CPms (FelwoodShrooms), Name (Name (dnam))
+{
+FelwoodShrooms
+}
+
+STRING 299
+// Doodads: APms (AshenShrooms), Name (Name (dnam))
+{
+AshenShrooms
+}
+
+STRING 300
+// Doodads: APtv (Felwood_Thorns), Name (Name (dnam))
+{
+Felwood_Thorns
+}
+
+STRING 301
+// Doodads: ZCv2 (CityCliffVines1), Name (Name (dnam))
+{
+CityCliffVines1
+}
+
+STRING 302
+// Doodads: ZCv1 (CityCliffVines0), Name (Name (dnam))
+{
+CityCliffVines0
+}
+
+STRING 303
+// Doodads: NPth (North_Thorns), Name (Name (dnam))
+{
+North_Thorns
+}
+
+STRING 304
+// Doodads: ZPvp (VinyPlant), Name (Name (dnam))
+{
+VinyPlant
+}
+
+STRING 305
+// Doodads: LPlp (LillyPad), Name (Name (dnam))
+{
+LillyPad
+}
+
+STRING 306
+// Doodads: CPlp (FelwoodLillyPad), Name (Name (dnam))
+{
+FelwoodLillyPad
+}
+
+STRING 307
+// Doodads: ZPlp (Ruins_Lilypad), Name (Name (dnam))
+{
+Ruins_Lilypad
+}
+
+STRING 308
+// Doodads: DRst (DungeonStalagmite), Name (Name (dnam))
+{
+DungeonStalagmite
+}
+
+STRING 309
+// Doodads: GRst (UndergroundStalagmite), Name (Name (dnam))
+{
+UndergroundStalagmite
+}
+
+STRING 310
+// Doodads: ZPsh (Ruins_Shrub), Name (Name (dnam))
+{
+Ruins_Shrub
+}
+
+STRING 311
+// Doodads: ZPtw (RuinsTreeDoodad), Name (Name (dnam))
+{
+RuinsTreeDoodad
+}
+
+STRING 312
+// Doodads: LPwh (Wheat), Name (Name (dnam))
+{
+Wheat
+}
+
+STRING 313
+// Doodads: LPwb (WheatBunch), Name (Name (dnam))
+{
+WheatBunch
+}
+
+STRING 314
+// Doodads: ZOsh (Ruins_Shells), Name (Name (dnam))
+{
+Ruins_Shells
+}
+
+STRING 315
+// Doodads: D000 (City_Arched Door02), Name (Name (dnam))
+{
+City_Arched Door02
+}
+
+STRING 316
+// Doodads: D002 (City_Wall0102), Name (Name (dnam))
+{
+City_Wall0102
+}
+
+STRING 317
+// Doodads: D003 (City_Chains), Name (Name (dnam))
+{
+City_Chains
+}
+
+STRING 318
+// Doodads: D004 (City_SemiCircle02), Name (Name (dnam))
+{
+City_SemiCircle02
+}
+
+STRING 319
+// Doodads: D005 (City_Column), Name (Name (dnam))
+{
+City_Column
+}
+
+STRING 320
+// Doodads: D00C (City_Wall02), Name (Name (dnam))
+{
+City_Wall02
+}
+
+STRING 321
+// Doodads: D00D (City_Wall03), Name (Name (dnam))
+{
+City_Wall03
+}
+
+STRING 322
+// Doodads: D00J (City_Door), Name (Name (dnam))
+{
+City_Door
+}
+
+STRING 323
+// Doodads: D00L (City_Fence01), Name (Name (dnam))
+{
+City_Fence01
+}
+
+STRING 324
+// Doodads: D00M (City_Window01), Name (Name (dnam))
+{
+City_Window01
+}
+
+STRING 325
+// Doodads: D00N (City_KnightStatueA1), Name (Name (dnam))
+{
+City_KnightStatueA1
+}
+
+STRING 326
+// Doodads: D00Q (GilneasBush), Name (Name (dnam))
+{
+GilneasBush
+}
+
+STRING 327
+// Doodads: D00R (Eary Fog), Name (Name (dnam))
+{
+Eary Fog
+}
+
+STRING 328
+// Doodads: D00S (City_Cystal_Orange), Name (Name (dnam))
+{
+City_Cystal_Orange
+}
+
+STRING 329
+// Doodads: D00T (City_Cystal_Purple), Name (Name (dnam))
+{
+City_Cystal_Purple
+}
+
+STRING 330
+// Doodads: D00U (City_Cystal_Red), Name (Name (dnam))
+{
+City_Cystal_Red
+}
+
+STRING 331
+// Doodads: D00V (City_Roof00), Name (Name (dnam))
+{
+City_Roof00
+}
+
+STRING 332
+// Doodads: D00W (City_Roof01), Name (Name (dnam))
+{
+City_Roof01
+}
+
+STRING 333
+// Doodads: D00X (SandBags), Name (Name (dnam))
+{
+SandBags
+}
+
+STRING 334
+// Doodads: D00Y (City_Shiphatch), Name (Name (dnam))
+{
+City_Shiphatch
+}
+
+STRING 335
+// Doodads: D00Z (OutlandBrazier), Name (Name (dnam))
+{
+OutlandBrazier
+}
+
+STRING 336
+// Doodads: D011 (City_UndeadPedestal), Name (Name (dnam))
+{
+City_UndeadPedestal
+}
+
+STRING 337
+// Doodads: D013 (Bridge Pavement 2), Name (Name (dnam))
+{
+Bridge Pavement 2
+}
+
+STRING 338
+// Doodads: D00P (City_Door01), Name (Name (dnam))
+{
+City_Door01
+}
+
+STRING 339
+// Doodads: D014 (City_Block01), Name (Name (dnam))
+{
+City_Block01
+}
+
+STRING 340
+// Doodads: D015 (City_Block03), Name (Name (dnam))
+{
+City_Block03
+}
+
+STRING 341
+// Doodads: D017 (City_Arched Door01), Name (Name (dnam))
+{
+City_Arched Door01
+}
+
+STRING 342
+// Doodads: D01D (City_Aura), Name (Name (dnam))
+{
+City_Aura
+}
+
+STRING 343
+// Doodads: D01E (City_Grate_Window01), Name (Name (dnam))
+{
+City_Grate_Window01
+}
+
+STRING 344
+// Doodads: D01F (City_Grate_Window02), Name (Name (dnam))
+{
+City_Grate_Window02
+}
+
+STRING 345
+// Doodads: D01G (City_Grate_Window03), Name (Name (dnam))
+{
+City_Grate_Window03
+}
+
+STRING 346
+// Doodads: D01H (City_Grate_Window04), Name (Name (dnam))
+{
+City_Grate_Window04
+}
+
+STRING 347
+// Doodads: D01I (City_Grate_Window05), Name (Name (dnam))
+{
+City_Grate_Window05
+}
+
+STRING 348
+// Doodads: D01J (City_Block05), Name (Name (dnam))
+{
+City_Block05
+}
+
+STRING 349
+// Doodads: D01K (City_Gitter), Name (Name (dnam))
+{
+City_Gitter
+}
+
+STRING 350
+// Doodads: D01L (Banner_Long0202), Name (Name (dnam))
+{
+Banner_Long0202
+}
+
+STRING 351
+// Doodads: D01M (City_Block09), Name (Name (dnam))
+{
+City_Block09
+}
+
+STRING 352
+// Doodads: D01N (City_Grate_Window06nega), Name (Name (dnam))
+{
+City_Grate_Window06nega
+}
+
+STRING 353
+// Doodads: D01O (City_Grate_Window07nega), Name (Name (dnam))
+{
+City_Grate_Window07nega
+}
+
+STRING 354
+// Doodads: D01P (City_Grate_Window08nega), Name (Name (dnam))
+{
+City_Grate_Window08nega
+}
+
+STRING 355
+// Doodads: D01Q (City_Window02), Name (Name (dnam))
+{
+City_Window02
+}
+
+STRING 356
+// Doodads: D01S (Ship_Window01), Name (Name (dnam))
+{
+Ship_Window01
+}
+
+STRING 357
+// Doodads: D01V (Ship_Gear01), Name (Name (dnam))
+{
+Ship_Gear01
+}
+
+STRING 358
+// Doodads: D01W (Ship_Glass01), Name (Name (dnam))
+{
+Ship_Glass01
+}
+
+STRING 359
+// Doodads: D01X (Ship_Floorlight01), Name (Name (dnam))
+{
+Ship_Floorlight01
+}
+
+STRING 360
+// Doodads: D021 (Ship_Gear02), Name (Name (dnam))
+{
+Ship_Gear02
+}
+
+STRING 361
+// Doodads: D023 (Ship_MetalBarrelHorizontal), Name (Name (dnam))
+{
+Ship_MetalBarrelHorizontal
+}
+
+STRING 362
+// Doodads: D024 (Ship_MetalBarrelVertical), Name (Name (dnam))
+{
+Ship_MetalBarrelVertical
+}
+
+STRING 363
+// Doodads: D025 (Ship_PalisadeStairs01), Name (Name (dnam))
+{
+Ship_PalisadeStairs01
+}
+
+STRING 364
+// Doodads: D026 (Ship_FishLine), Name (Name (dnam))
+{
+Ship_FishLine
+}
+
+STRING 365
+// Doodads: D027 (Ship_Pump), Name (Name (dnam))
+{
+Ship_Pump
+}
+
+STRING 366
+// Doodads: D028 (Ship_Rope), Name (Name (dnam))
+{
+Ship_Rope
+}
+
+STRING 367
+// Doodads: D02A (Ship_AnchorHorizontal), Name (Name (dnam))
+{
+Ship_AnchorHorizontal
+}
+
+STRING 368
+// Doodads: D02B (Ship_BarrelVertical), Name (Name (dnam))
+{
+Ship_BarrelVertical
+}
+
+STRING 369
+// Doodads: D02C (Ship_BarrelHorizontal), Name (Name (dnam))
+{
+Ship_BarrelHorizontal
+}
+
+STRING 370
+// Doodads: D02F (Ship_Capstan), Name (Name (dnam))
+{
+Ship_Capstan
+}
+
+STRING 371
+// Doodads: D02G (Flag_Human), Name (Name (dnam))
+{
+Flag_Human
+}
+
+STRING 372
+// Doodads: D02H (Flag_Orc), Name (Name (dnam))
+{
+Flag_Orc
+}
+
+STRING 373
+// Doodads: D02I (Ship_Mast), Name (Name (dnam))
+{
+Ship_Mast
+}
+
+STRING 374
+// Doodads: D02J (Ship_Mast02), Name (Name (dnam))
+{
+Ship_Mast02
+}
+
+STRING 375
+// Doodads: D02K (Ship_RopePile), Name (Name (dnam))
+{
+Ship_RopePile
+}
+
+STRING 376
+// Doodads: D02M (Ship_WoodenFloor01), Name (Name (dnam))
+{
+Ship_WoodenFloor01
+}
+
+STRING 377
+// Doodads: D02N (Ship_WoodenFloor02), Name (Name (dnam))
+{
+Ship_WoodenFloor02
+}
+
+STRING 378
+// Doodads: D02O (Ship_WoodenPedesteral), Name (Name (dnam))
+{
+Ship_WoodenPedesteral
+}
+
+STRING 379
+// Doodads: D02P (-Light White), Name (Name (dnam))
+{
+-Light White
+}
+
+STRING 380
+// Doodads: D02R (Ship_WoodenFloor02Vertical02), Name (Name (dnam))
+{
+Ship_WoodenFloor02Vertical02
+}
+
+STRING 381
+// Doodads: D02S (Ship_WoodenFloor02Vertical01), Name (Name (dnam))
+{
+Ship_WoodenFloor02Vertical01
+}
+
+STRING 382
+// Doodads: D02T (Ship_PumpHorizontal), Name (Name (dnam))
+{
+Ship_PumpHorizontal
+}
+
+STRING 383
+// Doodads: D02U (Ship_CapstanHorizontal), Name (Name (dnam))
+{
+Ship_CapstanHorizontal
+}
+
+STRING 384
+// Doodads: D02V (Ship_Gear02Horizontal), Name (Name (dnam))
+{
+Ship_Gear02Horizontal
+}
+
+STRING 385
+// Doodads: D02W (Ship_OrbGreenFlash), Name (Name (dnam))
+{
+Ship_OrbGreenFlash
+}
+
+STRING 386
+// Doodads: D030 (Ship_WoodenFloor02Vertical03), Name (Name (dnam))
+{
+Ship_WoodenFloor02Vertical03
+}
+
+STRING 387
+// Doodads: D031 (Ship_MetalBarrelVertical02), Name (Name (dnam))
+{
+Ship_MetalBarrelVertical02
+}
+
+STRING 388
+// Doodads: D032 (SewerVentHorizontal), Name (Name (dnam))
+{
+SewerVentHorizontal
+}
+
+STRING 389
+// Doodads: D033 (Ship_Gear01Horizontal), Name (Name (dnam))
+{
+Ship_Gear01Horizontal
+}
+
+STRING 390
+// Doodads: D036 (Misc: Barricade (1)), Name (Name (dnam))
+{
+Misc: Barricade (1)
+}
+
+STRING 391
+// Doodads: D037 (Misc: Barricade (2)), Name (Name (dnam))
+{
+Misc: Barricade (2)
+}
+
+STRING 392
+// Doodads: D039 (City_Block08), Name (Name (dnam))
+{
+City_Block08
+}
+
+STRING 393
+// Doodads: D03A (City_Window02 angled), Name (Name (dnam))
+{
+City_Window02 angled
+}
+
+STRING 394
+// Doodads: D03B (City_Window01 angled), Name (Name (dnam))
+{
+City_Window01 angled
+}
+
+STRING 395
+// Doodads: D03C (City_Wall04), Name (Name (dnam))
+{
+City_Wall04
+}
+
+STRING 396
+// Doodads: D03D (Ship_Wall01), Name (Name (dnam))
+{
+Ship_Wall01
+}
+
+STRING 397
+// Doodads: D03F (Ship_Wall02), Name (Name (dnam))
+{
+Ship_Wall02
+}
+
+STRING 398
+// Doodads: D03G (City_Tile01), Name (Name (dnam))
+{
+City_Tile01
+}
+
+STRING 399
+// Doodads: D03H (City_Tile02), Name (Name (dnam))
+{
+City_Tile02
+}
+
+STRING 400
+// Doodads: D03L (City_Wall03anglled02), Name (Name (dnam))
+{
+City_Wall03anglled02
+}
+
+STRING 401
+// Doodads: D03N (City_Block03angle01), Name (Name (dnam))
+{
+City_Block03angle01
+}
+
+STRING 402
+// Doodads: D03O (City_KnightStatueA1angled01), Name (Name (dnam))
+{
+City_KnightStatueA1angled01
+}
+
+STRING 403
+// Doodads: D03P (City_Arched Door03), Name (Name (dnam))
+{
+City_Arched Door03
+}
+
+STRING 404
+// Doodads: D03R (City_Horse), Name (Name (dnam))
+{
+City_Horse
+}
+
+STRING 405
+// Doodads: D03S (City_Block10), Name (Name (dnam))
+{
+City_Block10
+}
+
+STRING 406
+// Doodads: D03U (City_KnightStatueA1angled02), Name (Name (dnam))
+{
+City_KnightStatueA1angled02
+}
+
+STRING 407
+// Doodads: D03V (City_Block03angle02), Name (Name (dnam))
+{
+City_Block03angle02
+}
+
+STRING 408
+// Doodads: D03X (City_Archway2), Name (Name (dnam))
+{
+City_Archway2
+}
+
+STRING 409
+// Doodads: D040 (Ship_Tooth), Name (Name (dnam))
+{
+Ship_Tooth
+}
+
+STRING 410
+// Doodads: D041 (Ship_Tooth2), Name (Name (dnam))
+{
+Ship_Tooth2
+}
+
+STRING 411
+// Doodads: D03I (Ship_Wall01Angled01), Name (Name (dnam))
+{
+Ship_Wall01Angled01
+}
+
+STRING 412
+// Doodads: D03J (Ship_Wall01Angled02), Name (Name (dnam))
+{
+Ship_Wall01Angled02
+}
+
+STRING 413
+// Doodads: D043 (Ship_Wall01Angled03), Name (Name (dnam))
+{
+Ship_Wall01Angled03
+}
+
+STRING 414
+// Doodads: D044 (Ship_Wall01Angled04), Name (Name (dnam))
+{
+Ship_Wall01Angled04
+}
+
+STRING 415
+// Doodads: D045 (Ship_Wall01Angled05), Name (Name (dnam))
+{
+Ship_Wall01Angled05
+}
+
+STRING 416
+// Doodads: D046 (Ship_Wall01Angled06), Name (Name (dnam))
+{
+Ship_Wall01Angled06
+}
+
+STRING 417
+// Doodads: D047 (Ship_Wall01Angled07), Name (Name (dnam))
+{
+Ship_Wall01Angled07
+}
+
+STRING 418
+// Doodads: D048 (Ship_Wall01Angled08), Name (Name (dnam))
+{
+Ship_Wall01Angled08
+}
+
+STRING 419
+// Doodads: D049 (Ship_MastAngled01), Name (Name (dnam))
+{
+Ship_MastAngled01
+}
+
+STRING 420
+// Doodads: D04A (Ship_MetalBarrelVertical03), Name (Name (dnam))
+{
+Ship_MetalBarrelVertical03
+}
+
+STRING 421
+// Doodads: D04B (Ship_Tooth3), Name (Name (dnam))
+{
+Ship_Tooth3
+}
+
+STRING 422
+// Doodads: D04C (Flag_OrcAngled01), Name (Name (dnam))
+{
+Flag_OrcAngled01
+}
+
+STRING 423
+// Doodads: D04F (City_KnightStatueAcolor01), Name (Name (dnam))
+{
+City_KnightStatueAcolor01
+}
+
+STRING 424
+// Doodads: D04I (SkullPile01), Name (Name (dnam))
+{
+SkullPile01
+}
+
+STRING 425
+// Doodads: D04L (City_ChainsAngled01), Name (Name (dnam))
+{
+City_ChainsAngled01
+}
+
+STRING 426
+// Doodads: D04S (City_Roof02), Name (Name (dnam))
+{
+City_Roof02
+}
+
+STRING 427
+// Doodads: D050 (Village_Greifenhorst), Name (Name (dnam))
+{
+Village_Greifenhorst
+}
+
+STRING 428
+// Doodads: D051 (Village_Kriegswerkstatt), Name (Name (dnam))
+{
+Village_Kriegswerkstatt
+}
+
+STRING 429
+// Doodads: D055 (Village_Smith), Name (Name (dnam))
+{
+Village_Smith
+}
+
+STRING 430
+// Doodads: D057 (Village_Taschefabrik), Name (Name (dnam))
+{
+Village_Taschefabrik
+}
+
+STRING 431
+// Doodads: D058 (Village_Tavern), Name (Name (dnam))
+{
+Village_Tavern
+}
+
+STRING 432
+// Doodads: D059 (Village_Werkstatt), Name (Name (dnam))
+{
+Village_Werkstatt
+}
+
+STRING 433
+// Doodads: D05B (AncientTree), Name (Name (dnam))
+{
+AncientTree
+}
+
+STRING 434
+// Doodads: D05C (Ship_Tile1_45), Name (Name (dnam))
+{
+Ship_Tile1_45
+}
+
+STRING 435
+// Doodads: D05D (Ship_Tile1_90), Name (Name (dnam))
+{
+Ship_Tile1_90
+}
+
+STRING 436
+// Doodads: D05E (Ship_Tile2_45), Name (Name (dnam))
+{
+Ship_Tile2_45
+}
+
+STRING 437
+// Doodads: D05F (Ship_Tile2_90), Name (Name (dnam))
+{
+Ship_Tile2_90
+}
+
+STRING 438
+// Doodads: D05G (Ship_Window02), Name (Name (dnam))
+{
+Ship_Window02
+}
+
+STRING 439
+// Doodads: D05J (City_Archway1_angled), Name (Name (dnam))
+{
+City_Archway1_angled
+}
+
+STRING 440
+// Doodads: D05K (City_FountainRuined02), Name (Name (dnam))
+{
+City_FountainRuined02
+}
+
+STRING 441
+// Doodads: D05O (Ruins_Flower02), Name (Name (dnam))
+{
+Ruins_Flower02
+}
+
+STRING 442
+// Doodads: D00H (City_Archway3), Name (Name (dnam))
+{
+City_Archway3
+}
+
+STRING 443
+// Doodads: D05Q (Lore_Angled), Name (Name (dnam))
+{
+Lore_Angled
+}
+
+STRING 444
+// Doodads: D05Y (Rock_Chunks02), Name (Name (dnam))
+{
+Rock_Chunks02
+}
+
+STRING 445
+// Doodads: D065 (Ship_Window01angled), Name (Name (dnam))
+{
+Ship_Window01angled
+}
+
+STRING 446
+// Doodads: D066 (City_Block14), Name (Name (dnam))
+{
+City_Block14
+}
+
+STRING 447
+// Doodads: D067 (Ship_Gear02Horizontal2), Name (Name (dnam))
+{
+Ship_Gear02Horizontal2
+}
+
+STRING 448
+// Doodads: D068 (City_DoorAngled), Name (Name (dnam))
+{
+City_DoorAngled
+}
+
+STRING 449
+// Doodads: D069 (City_Block14_180), Name (Name (dnam))
+{
+City_Block14_180
+}
+
+STRING 450
+// Doodads: D06A (SewerVentHorizontal2), Name (Name (dnam))
+{
+SewerVentHorizontal2
+}
+
+STRING 451
+// Doodads: D06B (Ship_Floorlight01Horizontal), Name (Name (dnam))
+{
+Ship_Floorlight01Horizontal
+}
+
+STRING 452
+// Doodads: D06C (Ship_Floorlight01Vertical), Name (Name (dnam))
+{
+Ship_Floorlight01Vertical
+}
+
+STRING 453
+// Doodads: D06D (Ship_Glass01_horizontal), Name (Name (dnam))
+{
+Ship_Glass01_horizontal
+}
+
+STRING 454
+// Doodads: D06E (Ship_WoodenPedesteral_vertical), Name (Name (dnam))
+{
+Ship_WoodenPedesteral_vertical
+}
+
+STRING 455
+// Doodads: D06F (City_ColumnSingle Gray), Name (Name (dnam))
+{
+City_ColumnSingle Gray
+}
+
+STRING 456
+// Doodads: D06G (City_ColumnSingle1_Ruined Lying), Name (Name (dnam))
+{
+City_ColumnSingle1_Ruined Lying
+}
+
+STRING 457
+// Doodads: D06I (City_Block15), Name (Name (dnam))
+{
+City_Block15
+}
+
+STRING 458
+// Doodads: D06J (Icecrown_Crystal green), Name (Name (dnam))
+{
+Icecrown_Crystal green
+}
+
+STRING 459
+// Doodads: D06K (-Blocker:01), Name (Name (dnam))
+{
+-Blocker:01
+}
+
+STRING 460
+// Doodads: D06L (-Blocker:02), Name (Name (dnam))
+{
+-Blocker:02
+}
+
+STRING 461
+// Doodads: D06M (Ship_Rope Crane), Name (Name (dnam))
+{
+Ship_Rope Crane
+}
+
+STRING 462
+// Doodads: D06N (City_LowWall_Angeled), Name (Name (dnam))
+{
+City_LowWall_Angeled
+}
+
+STRING 463
+// Doodads: D06O (City_ColumnSingle DarkGray), Name (Name (dnam))
+{
+City_ColumnSingle DarkGray
+}
+
+STRING 464
+// Doodads: D06P (Gebüsch), Name (Name (dnam))
+{
+Gebüsch
+}
+
+STRING 465
+// Doodads: D06Q (Ship_Muehlrad), Name (Name (dnam))
+{
+Ship_Muehlrad
+}
+
+STRING 466
+// Doodads: D05Z (Rock_Chunks03), Name (Name (dnam))
+{
+Rock_Chunks03
+}
+
+STRING 467
+// Doodads: D060 (Rock_Chunks04), Name (Name (dnam))
+{
+Rock_Chunks04
+}
+
+STRING 468
+// Doodads: D061 (Rock_Chunks05), Name (Name (dnam))
+{
+Rock_Chunks05
+}
+
+STRING 469
+// Doodads: D062 (Rock_Chunks06), Name (Name (dnam))
+{
+Rock_Chunks06
+}
+
+STRING 470
+// Doodads: D05X (Rock_Chunks01), Name (Name (dnam))
+{
+Rock_Chunks01
+}
+
+STRING 471
+// Doodads: D064 (Busch), Name (Name (dnam))
+{
+Busch
+}
+
+STRING 472
+// Doodads: D06R (Lichtstrahlen), Name (Name (dnam))
+{
+Lichtstrahlen
+}
+
+STRING 473
+// Doodads: D06S (City_LowWall_TallEndCapDark), Name (Name (dnam))
+{
+City_LowWall_TallEndCapDark
+}
+
+STRING 474
+// Doodads: D06T (City_LowWall_0.79rad), Name (Name (dnam))
+{
+City_LowWall_0.79rad
+}
+
+STRING 475
+// Doodads: D06U (City_LowWall_0.61rad), Name (Name (dnam))
+{
+City_LowWall_0.61rad
+}
+
+STRING 476
+// Doodads: D06V (City_LowWall_0.45rad), Name (Name (dnam))
+{
+City_LowWall_0.45rad
+}
+
+STRING 477
+// Doodads: D06W (City_StonePedestal), Name (Name (dnam))
+{
+City_StonePedestal
+}
+
+STRING 478
+// Doodads: D06X (City_ColumnDoubleDarkGrey), Name (Name (dnam))
+{
+City_ColumnDoubleDarkGrey
+}
+
+STRING 479
+// Doodads: D06Y (Glow_green), Name (Name (dnam))
+{
+Glow_green
+}
+
+STRING 480
+// Doodads: D06Z (Wasserfall2), Name (Name (dnam))
+{
+Wasserfall2
+}
+
+STRING 481
+// Doodads: D070 (Glow_Orange), Name (Name (dnam))
+{
+Glow_Orange
+}
+
+STRING 482
+// Doodads: D071 (BodenKacheln), Name (Name (dnam))
+{
+BodenKacheln
+}
+
+STRING 483
+// Doodads: D072 (Glow_Teal), Name (Name (dnam))
+{
+Glow_Teal
+}
+
+STRING 484
+// Doodads: D073 (Glow_Purple), Name (Name (dnam))
+{
+Glow_Purple
+}
+
+STRING 485
+// Doodads: D074 (BodenKacheln2), Name (Name (dnam))
+{
+BodenKacheln2
+}
+
+STRING 486
+// Doodads: D075 (BodenKacheln3), Name (Name (dnam))
+{
+BodenKacheln3
+}
+
+STRING 487
+// Doodads: D076 (City_LowWall_0.49rad), Name (Name (dnam))
+{
+City_LowWall_0.49rad
+}
+
+STRING 488
+// Doodads: D077 (Glow_lantern), Name (Name (dnam))
+{
+Glow_lantern
+}
+
+STRING 489
+// Doodads: D078 (City_WindowGLOW), Name (Name (dnam))
+{
+City_WindowGLOW
+}
+
+STRING 490
+// Doodads: D079 (Fearies), Name (Name (dnam))
+{
+Fearies
+}
+
+STRING 491
+// Doodads: D07A (City_WindowGLOW_Rect), Name (Name (dnam))
+{
+City_WindowGLOW_Rect
+}
+
+STRING 492
+// Doodads: D07B (Glow_linear), Name (Name (dnam))
+{
+Glow_linear
+}
+
+STRING 493
+// Doodads: D07C (City_Cystal_Green), Name (Name (dnam))
+{
+City_Cystal_Green
+}
+
+STRING 494
+// Doodads: D07D (Gebüsch2), Name (Name (dnam))
+{
+Gebüsch2
+}
+
+STRING 495
+// Doodads: D07E (Kornkammer), Name (Name (dnam))
+{
+Kornkammer
+}
+
+STRING 496
+// Doodads: D07H (Candle), Name (Name (dnam))
+{
+Candle
+}
+
+STRING 497
+// Doodads: D07I (Schiff_Bogen), Name (Name (dnam))
+{
+Schiff_Bogen
+}
+
+STRING 498
+// Doodads: D07J (Ship_ColumnDouble), Name (Name (dnam))
+{
+Ship_ColumnDouble
+}
+
+STRING 499
+// Doodads: D07K (Ship_Glow_green), Name (Name (dnam))
+{
+Ship_Glow_green
+}
+
+STRING 500
+// Doodads: D07L (Ship_Spike), Name (Name (dnam))
+{
+Ship_Spike
+}
+
+STRING 501
+// Doodads: D07M (Ship_Iron_Tile), Name (Name (dnam))
+{
+Ship_Iron_Tile
+}
+
+STRING 502
+// Doodads: D001 (Ship_Iron_Tile_Horizontal), Name (Name (dnam))
+{
+Ship_Iron_Tile_Horizontal
+}
+
+STRING 503
+// Doodads: D006 (Ship_Floorlight01Horizontal_no_glow), Name (Name (dnam))
+{
+Ship_Floorlight01Horizontal_no_glow
+}
+
+STRING 504
+// Doodads: D009 (Center_Crystal), Name (Name (dnam))
+{
+Center_Crystal
+}
+
+STRING 505
+// Doodads: D00A (Center_Rings), Name (Name (dnam))
+{
+Center_Rings
+}
+
+STRING 506
+// Doodads: D00B (Glow_Red), Name (Name (dnam))
+{
+Glow_Red
+}
+
+STRING 507
+// Doodads: D00E (Center_Crystal2), Name (Name (dnam))
+{
+Center_Crystal2
+}
+
+STRING 508
+// Doodads: D00G (Rock_Cliff1), Name (Name (dnam))
+{
+Rock_Cliff1
+}
+
+STRING 509
+// Doodads: D00K (Rock_Cliff2), Name (Name (dnam))
+{
+Rock_Cliff2
+}
+
+STRING 510
+// Doodads: D012 (BlackFade), Name (Name (dnam))
+{
+BlackFade
+}
+
+STRING 511
+// Doodads: D016 (BlackFade_Horizontal), Name (Name (dnam))
+{
+BlackFade_Horizontal
+}
+
+STRING 512
+// Doodads: D019 (Corpse_Sitting), Name (Name (dnam))
+{
+Corpse_Sitting
+}
+
+STRING 513
+// Doodads: D01A (Corpse_Impaled1), Name (Name (dnam))
+{
+Corpse_Impaled1
+}
+
+STRING 514
+// Doodads: D01B (Corpse_Impaled3), Name (Name (dnam))
+{
+Corpse_Impaled3
+}
+
+STRING 515
+// Doodads: D01C (Ruins_Archway2_Ruined), Name (Name (dnam))
+{
+Ruins_Archway2_Ruined
+}
+
+STRING 516
+// Doodads: D01R (Ship_WoodenFloor02_tilt), Name (Name (dnam))
+{
+Ship_WoodenFloor02_tilt
+}
+
+STRING 517
+// Doodads: D01T (Feuer_small), Name (Name (dnam))
+{
+Feuer_small
+}
+
+STRING 518
+// Doodads: D01U (Ship_WoodenFloor02_tilt2), Name (Name (dnam))
+{
+Ship_WoodenFloor02_tilt2
+}
+
+STRING 519
+// Doodads: D01Y (Ship_Exhaust_Grate), Name (Name (dnam))
+{
+Ship_Exhaust_Grate
+}
+
+STRING 520
+// Doodads: D01Z (Baum_01_Hell), Name (Name (dnam))
+{
+Baum_01_Hell
+}
+
+STRING 521
+// Doodads: D020 (Baum_02_Hell), Name (Name (dnam))
+{
+Baum_02_Hell
+}
+
+STRING 522
+// Doodads: D022 (Baum_03_Hell), Name (Name (dnam))
+{
+Baum_03_Hell
+}
+
+STRING 523
+// Doodads: D029 (Baum_04_Hell), Name (Name (dnam))
+{
+Baum_04_Hell
+}
+
+STRING 524
+// Doodads: D02D (Blätter), Name (Name (dnam))
+{
+Blätter
+}
+
+STRING 525
+// Doodads: D02E (Rune_Stone), Name (Name (dnam))
+{
+Rune_Stone
+}
+
+STRING 526
+// Doodads: D007 (City_MonkStatue), Name (Name (dnam))
+{
+City_MonkStatue
+}
+
+STRING 527
+// Zauberverstärker/Effekte: sthe (), Bufftip (Tooltipp (ftip))
+{
+Casting
+}
+

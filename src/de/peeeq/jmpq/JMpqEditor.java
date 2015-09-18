@@ -296,7 +296,6 @@ public class JMpqEditor {
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}
-		
 	}
 	
 	public boolean hasFile(String name){
