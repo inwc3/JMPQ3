@@ -1,7 +1,5 @@
 package de.peeeq.jmpq;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInput;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -12,18 +10,11 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-
-import com.google.common.io.LittleEndianDataInputStream;
-
-import de.peeeq.jmpq.BlockTable.Block;
 
 public class HashTable {
 	private MpqCrypto c;
 	private MappedByteBuffer hashMap;
 	private int hashSize;
-	private ArrayList<Entry> content = new ArrayList<>();
 
 	public HashTable(MappedByteBuffer buf) throws IOException {
 		this.hashSize = buf.capacity() / 16;

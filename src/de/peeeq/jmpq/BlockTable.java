@@ -10,7 +10,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.LinkedList;
 
 public class BlockTable {
 	private MappedByteBuffer blockMap;

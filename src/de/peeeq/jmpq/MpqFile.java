@@ -1,9 +1,7 @@
  package de.peeeq.jmpq;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInput;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -12,8 +10,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
-
-import com.google.common.io.LittleEndianDataInputStream;
 
 import de.peeeq.jmpq.BlockTable.Block;
 
@@ -279,19 +275,6 @@ public class MpqFile {
 		sot.position(0);
 		buf.order(ByteOrder.LITTLE_ENDIAN);
 		buf.put(sot);
-	}
-	
-	private void debugByteArrToFile(byte[] arr, File f){
-		f.delete();
-		try {
-			FileOutputStream hashStream = new FileOutputStream(f);
-			hashStream.write(arr);
-			hashStream.flush();
-			hashStream.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 	
 	
