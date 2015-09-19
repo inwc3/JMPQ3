@@ -9,7 +9,9 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,10 +66,14 @@ public class JMpqEditor {
 	 * @throws IOException
 	 *             if access problems occcur
 	 */
-	public JMpqEditor(File mpq) throws JMpqException {
-		this.mpqFile = mpq;
+	public JMpqEditor(File mpqW) throws JMpqException {
+		this.mpqFile = mpqW;
 		try {
-			fc = FileChannel.open(mpq.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+			//TODO fix this bad workaround
+			File tempMpq = File.createTempFile("work", "around");
+			Files.copy(mpqW.toPath(), tempMpq.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			
+			fc = FileChannel.open(tempMpq.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
 			
 			headerOffset = searchHeader();
 			
@@ -189,7 +195,7 @@ public class JMpqEditor {
 		MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize);
 		currentPos += newBlock.getCompressedSize();
 		
-		newArchiveSize = currentPos + 1;
+		newArchiveSize = currentPos + 1 - headerOffset;
 		
 		MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newHashPos, newHashSize * 16);
 		hashtableWriter.order(ByteOrder.LITTLE_ENDIAN);
@@ -203,26 +209,15 @@ public class JMpqEditor {
 		headerWriter.order(ByteOrder.LITTLE_ENDIAN);
 		writeHeader(headerWriter);
 		
-		MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, writeChannel.size());
+		MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
 		tempReader.position(0);
-		MappedByteBuffer tempWriter = fc.map(MapMode.READ_WRITE, 0, writeChannel.size());
+		FileChannel mpqChannel = FileChannel.open(mpqFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+		mpqChannel.truncate(currentPos + 1);
+		MappedByteBuffer tempWriter = mpqChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
 		tempWriter.position(0);
-		
 		tempWriter.put(tempReader);
-		
 		fc.close();
 		writeChannel.close();
-		
-		
-		
-//		FileOutputStream out = new FileOutputStream(mpqFile);
-//		FileInputStream in = new FileInputStream(temp);
-//		for(int i = 1; i <= newArchiveSize; i++){
-//			out.write(in.read());
-//		}
-//		in.close();
-//		out.flush();
-//		out.close();
 	}
 	
 	private void calcNewTableSize(){
@@ -298,6 +293,7 @@ public class JMpqEditor {
 			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size() - headerOffset);
 			buf.order(ByteOrder.LITTLE_ENDIAN);
 			MpqFile f = new MpqFile(buf , b, discBlockSize, name);
+			System.out.println(name);
 			f.extractToFile(dest);
 		} catch (IOException e) {
 			throw new JMpqException(e);
