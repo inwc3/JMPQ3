@@ -1,6 +1,6 @@
 ID;PWXL;N;E
-B;X16;Y97;D0
-C;X1;Y1;K"Name"
+B;Y97;X16;D0 0 96 15
+C;Y1;X1;K"Name"
 C;X2;K"comment"
 C;X3;K"Dir"
 C;X4;K"file"
@@ -14,7 +14,7 @@ C;X11;K"NoiseScale"
 C;X12;K"TexCoordScale"
 C;X13;K"Duration"
 C;X14;K"version"
-C;X1;Y2;K"INIT"
+C;Y2;X1;K"INIT"
 C;X2;K"INIT"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"Lightning.blp"
@@ -28,7 +28,7 @@ C;X11;K0.05
 C;X12;K0.5
 C;X13;K2
 C;X14;K0
-C;X1;Y3;K"CLPB"
+C;Y3;X1;K"CLPB"
 C;X2;K"Chain Lightning - Primary Bolt"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"Lightning.blp"
@@ -42,7 +42,7 @@ C;X11;K0.05
 C;X12;K0.5
 C;X13;K2
 C;X14;K0
-C;X1;Y4;K"CLSB"
+C;Y4;X1;K"CLSB"
 C;X2;K"Chain Lightning - Secondary Bolt"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"Lightning.blp"
@@ -56,7 +56,7 @@ C;X11;K0.05
 C;X12;K0.5
 C;X13;K2
 C;X14;K0
-C;X1;Y5;K"MBUR"
+C;Y5;X1;K"MBUR"
 C;X2;K"Mana Burn - Bolt"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"ManaBurnBeam.blp"
@@ -70,7 +70,7 @@ C;X11;K0.04
 C;X12;K0.6
 C;X13;K2
 C;X14;K0
-C;X1;Y6;K"CHIM"
+C;Y6;X1;K"CHIM"
 C;X2;K"Lightning Attack - Chimera"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"Lightning.blp"
@@ -84,7 +84,7 @@ C;X11;K0.04
 C;X12;K0.5
 C;X13;K2
 C;X14;K0
-C;X1;Y7;K"AFOD"
+C;Y7;X1;K"AFOD"
 C;X2;K"Finger of Death"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"LightningRed.blp"
@@ -98,7 +98,7 @@ C;X11;K0.05
 C;X12;K0.5
 C;X13;K2
 C;X14;K0
-C;X1;Y8;K"HWPB"
+C;Y8;X1;K"HWPB"
 C;X2;K"Healing Wave - Primary Bolt"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"HealBeam.blp"
@@ -112,7 +112,7 @@ C;X11;K0.0001
 C;X12;K0.6
 C;X13;K2
 C;X14;K1
-C;X1;Y9;K"HWSB"
+C;Y9;X1;K"HWSB"
 C;X2;K"Healing Wave - Secondary Bolt"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"HealBeam.blp"
@@ -126,7 +126,7 @@ C;X11;K0.0001
 C;X12;K0.6
 C;X13;K2
 C;X14;K1
-C;X1;Y10;K"MFPB"
+C;Y10;X1;K"MFPB"
 C;X2;K"Mana Flare - Primary Bolt"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"LightningMana.blp"
@@ -140,7 +140,7 @@ C;X11;K0.05
 C;X12;K0.5
 C;X13;K2
 C;X14;K1
-C;X1;Y11;K"DRAB"
+C;Y11;X1;K"DRAB"
 C;X2;K"Drain"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"DrainLightning.blp"
@@ -154,7 +154,7 @@ C;X11;K0.01
 C;X12;K-0.8
 C;X13;K2
 C;X14;K1
-C;X1;Y12;K"DRAL"
+C;Y12;X1;K"DRAL"
 C;X2;K"Life Drain"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"DrainLightning.blp"
@@ -168,7 +168,7 @@ C;X11;K0.01
 C;X12;K-0.8
 C;X13;K2
 C;X14;K1
-C;X1;Y13;K"DRAM"
+C;Y13;X1;K"DRAM"
 C;X2;K"Mana Drain"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"DrainManaLightning.blp"
@@ -182,21 +182,21 @@ C;X11;K0.01
 C;X12;K-0.8
 C;X13;K2
 C;X14;K1
-C;X1;Y14;K"FORK"
+C;Y14;X1;K"FORK"
 C;X2;K"Forked Lightning"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"LightningForked.blp"
 C;X5;K100
-C;X6;K50
+C;X6;K25
 C;X7;K255
 C;X8;K255
 C;X9;K255
 C;X10;K255
-C;X11;K0.05
+C;X11;K0.025
 C;X12;K0.5
 C;X13;K2
 C;X14;K1
-C;X1;Y15;K"SPLK"
+C;Y15;X1;K"SPLK"
 C;X2;K"Spirit Link"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"LightningSpirit.blp"
@@ -210,7 +210,7 @@ C;X11;K0.04
 C;X12;K0.5
 C;X13;K2
 C;X14;K1
-C;X1;Y16;K"LEAS"
+C;Y16;X1;K"LEAS"
 C;X2;K"Magic Leash"
 C;X3;K"ReplaceableTextures\Weather"
 C;X4;K"lariatCaught.blp"
@@ -224,4 +224,18 @@ C;X11;K0.01
 C;X12;K0
 C;X13;K2
 C;X14;K1
+C;Y17;X1;KLEGR
+C;X2;KLightning Effect Green
+C;X3;KReplaceableTextures\Weather
+C;X4;KLightningGreen.blp
+C;X5;K100
+C;X6;K50
+C;X7;K255
+C;X8;K255
+C;X9;K255
+C;X10;K255
+C;X11;K0.05
+C;X12;K0.5
+C;X13;K2
+C;X14;K0
 E

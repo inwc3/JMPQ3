@@ -1,4 +1,4 @@
-package de.peeeq.jmpq;
+package de.peeeq.jmpq3;
 
 import com.jcraft.jzlib.Deflater;
 import com.jcraft.jzlib.GZIPException;

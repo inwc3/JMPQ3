@@ -1,4 +1,4 @@
-package de.peeeq.jmpq;
+package de.peeeq.jmpq3;
 
 import java.util.LinkedList;
 import java.util.Scanner;

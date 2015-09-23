@@ -1,6 +1,6 @@
 ﻿[CmdMove]
 Tip=|cffffcc00B|rewegen
-Ubertip="Befiehlt den Einheiten, sich ins Zielgebiet zu begeben, wobei feindliche Einheiten und Angriffe ignoriert werden. Wenn ein Bewegen-Befehl auf eine angewählte Einheit angewandt wird, folgt die Einheit des Spielers dieser Einheit unter Verwendung von Bewegen-Befehlen."
+Ubertip="Befiehlt den Einheiten, sich ins Zielgebiet zu begeben, wobei feindliche Einheiten und Angriffe ignoriert werden. Wenn ein Bewegen-Befehl auf eine angewählte Einheit angewandt wird, folgt die Einheit des Spielers dieser Einheit."
 Hotkey=B
 
 [CmdAttack]
@@ -38,25 +38,20 @@ Tip=|cffffcc00G|rebäude beschwören
 Ubertip="Ruft eine Liste verfügbarer Gebäude auf, die herbeigerufen werden können."
 Hotkey=G
 
-[CmdBuildNaga]
-Tip=|cffffcc00G|rebäude errichten
-Ubertip="Ruft eine Liste verfügbarer Gebäude auf, die Sie errichten können."
-Hotkey=G
-
 [CmdCancel]
-Tip=Abbrechen (|cffffcc00ESC|r)
-Ubertip="Bricht den noch nicht erteilten Befehl ab und ermöglicht Ihnen, einen anderen Befehl auszuwählen."
-Hotkey=512
+Tip=Open / Close Menu (|cffffcc00ESC|r)
+Ubertip="This button DON'T work, to enter the menu press Esc instead"
+Hotkey=513
 
 [CmdCancelBuild]
-Tip=Abbrechen (|cffffcc00ESC|r)
-Ubertip="Bricht den noch nicht erteilten Befehl ab und ermöglicht Ihnen, einen anderen Befehl auszuwählen."
-Hotkey=512
+Tip=Open Menu (|cffffcc00ESC|r)
+Ubertip="This button DON'T work, to enter the menu press Esc instead"
+Hotkey=0
 
 [CmdCancelTrain]
 Tip=Abbrechen (|cffffcc00ESC|r)
 Ubertip="Beendet die Ausbildung der aktuellen Einheit."
-Hotkey=512
+Hotkey=0
 
 [CmdCancelRevive]
 Tip=Abbrechen (|cffffcc00ESC|r)
@@ -65,12 +60,12 @@ Hotkey=512
 
 [CmdHoldPos]
 Tip=Position |cffffcc00h|ralten
-Ubertip="Befiehlt den Einheiten, an Ort und Stelle stehen zu bleiben und Einheiten innerhalb ihrer Reichweite anzugreifen. Wenn die Einheiten den Befehl 'Position halten' bekommen haben, versuchen sie nicht, fliehende Feinde zu verfolgen oder weiter entfernte Feinde anzugreifen."
+Ubertip="Befiehlt den Einheiten, an Ort und Stelle stehen zu bleiben und Einheiten innerhalb ihrer Reichweite anzugreifen. Wenn die Einheiten den Befehl ‚Position halten‘ bekommen haben, versuchen sie nicht, fliehende Feinde zu verfolgen oder weiter entfernte Feinde anzugreifen."
 Hotkey=H
 
 [CmdPatrol]
 Tip=|cffffcc00P|ratrouillieren
-Ubertip="Befiehlt den Einheiten, ständig zwischen ihrer aktuellen Position und dem Zielgebiet zu pendeln, bis sie einen anderen Befehl erhalten. Einheiten auf Patrouille greifen feindliche Einheiten an, die sich innerhalb der Reichweite befinden. Wenn ein Patrouillen-Befehl auf eine angewählte Einheit angewandt wird, imitiert die Einheit des Spielers die angewählte Einheit."
+Ubertip="Befiehlt den Einheiten, ständig zwischen ihrer aktuellen Position und dem Zielgebiet zu pendeln, bis sie einen anderen Befehl erhalten. Einheiten auf Patrouille greifen feindliche Einheiten an, die sich innerhalb der Reichweite befinden."
 Hotkey=P
 
 [CmdPurchase]
@@ -107,7 +102,7 @@ Hotkey=S
 [Errors]
 Emptycontrolgroup=Eine leere Steuergruppe kann nicht erstellt werden.
 Invalidcontrolgroup=Eine Steuergruppe kann nicht aus Einheiten erstellt werden, die Sie nicht selbst steuern.
-Nonunitincontrolgroup=Eine Steuergruppe kann nur mit Einheiten gebildet werden.
+Itemincontrolgroup=Eine Steuergruppe kann nicht aus Gegenständen erstellt werden.
 Nofood="Mehr Höfe errichten, um die Einheiten-Produktion fortzusetzen.","Mehr Baue errichten, um die Einheiten-Produktion fortzusetzen.","Mehr Ziggurats beschwören, um die Einheiten-Produktion fortzusetzen.","Mehr Mondbrunnen errichten, um die Einheiten-Produktion fortzusetzen."
 
 Maxsupply=Die Einheit kann aufgrund der maximalen Essenbeschränkung nicht gebaut werden.
@@ -122,7 +117,6 @@ Cantdevour=Das Ziel konnte nicht verschlungen werden.
 Cantcyclone=Gegen dieses Ziel kann 'Wirbelsturm' nicht gewirkt werden.
 Cantspiritwolf=Gegen dieses Ziel kann 'Wildgeist' nicht gewirkt werden.
 Cantpossess=Gegen dieses Ziel kann 'Besessenheit' nicht gewirkt werden.
-Cantmanaburn=Gegen dieses Ziel kann 'Manabrand' nicht gewirkt werden.
 Onlyattackers=Das Ziel muss eine Einheit sein, die angreifen kann.
 
 Notentangledmine=Eine durchwucherte Goldmine kann nicht benutzt werden.
@@ -144,9 +138,8 @@ Humanbuilding=Das Ziel muss ein menschliches Gebäude sein.
 Undeadbuilding=Das Ziel muss ein Untoten-Gebäude sein.
 Underconstruction=Dieses Gebäude wird zurzeit errichtet.
 Alreadyrebuilding=Dieses Gebäude wird bereits errichtet.
-Creeptoopowerful=Diese Kreatur ist zu mächtig.
+Creeptoopowerful=Dieser Bandit ist zu mächtig.
 Hibernating=Diese Einheit hält bereits Winterschlaf.
-Magicleashed=Diese Einheit ist bereits angeleint.
 Immunetomagic=Diese Einheit ist immun gegen Magie.
 Holybolttarget=Die Ziele müssen befreundete lebende Einheiten oder feindliche untote Einheiten sein.
 Deathcoiltarget=Das Ziel müssen feindliche lebende Einheiten oder befreundete untote Einheiten sein.
@@ -163,7 +156,6 @@ Outofbounds=Der Zielort befindet sich außerhalb der Kartengrenzen.
 Offblight=Gebäude müssen auf eine 'Verseuchung' beschworen werden.
 Tooclosetomine=So nah an einer Goldmine kann nicht gebaut werden.
 Tooclosetohall=Eine Goldmine kann nicht so nah an einer Stadt errichtet werden.
-Notonshoreline=Kann nicht abseits von einem Ufer gebaut werden.
 Buildingblocked=Eine neu erstellte Einheit hat nicht genug Platz.
 Teleportfail=Eine Einheit konnte nicht teleportiert werden.
 Stumpblocked=Etwas blockiert diesen Baumstumpf.
@@ -188,14 +180,11 @@ Targetward=Das Ziel muss ein Schutzzauber sein.
 Targetitem=Das Ziel muss ein Gegenstand sein.
 Targettree=Das Ziel muss ein Baum sein.
 Targetrepair=Das Ziel muss ein Gebäude oder eine mechanische Einheit sein.
-Targetbridge=Das Ziel muss eine Brücke sein.
-Targetnaval=Das Ziel muss eine See-Einheit sein.
 
 Targetowned=Das Ziel muss eine der eigenen Einheiten sein.
 Targetally=Das Ziel muss eine befreundete Einheit sein.
 Targetneutral=Das Ziel muss eine neutrale Einheit sein.
 Targetenemy=Das Ziel muss eine feindliche Einheit sein.
-Targetcontrol=Das Ziel muss eine Einheit sein, die Sie kontrollieren können.
 
 Targethero=Das Ziel muss ein Held sein.
 Targetenemyhero=Das Ziel muss ein feindlicher Held sein.
@@ -217,7 +206,6 @@ Targetwisp=Das Ziel muss ein Irrwisch sein.
 Targetacolyte=Das Ziel muss ein Akolyt sein.
 Targetpit=Das Ziel muss eine Opfergrube sein.
 Needemptytree=Dieser Baum ist von einer Eule besetzt.
-Needowltree=Dieser Baum ist nicht von einer Eule besetzt.
 
 Cantfindcorpse=Es gibt keine nutzbaren Leichen in der Nähe.
 Cantfindfriendlycorpse=Es gibt keine Leichen befreundeter Einheiten in der Nähe.
@@ -227,23 +215,18 @@ Noair=Luft-Einheiten können nicht angewählt werden.
 Nostructure=Gebäude können nicht angewählt werden.
 Noward=Schutzzauber können nicht angewählt werden.
 Noitem=Gegenstände können nicht angewählt werden.
-Nodebris=Trümmer können nicht angewählt werden.
 Notree=Bäume können nicht angewählt werden.
 Nowall=Mauern können nicht angewählt werden.
-Nobridge=Brücken können nicht anvisiert werden.
+Nodebris=Trümmer können nicht angewählt werden.
 Notfrozenbldg=Das angewählte Gebäude wurde eingefroren.
-Nonaval=See-Einheiten können nicht angewählt werden.
 
 Nottownhall=Befreundetes Rathaus muss angewählt werden.,Befreundetes Haupthaus muss angewählt werden.,Befreundetes Rathaus muss angewählt werden.,Befreundetes Rathaus muss angewählt werden.
-Notownportalhalls=Es gibt keine befreundeten Rathäuser für ein 'Stadtportal'.,Es gibt keine befreundeten Haupthäuser für ein 'Stadtportal'.,Es gibt keine befreundeten Rathäuser für ein 'Stadtportal'.,Es gibt keine befreundeten Rathäuser für ein 'Stadtportal'.
 Notself=Sich selbst kann man nicht anwählen.
 Notowned=Eigene Einheiten können nicht angewählt werden.
 Notfriendly=Befreundete Einheiten können nicht angewählt werden.
 Notneutral=Neutrale Einheiten können nicht angewählt werden.
 Notenemy=Feindliche Einheiten können nicht angewählt werden.
-Notcargo=Einheiten in einem Gebäude oder in einem Transporter können nicht angewählt werden.
-Nothidden=Dieses Ziel ist auf der Karte nicht sichtbar.
-Nothiddenitem=Getragene Gegenstände können nicht anvisiert werden.
+Nothidden=Einheiten in einem Gebäude oder in einem Transporter können nicht angewählt werden.
 
 Notinvulnerable=Das Ziel ist unverwundbar.
 Nohero=Helden können nicht angewählt werden.
@@ -258,11 +241,7 @@ Cantattackloc=Hier kann nicht angegriffen werden.
 Canttargetloc=Hier kann nichts anvisiert werden.
 
 Inventoryfull=Das Inventar ist voll.
-Inventoryinteract=Wählen Sie eine Einheit mit einem Inventar.
-NeedInventory=Nur Einheiten mit einem Inventar können Gegenstände aufnehmen.
-Needretrainablehero=Nur Helden, die Zauber erlernt haben, können diesen Gegenstand benutzen.
-Neednearbyhero=Es muss ein Held in der Nähe sein.
-Neednearbypatron=Es muss ein gültiger Schutzherr in der Nähe sein.
+NeedInventory=Nur Helden können Gegenstände aufnehmen.
 
 Notsapper=Randalierer können nicht angewählt werden.
 Notancient=Urtume können nicht angewählt werden.
@@ -285,71 +264,17 @@ Manamaxed=Hat bereits volles Mana.
 HPmanamaxed=Hat bereits volles Mana und volle Gesundheit.
 
 UnitHPmaxed=Hat bereits volle Gesundheit.
-UnitManaMaxed=Hat bereits volles Mana.
 RepairHPmaxed=Das Ziel ist nicht beschädigt.
 
 Alreadybeinghealed=Das Ziel wird bereits geheilt.
-Alreadybeingrepaired=Das Ziel wird bereits repariert.
 Pitalreadysacrificing=In der Opfergrube wird bereits ein Akolyt geopfert.
 Outofstock=Nicht vorrätig
 Cooldownstock=Nicht vorrätig
 Cantdrop=Der Gegenstand muss im Inventar bleiben.
-Cantpawn=Gegenstand kann nicht verpfändet werden.
 
 Calltoarms=Es konnten keine Arbeiter gefunden werden.
-Calltoarmspeasant=Es wurden keine Rathäuser gefunden, die Arbeiter in Miliz-Einheiten umwandeln können.
 Backtowork=Es konnten keine Milizen gefunden werden.
-Backtoworkmilitia=Es wurden keine Rathäuser gefunden, die Miliz-Einheiten in Arbeiter umwandeln können.
 BattleStations=Es konnten keine Peons gefunden werden.
-
-Replaceme=Diese Fehlermeldung muss durch etwas Sinnvolles ersetzt werden!
-
-Notliquidfirebldg=Das Zielgebäude verfügt über 'flüssiges Feuer'.
-Notethereal=Astrale Einheiten sind nur durch Magieschaden und Zauber verwundbar.
-
-Needstealbuff=Das Ziel hat keine stehlbaren Zauberverstärker.
-
-Needmeleeattacker=Das Ziel muss ein Nahkampf-Angreifer sein.
-Needrangedattacker=Das Ziel muss ein Distanz-Angreifer sein.
-Needspecialattacker=Das Ziel muss ein spezieller Angreifer sein.
-Needattacker=Das Ziel muss eine Angriffseinheit sein.
-Needcaster=Das Ziel muss ein Zaubernder sein.
-Needattackerorcaster=Das Ziel muss eine Angriffseinheit oder ein Zaubernder sein.
-
-Nopreservationtarget=Es gibt keine Gebäude, zu denen das Ziel teleportiert werden kann.
-
-Canttransformitem=Dieser Gegenstand kann nicht umgewandelt werden.
-
-Notmocunit=Diese Einheit wurde bereits durch Feuer gebrandmarkt.
-
-Cantimpale=Diese Einheit kann nicht aufgespießt werden.
-
-Needpositivebuff=Das Ziel muss eine feindliche Einheit mit positiven Zauberverstärkern sein.
-Needposbufforsummoned=Das Ziel muss eine feindliche Einheit mit positiven Zauberverstärkern oder eine beschworene Einheit sein.
-Neednegativebuff=Das Ziel muss eine befreundete Einheit mit negativen Zauberverstärkern sein.
-
-Absorbmana=Nicht genug Mana zum Absorbieren.
-
-Canttakeitem=Dieser Gegenstand kann nicht aufgenommen werden.
-Cantdropitem=Dieser Gegenstand kann nicht abgelegt werden.
-Cantuseitem=Dieser Gegenstand kann nicht benutzt werden.
-Notpowerup=Powerups können nicht benutzt werden.
-
-Itemcooldown=Dieser Gegenstand kühlt ab.
-
-Cantfindcoupletarget=Kein besteigbares Ziel gefunden.
-
-Notdisabledinventory=Das Inventar dieser Einheit ist deaktiviert.
-
-Resistantskin=Diese Einheit verfügt über 'Festhaut'.
-
-Notinvulnerablespell=Unverwundbarkeitszauber oder -gegenstände können nicht benutzt werden.
-
-Needsummoned=Das Ziel muss eine beschworene Einheit sein.
-
-Cantsubmergethere=Dort kann nicht abgetaucht werden.
-
-Alreadydoomed=Diese Einheit wurde bereits von 'Verhängnis' getroffen.
 
 //[AdvisorStrings]
 Unitattack=Der Kampf wurde begonnen.

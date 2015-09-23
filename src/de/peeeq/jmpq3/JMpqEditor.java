@@ -1,4 +1,4 @@
-package de.peeeq.jmpq;
+package de.peeeq.jmpq3;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,7 +9,6 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -17,14 +16,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-import de.peeeq.jmpq.BlockTable.Block;
+import de.peeeq.jmpq3.BlockTable.Block;
 
 /**
  * @author peq & Crigges Some basic basic pure java based mpq implementation to
  *         open and modify warcraft 3 archives. Any bugs report here:
  *         https://github.com/Crigges/JMpq-v2/issues/new
  */
-public class JMpqEditor {
+public class JMpqEditor implements AutoCloseable {
 	private FileChannel fc;
 	private File mpqFile;
 	private int headerOffset = -1;
@@ -43,7 +42,6 @@ public class JMpqEditor {
 	private Listfile listFile;
 	private HashMap<File, String> internalFilename = new HashMap<>();
 
-	
 	//BuildData
 	private ArrayList<File> filesToAdd = new ArrayList<>();
 	private boolean keepHeaderOffset = true;
@@ -143,83 +141,6 @@ public class JMpqEditor {
 		buffer.putInt(newBlockSize);
 	}
 	
-	public void close() throws IOException{
-		File temp = File.createTempFile("crig", "mpq");
-		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
-		
-		if(keepHeaderOffset){
-			MappedByteBuffer headerReader = fc.map(MapMode.READ_ONLY, 0, headerOffset + 4);
-			writeChannel.write(headerReader);
-		}
-		
-		newHeaderSize = headerSize;
-		newFormatVersion = formatVersion;
-		newDiscBlockSize = discBlockSize;
-		calcNewTableSize();
-		newHashPos = headerSize + 8;
-		newBlockPos = headerSize + 8 + newHashSize * 16;
-		
-		ArrayList<Block> newBlocks = new ArrayList<>();
-		ArrayList<String> newFiles = new ArrayList<>();
-		@SuppressWarnings("unchecked")
-		LinkedList<String> remainingFiles = (LinkedList<String>) listFile.getFiles().clone();
-		int currentPos = headerOffset + headerSize + 8 + newHashSize * 16 + newBlockSize * 16;
-		for(File f : filesToAdd){
-			newFiles.add(internalFilename.get(f));
-			remainingFiles.remove(internalFilename.get(f));
-			MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length());
-			Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
-			newBlocks.add(newBlock);
-			MpqFile.writeFileAndBlock(f, newBlock, fileWriter, newDiscBlockSize);
-			currentPos += newBlock.getCompressedSize();
-		}
-		for(String s : remainingFiles){
-			newFiles.add(s);
-			int pos = hashTable.getBlockIndexOfFile(s);
-			Block b = blockTable.getBlockAtPos(pos);
-			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size() - headerOffset);
-			buf.order(ByteOrder.LITTLE_ENDIAN);
-			MpqFile f = new MpqFile(buf , b, discBlockSize, s);
-			MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-			Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
-			newBlocks.add(newBlock);
-			f.writeFileAndBlock(newBlock, fileWriter);
-			currentPos += b.getCompressedSize();
-		}
-		
-		newFiles.add("(listfile)");
-		byte[] listfileArr = listFile.asByteArray();
-		MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
-		Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
-		newBlocks.add(newBlock);
-		MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize);
-		currentPos += newBlock.getCompressedSize();
-		
-		newArchiveSize = currentPos + 1 - headerOffset;
-		
-		MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newHashPos, newHashSize * 16);
-		hashtableWriter.order(ByteOrder.LITTLE_ENDIAN);
-		HashTable.writeNewHashTable(newHashSize, newFiles, hashtableWriter);
-		
-		MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newBlockPos, newBlockSize * 16);
-		blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
-		BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
-		
-		MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + 4, headerSize + 4);
-		headerWriter.order(ByteOrder.LITTLE_ENDIAN);
-		writeHeader(headerWriter);
-		
-		MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
-		tempReader.position(0);
-		FileChannel mpqChannel = FileChannel.open(mpqFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
-		mpqChannel.truncate(currentPos + 1);
-		MappedByteBuffer tempWriter = mpqChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
-		tempWriter.position(0);
-		tempWriter.put(tempReader);
-		fc.close();
-		writeChannel.close();
-	}
-	
 	private void calcNewTableSize(){
 		int target = listFile.getFiles().size() + 1;
 		int current = 2;
@@ -277,12 +198,12 @@ public class JMpqEditor {
 	}
 
 	/**
-	 * Extracts the specified file out of the mpq
+	 * Extracts the specified file out of the mpq to the target location
 	 * 
 	 * @param name
-	 *            of the file
+	 *            name of the file
 	 * @param dest
-	 *            to that the files content get copyed
+	 *            destination to that the files content is written
 	 * @throws JMpqException
 	 *             if file is not found or access errors occur
 	 */
@@ -310,10 +231,10 @@ public class JMpqEditor {
 	}
 	
 	/**
-	 * Extracts the specified file out of the mpq
+	 * Extracts the specified file out of the mpq and writes it to the target outputstream
 	 * 
 	 * @param name
-	 *            of the file
+	 *            name of the file
 	 * @param dest
 	 *            the outputstream where the file's content is written
 	 * @throws JMpqException
@@ -347,35 +268,142 @@ public class JMpqEditor {
 	}
 
 	/**
-	 * Inserts the specified file out of the mpq once you rebuild the mpq
+	 * Inserts the specified file into the mpq once you close the editor
 	 * 
 	 * @param name
-	 *            of the file
+	 * 			of the file
 	 * @param dest
-	 *            to that the files content get copyed
+	 * 			to that the files content get copyed
+	 * @param backupFile
+	 *			if true the editors creates a copy of the file to add, so 
+	 *			further changes won't affect the resulting mpq
 	 * @throws JMpqException
 	 *             if file is not found or access errors occur
 	 */
-	public void insertFile(String name, File f) throws JMpqException {
+	public void insertFile(String name, File f, boolean backupFile) throws JMpqException {
 		try {
 			listFile.addFile(name);
-			FileInputStream in = new FileInputStream(f);
-			File temp = File.createTempFile("wurst", "crig");
-			FileOutputStream out = new FileOutputStream(temp);
-			int i = in.read();
-			while(i != -1){
-				out.write(i);
-				i = in.read();
+			if(backupFile){
+				File temp = File.createTempFile("wurst", "crig");
+				Files.copy(f.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+				filesToAdd.add(temp);
+				internalFilename.put(temp, name);
+			}else{
+				filesToAdd.add(f);
+				internalFilename.put(f, name);
 			}
-			in.close();
-			out.flush();
-			out.close();
-			filesToAdd.add(temp);
-			internalFilename.put(temp, name);
 		} catch (IOException e) {
 			throw new JMpqException(e);
+		}	
+	}
+	
+//	/**
+//	 * Inserts the specified file into the mpq once you close te editor
+//	 * 
+//	 * @param name
+//	 *            internal file name
+//	 * @param content
+//	 *            the file represented as byte array
+//	 * @throws JMpqException
+//	 *             if access errors occur
+//	 */
+//	public void insertFile(String name, byte[] content) throws JMpqException {
+//		try {
+//			listFile.addFile(name);
+//			FileInputStream in = new FileInputStream(f);
+//			File temp = File.createTempFile("wurst", "crig");
+//			FileOutputStream out = new FileOutputStream(temp);
+//			int i = in.read();
+//			while(i != -1){
+//				out.write(i);
+//				i = in.read();
+//			}
+//			in.close();
+//			out.flush();
+//			out.close();
+//			filesToAdd.add(temp);
+//			internalFilename.put(temp, name);
+//		} catch (IOException e) {
+//			throw new JMpqException(e);
+//		}
+//		
+//	}
+	
+	public void close() throws IOException{
+		File temp = File.createTempFile("crig", "mpq");
+		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
+		
+		if(keepHeaderOffset){
+			MappedByteBuffer headerReader = fc.map(MapMode.READ_ONLY, 0, headerOffset + 4);
+			writeChannel.write(headerReader);
 		}
 		
+		newHeaderSize = headerSize;
+		newFormatVersion = formatVersion;
+		newDiscBlockSize = discBlockSize;
+		calcNewTableSize();
+		newHashPos = headerSize + 8;
+		newBlockPos = headerSize + 8 + newHashSize * 16;
+		
+		ArrayList<Block> newBlocks = new ArrayList<>();
+		ArrayList<String> newFiles = new ArrayList<>();
+		@SuppressWarnings("unchecked")
+		LinkedList<String> remainingFiles = (LinkedList<String>) listFile.getFiles().clone();
+		int currentPos = headerOffset + headerSize + 8 + newHashSize * 16 + newBlockSize * 16;
+		for(File f : filesToAdd){
+			newFiles.add(internalFilename.get(f));
+			remainingFiles.remove(internalFilename.get(f));
+			MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length() * 2);
+			Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
+			newBlocks.add(newBlock);
+			MpqFile.writeFileAndBlock(f, newBlock, fileWriter, newDiscBlockSize);
+			currentPos += newBlock.getCompressedSize();
+		}
+		for(String s : remainingFiles){
+			newFiles.add(s);
+			int pos = hashTable.getBlockIndexOfFile(s);
+			Block b = blockTable.getBlockAtPos(pos);
+			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size() - headerOffset);
+			buf.order(ByteOrder.LITTLE_ENDIAN);
+			MpqFile f = new MpqFile(buf , b, discBlockSize, s);
+			MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+			Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
+			newBlocks.add(newBlock);
+			f.writeFileAndBlock(newBlock, fileWriter);
+			currentPos += b.getCompressedSize();
+		}
+		
+		newFiles.add("(listfile)");
+		byte[] listfileArr = listFile.asByteArray();
+		MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
+		Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
+		newBlocks.add(newBlock);
+		MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize);
+		currentPos += newBlock.getCompressedSize();
+		
+		newArchiveSize = currentPos + 1 - headerOffset;
+		
+		MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newHashPos, newHashSize * 16);
+		hashtableWriter.order(ByteOrder.LITTLE_ENDIAN);
+		HashTable.writeNewHashTable(newHashSize, newFiles, hashtableWriter);
+		
+		MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newBlockPos, newBlockSize * 16);
+		blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
+		BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
+		
+		MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + 4, headerSize + 4);
+		headerWriter.order(ByteOrder.LITTLE_ENDIAN);
+		writeHeader(headerWriter);
+		
+		MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
+		tempReader.position(0);
+		FileChannel mpqChannel = FileChannel.open(mpqFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
+		mpqChannel.truncate(currentPos + 1);
+		MappedByteBuffer tempWriter = mpqChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
+		tempWriter.position(0);
+		tempWriter.put(tempReader);
+		fc.close();
+		writeChannel.close();
 	}
 	
 	@Override

@@ -1,4 +1,4 @@
- package de.peeeq.jmpq;
+ package de.peeeq.jmpq3;
 
 
 import java.io.File;
@@ -11,7 +11,9 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
 
-import de.peeeq.jmpq.BlockTable.Block;
+import javax.management.remote.JMXProviderException;
+
+import de.peeeq.jmpq3.BlockTable.Block;
 
 public class MpqFile {
 	public static final int COMPRESSED = 0x00000200;
@@ -259,14 +261,19 @@ public class MpqFile {
 				temp = new byte[fileArr.length - fileBuf.position()];
 			}
 			fileBuf.get(temp);
-			byte[] compSector = JzLibHelper.deflate(temp);
-			if(compSector.length < temp.length){
+			byte[] compSector = null;
+			try{
+				compSector = JzLibHelper.deflate(temp);
+			}catch(ArrayIndexOutOfBoundsException e){
+				compSector = null;
+			}
+			if(compSector != null && compSector.length < temp.length){
 				buf.put((byte) 2);
 				buf.put(compSector);
 				sotPos += compSector.length + 1;
 			}else{
 				buf.put(temp);
-				sotPos += sectorSize;
+				sotPos += temp.length;
 			}
 			sot.putInt(sotPos);
 		}

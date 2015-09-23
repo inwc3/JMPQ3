@@ -1,4 +1,4 @@
-package de.peeeq.jmpq;
+package de.peeeq.jmpq3;
 
 public class DebugHelper {
 
