@@ -15,6 +15,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 
 import de.peeeq.jmpq3.BlockTable.Block;
 
@@ -23,7 +24,7 @@ import de.peeeq.jmpq3.BlockTable.Block;
  *         open and modify warcraft 3 archives. Any bugs report here:
  *         https://github.com/Crigges/JMpq-v2/issues/new
  */
-public class JMpqEditor implements AutoCloseable {
+public class JMpqEditor implements AutoCloseable{
 	private FileChannel fc;
 	private File mpqFile;
 	private int headerOffset = -1;
@@ -214,7 +215,6 @@ public class JMpqEditor implements AutoCloseable {
 			MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size() - headerOffset);
 			buf.order(ByteOrder.LITTLE_ENDIAN);
 			MpqFile f = new MpqFile(buf , b, discBlockSize, name);
-			System.out.println(name);
 			f.extractToFile(dest);
 		} catch (IOException e) {
 			throw new JMpqException(e);
@@ -228,6 +228,11 @@ public class JMpqEditor implements AutoCloseable {
 			return false;
 		}
 		return true;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public List<String> getFileNames(){
+		return (List<String>) listFile.getFiles().clone();
 	}
 	
 	/**
@@ -252,6 +257,15 @@ public class JMpqEditor implements AutoCloseable {
 			throw new JMpqException(e);
 		}	
 	}
+	
+	public MpqFile getMpqFile(String name) throws IOException{
+		int pos = hashTable.getBlockIndexOfFile(name);
+		Block b = blockTable.getBlockAtPos(pos);
+		MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size() - headerOffset);
+		buf.order(ByteOrder.LITTLE_ENDIAN);
+		return new MpqFile(buf , b, discBlockSize, name);
+	}
+	
 	
 	/**
 	 * Deletes the specified file out of the mpq once you rebuild the mpq
