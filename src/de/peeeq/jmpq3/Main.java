@@ -9,11 +9,13 @@ public class Main {
 		// before 118.052 bytes
 
 		
-		JMpqEditor e = new JMpqEditor(new File("hotn.w3x"));
-		//e.deleteFile("war3map.j");
-		e.extractAllFiles(new File("testfolder"));
-		e.insertFile("test.txt", new File("test.txt"), true);
-		e.close();
+		JMpqEditor e = new JMpqEditor(new File("my.mpq")); 		//Opens a new editor
+		e.deleteFile("filename");								//Deletes a specific file out of the mpq
+		e.extractFile("filename", new File("target location"));	//Extracts a specific file out of the mpq to the target location			
+		e.insertFile("filename", new File("file to add"), true);//Inserts a specific into the mpq from the target location	
+		e.extractAllFiles(new File("target folder"));			//Extracts all files out of the mpq to the target folder
+		e.getFileNames();										//Get the listfile as java List<String>
+		e.close();												//Rebuilds the mpq and applies all changes which was made
 		
 //		e.extractFile("Abilities\\Spells\\Other\\Transmute\\Sparkle_Anim128.blp", new File("test.blp"));
 		// e.insertFile(new
