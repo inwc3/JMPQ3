@@ -32,19 +32,19 @@ Buttonpos=0,2
 
 [CmdCancel]
 Art=CommandCancel
-ButtonPos=0,2
+ButtonPos=3,2
 
 [CmdCancelBuild]
 Art=CommandCancel
-ButtonPos=0,2
+ButtonPos=3,2
 
 [CmdCancelTrain]
 Art=CommandCancel
-ButtonPos=0,2
+ButtonPos=3,2
 
 [CmdCancelRevive]
 Art=CommandCancel
-ButtonPos=0,2
+ButtonPos=3,2
 
 [CmdHoldPos]
 Art=CommandHoldPosition
@@ -61,7 +61,7 @@ Buttonpos=0,0
 [CmdRally]
 Art=CommandRally
 Buttonpos=3,1
-PlacementModel="none.mdl"
+PlacementModel=UI\Feedback\RallyPoint\RallyPoint.mdl
 
 [CmdSelectSkill]
 Art=CommandNewSkill

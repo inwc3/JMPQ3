@@ -69,8 +69,8 @@ public class JMpqEditor implements AutoCloseable{
 		this.mpqFile = mpqW;
 		try {
 			//TODO fix this bad workaround
-			File tempMpq = File.createTempFile("work", "around");
-			Files.copy(mpqW.toPath(), tempMpq.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			File tempMpq = mpqW; //File.createTempFile("work", "around");
+			//Files.copy(mpqW.toPath(), tempMpq.toPath(), StandardCopyOption.REPLACE_EXISTING);
 			
 			fc = FileChannel.open(tempMpq.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
 			

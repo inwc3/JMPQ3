@@ -1,2576 +1,3148 @@
 ﻿STRING 1
 {
-Spieler 1
+MaDOS
 }
 
 STRING 2
 {
-Streitmacht 1
+Any
 }
 
 STRING 3
-// Einheiten: xdum (Effect Dummy Unit), Name (Name (unam))
 {
-Effect Dummy Unit
+Nondescript
 }
 
 STRING 4
-// Einheiten: xdum (Effect Dummy Unit), EditorSuffix (Name - Editor-Suffix (unsf))
 {
-(Basics)
+Unknown
 }
 
 STRING 5
-// Einheiten: W00K (testhero), Name (Name (unam))
 {
-testhero
+Player 1
 }
 
 STRING 6
-// Einheiten: W00K (testhero), Propernames (Eigennamen (upro))
 {
-CriggesMasterOfDesaster
+Force 1
 }
 
 STRING 7
-// Einheiten: W00M (testhero), Propernames (Eigennamen (upro))
+// Fähigkeiten: A000 (Throw), Name (Name (anam))
 {
-CriggesMasterOfDesaster
+Throw
 }
 
 STRING 8
-// Einheiten: W00M (testhero), Name (Name (unam))
+// Fähigkeiten: A000 (Throw), Hotkey (Tastaturkürzel - Normal (ahky))
 {
-testhero
+R
 }
 
 STRING 9
-// Einheiten: %00N (testunit), Name (Name (unam))
+// Fähigkeiten: A000 (Throw), Tip (Tooltipp - Normal (atp1))
 {
-testunit
+Th|cffffcc00r|row
 }
 
 STRING 10
-// Einheiten: cpth (Controlpoint Unit (Dummy)), Name (Name (unam))
+// Fähigkeiten: A000 (Throw), Ubertip (Tooltipp - Normal - Erweitert (aub1))
 {
-Controlpoint Unit (Dummy)
+Throw grenades
 }
 
 STRING 11
-// Einheiten: cptd (Controlpoint Unit (Dummy)), Name (Name (unam))
+// Fähigkeiten: A001 (Jump), Name (Name (anam))
 {
-Controlpoint Unit (Dummy)
-}
-
-STRING 12
-// Einheiten: xcas (Dummy Caster), Name (Name (unam))
-{
-Dummy Caster
+Jump
 }
 
 STRING 13
-// Einheiten: xcas (Dummy Caster), EditorSuffix (Name - Editor-Suffix (unsf))
+// Fähigkeiten: A001 (Jump), Tip (Tooltipp - Normal (atp1))
 {
-(Basics)
+|cffffcc00J|rump
 }
 
 STRING 14
-// Einheiten: uidu (Effect Dummy Unit), Name (Name (unam))
+// Fähigkeiten: A001 (Jump), Ubertip (Tooltipp - Normal - Erweitert (aub1))
 {
-Effect Dummy Unit
+Jump to another place...
 }
 
 STRING 15
-// Einheiten: uidu (Effect Dummy Unit), EditorSuffix (Name - Editor-Suffix (unsf))
+// Fähigkeiten: A001 (Jump), Hotkey (Tastaturkürzel - Normal (ahky))
 {
-(Caster System?)
+J
 }
 
 STRING 16
-// Einheiten: hbar (Dummy - ProgressBar), Name (Name (unam))
-{
-Dummy - ProgressBar
-}
-
-STRING 17
 // Gegenstände: BMIa (Attack Tome +1), Name (Name (unam))
 {
 Attack Tome +1
 }
 
-STRING 18
+STRING 17
 // Gegenstände: BMIb (Attack Tome +2), Name (Name (unam))
 {
 Attack Tome +2
 }
 
-STRING 19
+STRING 18
 // Gegenstände: BMIc (Attack Tome +4), Name (Name (unam))
 {
 Attack Tome +4
 }
 
-STRING 20
+STRING 19
 // Gegenstände: BMId (Attack Tome +8), Name (Name (unam))
 {
 Attack Tome +8
 }
 
-STRING 21
+STRING 20
 // Gegenstände: BMIe (Attack Tome +16), Name (Name (unam))
 {
 Attack Tome +16
 }
 
-STRING 22
+STRING 21
 // Gegenstände: BMIf (Attack Tome +32), Name (Name (unam))
 {
 Attack Tome +32
 }
 
-STRING 23
+STRING 22
 // Gegenstände: BMIg (Attack Tome +64), Name (Name (unam))
 {
 Attack Tome +64
 }
 
-STRING 24
+STRING 23
 // Gegenstände: BMIh (Attack Tome +128), Name (Name (unam))
 {
 Attack Tome +128
 }
 
-STRING 25
+STRING 24
 // Gegenstände: BMIi (Attack Tome +256), Name (Name (unam))
 {
 Attack Tome +256
 }
 
-STRING 26
+STRING 25
 // Gegenstände: BMIj (Attack Tome +512), Name (Name (unam))
 {
 Attack Tome +512
 }
 
-STRING 27
+STRING 26
 // Gegenstände: BMIk (Attack Tome +1024), Name (Name (unam))
 {
 Attack Tome +1024
 }
 
-STRING 28
+STRING 27
 // Gegenstände: BMIl (Attack Tome +2048), Name (Name (unam))
 {
 Attack Tome +2048
 }
 
-STRING 29
+STRING 28
 // Gegenstände: BMIm (Attack Tome +4096), Name (Name (unam))
 {
 Attack Tome +4096
 }
 
-STRING 30
+STRING 29
 // Gegenstände: BMIn (Attack Tome +8192), Name (Name (unam))
 {
 Attack Tome +8192
 }
 
-STRING 31
+STRING 30
 // Gegenstände: BMIC (Attack Tome -16384), Name (Name (unam))
 {
 Attack Tome -16384
 }
 
+STRING 31
+// Zerstörbare Objekte: LTe3 (Elfentor), EditorSuffix (Editor-Suffix (bsuf))
+{
+(Vertical) in use
+}
+
 STRING 32
+// Zerstörbare Objekte: OTip (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)
+}
+
+STRING 33
+// Zerstörbare Objekte: OTis (Unsichtbare Plattform), Name (Name (bnam))
+{
+Unsichtbare Plattform
+}
+
+STRING 34
+// Zerstörbare Objekte: OTis (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(2x2)
+}
+
+STRING 35
+// Zerstörbare Objekte: B006 ((Icon)), EditorSuffix (Editor-Suffix (bsuf))
+{
+Blood Mage
+}
+
+STRING 36
+// Zerstörbare Objekte: B006 ((Icon)), Name (Name (bnam))
+{
+(Icon)
+}
+
+STRING 37
+// Zerstörbare Objekte: B007 ((Backgroung)), EditorSuffix (Editor-Suffix (bsuf))
+{
+Black32
+}
+
+STRING 38
+// Zerstörbare Objekte: B007 ((Backgroung)), Name (Name (bnam))
+{
+(Backgroung)
+}
+
+STRING 39
+// Zerstörbare Objekte: B008 ((Background)), EditorSuffix (Editor-Suffix (bsuf))
+{
+Slot
+}
+
+STRING 40
+// Zerstörbare Objekte: B008 ((Background)), Name (Name (bnam))
+{
+(Background)
+}
+
+STRING 41
+// Zerstörbare Objekte: B009 ((Background)), EditorSuffix (Editor-Suffix (bsuf))
+{
+ProgressBar
+}
+
+STRING 42
+// Zerstörbare Objekte: B009 ((Background)), Name (Name (bnam))
+{
+(Background)
+}
+
+STRING 43
+// Zerstörbare Objekte: B00B (WalkableWood), Name (Name (bnam))
+{
+WalkableWood
+}
+
+STRING 44
+// Zerstörbare Objekte: B00C (Pathing Blocker Long AngledA(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long AngledA(Ground)
+}
+
+STRING 45
+// Zerstörbare Objekte: B00D (Pathing Blocker Long Horiz.(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long Horiz.(Ground)
+}
+
+STRING 46
+// Zerstörbare Objekte: B00E (Pathing Blocker Long Vert.(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long Vert.(Ground)
+}
+
+STRING 47
+// Zerstörbare Objekte: B00F (Pathing Blocker Long AngledB(Ground)), Name (Name (bnam))
+{
+Pathing Blocker Long AngledB(Ground)
+}
+
+STRING 48
+// Zerstörbare Objekte: B00G (SightBlockTree1), Name (Name (bnam))
+{
+SightBlockTree1
+}
+
+STRING 49
+// Zerstörbare Objekte: B00H (SightBlockTree2), Name (Name (bnam))
+{
+SightBlockTree2
+}
+
+STRING 50
+// Zerstörbare Objekte: B00I (SightBlockTree3), Name (Name (bnam))
+{
+SightBlockTree3
+}
+
+STRING 51
+// Zerstörbare Objekte: B00J (SightBlockerDiagonal), EditorSuffix (Editor-Suffix (bsuf))
+{
+Slot
+}
+
+STRING 52
+// Zerstörbare Objekte: B00J (SightBlockerDiagonal), Name (Name (bnam))
+{
+SightBlockerDiagonal
+}
+
+STRING 53
+// Zerstörbare Objekte: B000 (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)_tilt
+}
+
+STRING 54
+// Zerstörbare Objekte: B001 (Holz_Rampe_Arena), Name (Name (bnam))
+{
+Holz_Rampe_Arena
+}
+
+STRING 55
+// Zerstörbare Objekte: B002 (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)test1
+}
+
+STRING 56
+// Zerstörbare Objekte: B003 (Unsichtbare Plattform), EditorSuffix (Editor-Suffix (bsuf))
+{
+(4x4)test2
+}
+
+STRING 57
+// Zerstörbare Objekte: B004 (Holz_Boden_Arena), Name (Name (bnam))
+{
+Holz_Boden_Arena
+}
+
+STRING 58
+// Zerstörbare Objekte: B005 (Sightblocker), EditorSuffix (Editor-Suffix (bsuf))
+{
+Diagonal
+}
+
+STRING 59
+// Zerstörbare Objekte: B005 (Sightblocker), Name (Name (bnam))
+{
+Sightblocker
+}
+
+STRING 60
+// Zerstörbare Objekte: B00A (ControlPoint_LinearGlow_Red), Name (Name (bnam))
+{
+ControlPoint_LinearGlow_Red
+}
+
+STRING 61
+// Zerstörbare Objekte: B00K (ControlPoint_LinearGlow_Green), Name (Name (bnam))
+{
+ControlPoint_LinearGlow_Green
+}
+
+STRING 62
+// Zerstörbare Objekte: B00L (ControlPoint_Crystal_Red), Name (Name (bnam))
+{
+ControlPoint_Crystal_Red
+}
+
+STRING 63
+// Zerstörbare Objekte: B00M (ControlPoint_Crystal_Green), Name (Name (bnam))
+{
+ControlPoint_Crystal_Green
+}
+
+STRING 64
 // Zerstörbare Objekte: %003 (RingDesCrigges), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 33
+STRING 65
 // Zerstörbare Objekte: %003 (RingDesCrigges), Name (Name (bnam))
 {
 RingDesCrigges
 }
 
-STRING 34
+STRING 66
 // Zerstörbare Objekte: %004 (RingDesCrigges), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 35
+STRING 67
 // Zerstörbare Objekte: %004 (RingDesCrigges), Name (Name (bnam))
 {
 RingDesCrigges
 }
 
-STRING 36
+STRING 68
 // Zerstörbare Objekte: %005 (3M1), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 37
+STRING 69
 // Zerstörbare Objekte: %005 (3M1), Name (Name (bnam))
 {
 3M1
 }
 
-STRING 38
+STRING 70
 // Zerstörbare Objekte: %006 (3M1), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 39
+STRING 71
 // Zerstörbare Objekte: %006 (3M1), Name (Name (bnam))
 {
 3M1
 }
 
-STRING 40
+STRING 72
 // Zerstörbare Objekte: %007 (Bash), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 41
+STRING 73
 // Zerstörbare Objekte: %007 (Bash), Name (Name (bnam))
 {
 Bash
 }
 
-STRING 42
+STRING 74
 // Zerstörbare Objekte: %008 (Bash), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 43
+STRING 75
 // Zerstörbare Objekte: %008 (Bash), Name (Name (bnam))
 {
 Bash
 }
 
-STRING 44
+STRING 76
 // Zerstörbare Objekte: %009 (Glove), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 45
+STRING 77
 // Zerstörbare Objekte: %009 (Glove), Name (Name (bnam))
 {
 Glove
 }
 
-STRING 46
+STRING 78
 // Zerstörbare Objekte: %00: (Glove), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 47
+STRING 79
 // Zerstörbare Objekte: %00: (Glove), Name (Name (bnam))
 {
 Glove
 }
 
-STRING 48
+STRING 80
 // Zerstörbare Objekte: %00; (Buy), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 49
+STRING 81
 // Zerstörbare Objekte: %00; (Buy), Name (Name (bnam))
 {
 Buy
 }
 
-STRING 50
+STRING 82
 // Zerstörbare Objekte: %00< (Buy), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 51
+STRING 83
 // Zerstörbare Objekte: %00< (Buy), Name (Name (bnam))
 {
 Buy
 }
 
-STRING 52
+STRING 84
 // Zerstörbare Objekte: %00= (Grunt), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 53
+STRING 85
 // Zerstörbare Objekte: %00= (Grunt), Name (Name (bnam))
 {
 Grunt
 }
 
-STRING 54
+STRING 86
 // Zerstörbare Objekte: %00> (Grunt), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 55
+STRING 87
 // Zerstörbare Objekte: %00> (Grunt), Name (Name (bnam))
 {
 Grunt
 }
 
-STRING 56
+STRING 88
 // Zerstörbare Objekte: %00? (HealingSpray), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 57
+STRING 89
 // Zerstörbare Objekte: %00? (HealingSpray), Name (Name (bnam))
 {
 HealingSpray
 }
 
-STRING 58
+STRING 90
 // Zerstörbare Objekte: %00@ (HealingSpray), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 59
+STRING 91
 // Zerstörbare Objekte: %00@ (HealingSpray), Name (Name (bnam))
 {
 HealingSpray
 }
 
-STRING 60
+STRING 92
 // Zerstörbare Objekte: %00A (Hex), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 61
+STRING 93
 // Zerstörbare Objekte: %00A (Hex), Name (Name (bnam))
 {
 Hex
 }
 
-STRING 62
+STRING 94
 // Zerstörbare Objekte: %00B (Hex), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 63
+STRING 95
 // Zerstörbare Objekte: %00B (Hex), Name (Name (bnam))
 {
 Hex
 }
 
-STRING 64
+STRING 96
 // Zerstörbare Objekte: %00C (Hydra), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 65
+STRING 97
 // Zerstörbare Objekte: %00C (Hydra), Name (Name (bnam))
 {
 Hydra
 }
 
-STRING 66
+STRING 98
 // Zerstörbare Objekte: %00D (Hydra), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 67
+STRING 99
 // Zerstörbare Objekte: %00D (Hydra), Name (Name (bnam))
 {
 Hydra
 }
 
-STRING 68
+STRING 100
 // Zerstörbare Objekte: %00E (Impale), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 69
+STRING 101
 // Zerstörbare Objekte: %00E (Impale), Name (Name (bnam))
 {
 Impale
 }
 
-STRING 70
+STRING 102
 // Zerstörbare Objekte: %00F (Impale), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 71
+STRING 103
 // Zerstörbare Objekte: %00F (Impale), Name (Name (bnam))
 {
 Impale
 }
 
-STRING 72
+STRING 104
 // Zerstörbare Objekte: %00G (ManaStone), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 73
+STRING 105
 // Zerstörbare Objekte: %00G (ManaStone), Name (Name (bnam))
 {
 ManaStone
 }
 
-STRING 74
+STRING 106
 // Zerstörbare Objekte: %00H (ManaStone), EditorSuffix (Editor-Suffix (bsuf))
 {
 Icon
 }
 
-STRING 75
+STRING 107
 // Zerstörbare Objekte: %00H (ManaStone), Name (Name (bnam))
 {
 ManaStone
 }
 
-STRING 76
+STRING 108
 // Zerstörbare Objekte: %00I (|cffb9d1eaHarry Potter is a series of seven epic fantasy|nnovels written by the), EditorSuffix (Editor-Suffix (bsuf))
 {
 Tip
 }
 
-STRING 77
+STRING 109
 // Zerstörbare Objekte: %00I (|cffb9d1eaHarry Potter is a series of seven epic fantasy|nnovels written by the), Name (Name (bnam))
 {
 |cffb9d1eaHarry Potter is a series of seven epic fantasy|nnovels written by the British author J. K.|nRowling.|n|n|cff98fb98+60 Movement Speed|n+50 Traction|n+2% Critical Hit Chance|n|n|cfff0e68cActive Ability:|nThe series was originally printed in English by|ntwo major publishers, Bloomsbury in the United|nKingdom and Scholastic Press in the United States.|nThe books have since been published by many|npublishers worldwide. The books, with the seventh|nbook split into two parts.|n|cff00ffffCooldown 30sec.|nBuy it or die!
 }
 
-STRING 78
+STRING 110
 // Zerstörbare Objekte: %00J (|cffffa500[Q]|r |cff7cfc00Poinson Shot|r |cff696969(Skillshot, Point Target)|r|), EditorSuffix (Editor-Suffix (bsuf))
 {
 Tip
 }
 
-STRING 79
+STRING 111
 // Zerstörbare Objekte: %00J (|cffffa500[Q]|r |cff7cfc00Poinson Shot|r |cff696969(Skillshot, Point Target)|r|), Name (Name (bnam))
 {
 |cffffa500[Q]|r |cff7cfc00Poinson Shot|r |cff696969(Skillshot, Point Target)|r|n|n|cfff0f8ff[Level 1]|r|nThe Pathfinder shoots a poisonous arrow.|nIf it hits an enemy unit, this units gets|na damage over time effect and movement slow.|n
 }
 
-STRING 80
-// Fähigkeiten: (D)a (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 81
-// Fähigkeiten: (D)a (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-1
-}
-
-STRING 82
-// Fähigkeiten: (D)b (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 83
-// Fähigkeiten: (D)b (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-2
-}
-
-STRING 84
-// Fähigkeiten: (D)c (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 85
-// Fähigkeiten: (D)c (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-4
-}
-
-STRING 86
-// Fähigkeiten: (D)d (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 87
-// Fähigkeiten: (D)d (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-8
-}
-
-STRING 88
-// Fähigkeiten: (D)e (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 89
-// Fähigkeiten: (D)e (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-16
-}
-
-STRING 90
-// Fähigkeiten: (D)f (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 91
-// Fähigkeiten: (D)f (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-32
-}
-
-STRING 92
-// Fähigkeiten: (D)g (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 93
-// Fähigkeiten: (D)g (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-64
-}
-
-STRING 94
-// Fähigkeiten: (D)h (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 95
-// Fähigkeiten: (D)h (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-128
-}
-
-STRING 96
-// Fähigkeiten: (D)i (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 97
-// Fähigkeiten: (D)i (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-256
-}
-
-STRING 98
-// Fähigkeiten: (D)j (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 99
-// Fähigkeiten: (D)j (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-512
-}
-
-STRING 100
-// Fähigkeiten: (D)k (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 101
-// Fähigkeiten: (D)k (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-1024
-}
-
-STRING 102
-// Fähigkeiten: (D)l (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 103
-// Fähigkeiten: (D)l (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-2048
-}
-
-STRING 104
-// Fähigkeiten: (D)m (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 105
-// Fähigkeiten: (D)m (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-4096
-}
-
-STRING 106
-// Fähigkeiten: (D)n (Bonus Life +), Name (Name (anam))
-{
-Bonus Life +
-}
-
-STRING 107
-// Fähigkeiten: (D)n (Bonus Life +), EditorSuffix (Editor-Suffix (ansf))
-{
-8192
-}
-
-STRING 108
-// Fähigkeiten: (D)- (Bonus Life -), Name (Name (anam))
-{
-Bonus Life -
-}
-
-STRING 109
-// Fähigkeiten: (D)- (Bonus Life -), EditorSuffix (Editor-Suffix (ansf))
-{
-16384
-}
-
-STRING 110
-// Fähigkeiten: (E)a (Bonus Mana +), Name (Name (anam))
-{
-Bonus Mana +
-}
-
-STRING 111
-// Fähigkeiten: (E)a (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
-{
-1
-}
-
 STRING 112
-// Fähigkeiten: (E)b (Bonus Mana +), Name (Name (anam))
+// Doodads: DObh (Bench), Name (Name (dnam))
 {
-Bonus Mana +
+Bench
 }
 
 STRING 113
-// Fähigkeiten: (E)b (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YObw (City_WoodBench), Name (Name (dnam))
 {
-2
+City_WoodBench
 }
 
 STRING 114
-// Fähigkeiten: (E)c (Bonus Mana +), Name (Name (anam))
+// Doodads: YObs (City_StoneBench), Name (Name (dnam))
 {
-Bonus Mana +
+City_StoneBench
 }
 
 STRING 115
-// Fähigkeiten: (E)c (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: DOkb (BigBookshelf), Name (Name (dnam))
 {
-4
+BigBookshelf
 }
 
 STRING 116
-// Fähigkeiten: (E)d (Bonus Mana +), Name (Name (anam))
+// Doodads: YOfr (City_FountainRuined), Name (Name (dnam))
 {
-Bonus Mana +
+City_FountainRuined
 }
 
 STRING 117
-// Fähigkeiten: (E)d (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: DObw (BookshelfWall), Name (Name (dnam))
 {
-8
+BookshelfWall
 }
 
 STRING 118
-// Fähigkeiten: (E)e (Bonus Mana +), Name (Name (anam))
+// Doodads: DOim (IronMaiden), Name (Name (dnam))
 {
-Bonus Mana +
+IronMaiden
 }
 
 STRING 119
-// Fähigkeiten: (E)e (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOtz (TorchHumanOmni), Name (Name (dnam))
 {
-16
+TorchHumanOmni
 }
 
 STRING 120
-// Fähigkeiten: (E)f (Bonus Mana +), Name (Name (anam))
+// Doodads: LOth (TorchHuman), Name (Name (dnam))
 {
-Bonus Mana +
+TorchHuman
 }
 
 STRING 121
-// Fähigkeiten: (E)f (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NOft (Ruins_FirePitTrashed), Name (Name (dnam))
 {
-32
+Ruins_FirePitTrashed
 }
 
 STRING 122
-// Fähigkeiten: (E)g (Bonus Mana +), Name (Name (anam))
+// Doodads: NOfp (FirePit), Name (Name (dnam))
 {
-Bonus Mana +
+FirePit
 }
 
 STRING 123
-// Fähigkeiten: (E)g (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NOfg (FirePitPig), Name (Name (dnam))
 {
-64
+FirePitPig
 }
 
 STRING 124
-// Fähigkeiten: (E)h (Bonus Mana +), Name (Name (anam))
+// Doodads: COdf (Fish_Dead), Name (Name (dnam))
 {
-Bonus Mana +
+Fish_Dead
 }
 
 STRING 125
-// Fähigkeiten: (E)h (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YOwb (Banner_Long2), Name (Name (dnam))
 {
-128
+Banner_Long2
 }
 
 STRING 126
-// Fähigkeiten: (E)i (Bonus Mana +), Name (Name (anam))
+// Doodads: LOo2 (Banner_TutorialOrcBanner), Name (Name (dnam))
 {
-Bonus Mana +
+Banner_TutorialOrcBanner
 }
 
 STRING 127
-// Fähigkeiten: (E)i (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOh1 (BannerHuman), Name (Name (dnam))
 {
-256
+BannerHuman
 }
 
 STRING 128
-// Fähigkeiten: (E)j (Bonus Mana +), Name (Name (anam))
+// Doodads: LOo1 (BannerOrc), Name (Name (dnam))
 {
-Bonus Mana +
+BannerOrc
 }
 
 STRING 129
-// Fähigkeiten: (E)j (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YObb (Banner_Long), Name (Name (dnam))
 {
-512
+Banner_Long
 }
 
 STRING 130
-// Fähigkeiten: (E)k (Bonus Mana +), Name (Name (anam))
+// Doodads: OOgr (City_Grate), Name (Name (dnam))
 {
-Bonus Mana +
+City_Grate
 }
 
 STRING 131
-// Fähigkeiten: (E)k (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOfl (Flies), Name (Name (dnam))
 {
-1024
+Flies
 }
 
 STRING 132
-// Fähigkeiten: (E)l (Bonus Mana +), Name (Name (anam))
+// Doodads: LOpg (PeasantGrave), Name (Name (dnam))
 {
-Bonus Mana +
+PeasantGrave
 }
 
 STRING 133
-// Fähigkeiten: (E)l (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NOgv (NorthrendGrave), Name (Name (dnam))
 {
-2048
+NorthrendGrave
 }
 
 STRING 134
-// Fähigkeiten: (E)m (Bonus Mana +), Name (Name (anam))
+// Doodads: YOgr (CityGrave), Name (Name (dnam))
 {
-Bonus Mana +
+CityGrave
 }
 
 STRING 135
-// Fähigkeiten: (E)m (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NOtb (NorthrendTombstone), Name (Name (dnam))
 {
-4096
+NorthrendTombstone
 }
 
 STRING 136
-// Fähigkeiten: (E)n (Bonus Mana +), Name (Name (anam))
+// Doodads: LOgr (Grave), Name (Name (dnam))
 {
-Bonus Mana +
+Grave
 }
 
 STRING 137
-// Fähigkeiten: (E)n (Bonus Mana +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOhb (Hay), Name (Name (dnam))
 {
-8192
+Hay
 }
 
 STRING 138
-// Fähigkeiten: (E)- (Bonus Mana -), Name (Name (anam))
+// Doodads: LOrh (RottenHay), Name (Name (dnam))
 {
-Bonus Mana -
+RottenHay
 }
 
 STRING 139
-// Fähigkeiten: (E)- (Bonus Mana -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: OOob (Obstacle), Name (Name (dnam))
 {
-16384
+Obstacle
 }
 
 STRING 140
-// Fähigkeiten: (F)a (Bonus Agi +), Name (Name (anam))
+// Doodads: LOsc (SittingCorpse), Name (Name (dnam))
 {
-Bonus Agi +
+SittingCorpse
 }
 
 STRING 141
-// Fähigkeiten: (F)a (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOic (ImpaledBody), Name (Name (dnam))
 {
-1
+ImpaledBody
 }
 
 STRING 142
-// Fähigkeiten: (F)b (Bonus Agi +), Name (Name (anam))
+// Doodads: DOsv (SewerVent), Name (Name (dnam))
 {
-Bonus Agi +
+SewerVent
 }
 
 STRING 143
-// Fähigkeiten: (F)b (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: DOsw (SewerWallpipes), Name (Name (dnam))
 {
-2
+SewerWallpipes
 }
 
 STRING 144
-// Fähigkeiten: (F)c (Bonus Agi +), Name (Name (anam))
+// Doodads: LOca (CauldronWithHeads), Name (Name (dnam))
 {
-Bonus Agi +
+CauldronWithHeads
 }
 
 STRING 145
-// Fähigkeiten: (F)c (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YOec (EmptyCrates), Name (Name (dnam))
 {
-4
+EmptyCrates
 }
 
 STRING 146
-// Fähigkeiten: (F)d (Bonus Agi +), Name (Name (anam))
+// Doodads: LOrb (RibBones), Name (Name (dnam))
 {
-Bonus Agi +
+RibBones
 }
 
 STRING 147
-// Fähigkeiten: (F)d (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: BObo (Barrens_Bones), Name (Name (dnam))
 {
-8
+Barrens_Bones
 }
 
 STRING 148
-// Fähigkeiten: (F)e (Bonus Agi +), Name (Name (anam))
+// Doodads: NObo (North_Bones), Name (Name (dnam))
 {
-Bonus Agi +
+North_Bones
 }
 
 STRING 149
-// Fähigkeiten: (F)e (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NObt (Bats), Name (Name (dnam))
 {
-16
+Bats
 }
 
 STRING 150
-// Fähigkeiten: (F)f (Bonus Agi +), Name (Name (anam))
+// Doodads: LObr (Brazier), Name (Name (dnam))
 {
-Bonus Agi +
+Brazier
 }
 
 STRING 151
-// Fähigkeiten: (F)f (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LObz (brazieromni), Name (Name (dnam))
 {
-32
+brazieromni
 }
 
 STRING 152
-// Fähigkeiten: (F)g (Bonus Agi +), Name (Name (anam))
+// Doodads: AObr (Brazier), Name (Name (dnam))
 {
-Bonus Agi +
+Brazier
 }
 
 STRING 153
-// Fähigkeiten: (F)g (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOsh (HeadOnSpear), Name (Name (dnam))
 {
-64
+HeadOnSpear
 }
 
 STRING 154
-// Fähigkeiten: (F)h (Bonus Agi +), Name (Name (anam))
+// Doodads: XOcl (CrystalLamp), Name (Name (dnam))
 {
-Bonus Agi +
+CrystalLamp
 }
 
 STRING 155
-// Fähigkeiten: (F)h (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YOlp (City_LanternPost00), Name (Name (dnam))
 {
-128
+City_LanternPost00
 }
 
 STRING 156
-// Fähigkeiten: (F)i (Bonus Agi +), Name (Name (anam))
+// Doodads: LOlp (City_LanternPost01), Name (Name (dnam))
 {
-Bonus Agi +
+City_LanternPost01
 }
 
 STRING 157
-// Fähigkeiten: (F)i (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOt1 (Ruins_Trash1), Name (Name (dnam))
 {
-256
+Ruins_Trash1
 }
 
 STRING 158
-// Fähigkeiten: (F)j (Bonus Agi +), Name (Name (anam))
+// Doodads: NObk (Ruins_NorthrendBrokenObilisk), Name (Name (dnam))
 {
-Bonus Agi +
+Ruins_NorthrendBrokenObilisk
 }
 
 STRING 159
-// Fähigkeiten: (F)j (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: COob (FelwoodObilisk), Name (Name (dnam))
 {
-512
+FelwoodObilisk
 }
 
 STRING 160
-// Fähigkeiten: (F)k (Bonus Agi +), Name (Name (anam))
+// Doodads: AObo (AshenBrokenObilisk), Name (Name (dnam))
 {
-Bonus Agi +
+AshenBrokenObilisk
 }
 
 STRING 161
-// Fähigkeiten: (F)k (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: AOsk (AshenObilisk), Name (Name (dnam))
 {
-1024
+AshenObilisk
 }
 
 STRING 162
-// Fähigkeiten: (F)l (Bonus Agi +), Name (Name (anam))
+// Doodads: YOob (City_Oblisk), Name (Name (dnam))
 {
-Bonus Agi +
+City_Oblisk
 }
 
 STRING 163
-// Fähigkeiten: (F)l (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: CObo (FelwoodBrokenObilisk), Name (Name (dnam))
 {
-2048
+FelwoodBrokenObilisk
 }
 
 STRING 164
-// Fähigkeiten: (F)m (Bonus Agi +), Name (Name (anam))
+// Doodads: NOok (NorthrendObilisk), Name (Name (dnam))
 {
-Bonus Agi +
+NorthrendObilisk
 }
 
 STRING 165
-// Fähigkeiten: (F)m (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOhp (HitchingPost), Name (Name (dnam))
 {
-4096
+HitchingPost
 }
 
 STRING 166
-// Fähigkeiten: (F)n (Bonus Agi +), Name (Name (anam))
+// Doodads: OOst (Stake), Name (Name (dnam))
 {
-Bonus Agi +
+Stake
 }
 
 STRING 167
-// Fähigkeiten: (F)n (Bonus Agi +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: AOsr (ScorchedRemains), Name (Name (dnam))
 {
-8192
+ScorchedRemains
 }
 
 STRING 168
-// Fähigkeiten: (F)- (Bonus Agi -), Name (Name (anam))
+// Doodads: DOtp (TreasurePile), Name (Name (dnam))
 {
-Bonus Agi -
+TreasurePile
 }
 
 STRING 169
-// Fähigkeiten: (F)- (Bonus Agi -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YObg (TavernSignBobsGuns), Name (Name (dnam))
 {
-16384
+TavernSignBobsGuns
 }
 
 STRING 170
-// Fähigkeiten: (G)a (Bonus Str +), Name (Name (anam))
+// Doodads: YOts (TavernSign), Name (Name (dnam))
 {
-Bonus Str +
+TavernSign
 }
 
 STRING 171
-// Fähigkeiten: (G)a (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: DOjp (JunkPile), Name (Name (dnam))
 {
-1
+JunkPile
 }
 
 STRING 172
-// Fähigkeiten: (G)b (Bonus Str +), Name (Name (anam))
+// Doodads: LOwr (Ruins_WheelBarrelBroken), Name (Name (dnam))
 {
-Bonus Str +
+Ruins_WheelBarrelBroken
 }
 
 STRING 173
-// Fähigkeiten: (G)b (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: OOsk (Skull), Name (Name (dnam))
 {
-2
+Skull
 }
 
 STRING 174
-// Fähigkeiten: (G)c (Bonus Str +), Name (Name (anam))
+// Doodads: LOss (SkullonStick), Name (Name (dnam))
 {
-Bonus Str +
+SkullonStick
 }
 
 STRING 175
-// Fähigkeiten: (G)c (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOsk (SkullPile), Name (Name (dnam))
 {
-4
+SkullPile
 }
 
 STRING 176
-// Fähigkeiten: (G)d (Bonus Str +), Name (Name (anam))
+// Doodads: YOfn (City_Fountain), Name (Name (dnam))
 {
-Bonus Str +
+City_Fountain
 }
 
 STRING 177
-// Fähigkeiten: (G)d (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: OOsd (Standard), Name (Name (dnam))
 {
-8
+Standard
 }
 
 STRING 178
-// Fähigkeiten: (G)e (Bonus Str +), Name (Name (anam))
+// Doodads: AOgs (SentinelStatue), Name (Name (dnam))
 {
-Bonus Str +
+SentinelStatue
 }
 
 STRING 179
-// Fähigkeiten: (G)e (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: AOks (KeeperStatue), Name (Name (dnam))
 {
-16
+KeeperStatue
 }
 
 STRING 180
-// Fähigkeiten: (G)f (Bonus Str +), Name (Name (anam))
+// Doodads: YOst (City_Statue01), Name (Name (dnam))
 {
-Bonus Str +
+City_Statue01
 }
 
 STRING 181
-// Fähigkeiten: (G)f (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YOks (City_KnightStatueA), Name (Name (dnam))
 {
-32
+City_KnightStatueA
 }
 
 STRING 182
-// Fähigkeiten: (G)g (Bonus Str +), Name (Name (anam))
+// Doodads: KOst (BlackCitadelStatue), Name (Name (dnam))
 {
-Bonus Str +
+BlackCitadelStatue
 }
 
 STRING 183
-// Fähigkeiten: (G)g (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YOws (WhaleStatue), Name (Name (dnam))
 {
-64
+WhaleStatue
 }
 
 STRING 184
-// Fähigkeiten: (G)h (Bonus Str +), Name (Name (anam))
+// Doodads: DOas (AzsharaStatue), Name (Name (dnam))
 {
-Bonus Str +
+AzsharaStatue
 }
 
 STRING 185
-// Fähigkeiten: (G)h (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: DOcr (Chair), Name (Name (dnam))
 {
-128
+Chair
 }
 
 STRING 186
-// Fähigkeiten: (G)i (Bonus Str +), Name (Name (anam))
+// Doodads: LOam (ArmorRack), Name (Name (dnam))
 {
-Bonus Str +
+ArmorRack
 }
 
 STRING 187
-// Fähigkeiten: (G)i (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOwp (Weapons), Name (Name (dnam))
 {
-256
+Weapons
 }
 
 STRING 188
-// Fähigkeiten: (G)j (Bonus Str +), Name (Name (anam))
+// Doodads: NObc (Ruins_NorthrendBrokenColumn), Name (Name (dnam))
 {
-Bonus Str +
+Ruins_NorthrendBrokenColumn
 }
 
 STRING 189
-// Fähigkeiten: (G)j (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: IOpr (Ruins_IceCrownPillar), Name (Name (dnam))
 {
-512
+Ruins_IceCrownPillar
 }
 
 STRING 190
-// Fähigkeiten: (G)k (Bonus Str +), Name (Name (anam))
+// Doodads: YOth (Throne), Name (Name (dnam))
 {
-Bonus Str +
+Throne
 }
 
 STRING 191
-// Fähigkeiten: (G)k (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: BOth (HellscreamThrone), Name (Name (dnam))
 {
-1024
+HellscreamThrone
 }
 
 STRING 192
-// Fähigkeiten: (G)l (Bonus Str +), Name (Name (anam))
+// Doodads: DOtb (Table), Name (Name (dnam))
 {
-Bonus Str +
+Table
 }
 
 STRING 193
-// Fähigkeiten: (G)l (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: DOtt (TortureTable), Name (Name (dnam))
 {
-2048
+TortureTable
 }
 
 STRING 194
-// Fähigkeiten: (G)m (Bonus Str +), Name (Name (anam))
+// Doodads: DOtc (TableNChair), Name (Name (dnam))
 {
-Bonus Str +
+TableNChair
 }
 
 STRING 195
-// Fähigkeiten: (G)m (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: AOnt (Totem), Name (Name (dnam))
 {
-4096
+Totem
 }
 
 STRING 196
-// Fähigkeiten: (G)n (Bonus Str +), Name (Name (anam))
+// Doodads: AObd (Bird), Name (Name (dnam))
 {
-Bonus Str +
+Bird
 }
 
 STRING 197
-// Fähigkeiten: (G)n (Bonus Str +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOsw (Ruins_RubbleStoneWall), Name (Name (dnam))
 {
-8192
+Ruins_RubbleStoneWall
 }
 
 STRING 198
-// Fähigkeiten: (G)- (Bonus Str -), Name (Name (anam))
+// Doodads: VOfl (Village_Fencelong), Name (Name (dnam))
 {
-Bonus Str -
+Village_Fencelong
 }
 
 STRING 199
-// Fähigkeiten: (G)- (Bonus Str -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NOfl (NorthrendFenceStraight), Name (Name (dnam))
 {
-16384
+NorthrendFenceStraight
 }
 
 STRING 200
-// Fähigkeiten: (H)a (Bonus Int +), Name (Name (anam))
+// Doodads: VOfs (Village_Fenceshort), Name (Name (dnam))
 {
-Bonus Int +
+Village_Fenceshort
 }
 
 STRING 201
-// Fähigkeiten: (H)a (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LOar (ArcheryRange), Name (Name (dnam))
 {
-1
+ArcheryRange
 }
 
 STRING 202
-// Fähigkeiten: (H)b (Bonus Int +), Name (Name (anam))
+// Doodads: ZOtr (Ruins_Trash), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_Trash
 }
 
 STRING 203
-// Fähigkeiten: (H)b (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZOst (Ruins_Statue), Name (Name (dnam))
 {
-2
+Ruins_Statue
 }
 
 STRING 204
-// Fähigkeiten: (H)c (Bonus Int +), Name (Name (anam))
+// Doodads: ZObz (Ruins_Brazier), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_Brazier
 }
 
 STRING 205
-// Fähigkeiten: (H)c (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZOsb (Ruins_StatueBroken), Name (Name (dnam))
 {
-4
+Ruins_StatueBroken
 }
 
 STRING 206
-// Fähigkeiten: (H)d (Bonus Int +), Name (Name (anam))
+// Doodads: ZOss (Ruins_Stone), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_Stone
 }
 
 STRING 207
-// Fähigkeiten: (H)d (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZOob (Ruins_Obelisk), Name (Name (dnam))
 {
-8
+Ruins_Obelisk
 }
 
 STRING 208
-// Fähigkeiten: (H)e (Bonus Int +), Name (Name (anam))
+// Doodads: ZOrp (Ruins_Pillar), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_Pillar
 }
 
 STRING 209
-// Fähigkeiten: (H)e (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZOls (Ruins_LibraryShelf), Name (Name (dnam))
 {
-16
+Ruins_LibraryShelf
 }
 
 STRING 210
-// Fähigkeiten: (H)f (Bonus Int +), Name (Name (anam))
+// Doodads: ZOfp (Ruins_Firepot), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_Firepot
 }
 
 STRING 211
-// Fähigkeiten: (H)f (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZOba (Ruins_BloodyAltar), Name (Name (dnam))
 {
-32
+Ruins_BloodyAltar
 }
 
 STRING 212
-// Fähigkeiten: (H)g (Bonus Int +), Name (Name (anam))
+// Doodads: ZOrt (Ruins_RuinedThrone), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_RuinedThrone
 }
 
 STRING 213
-// Fähigkeiten: (H)g (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ASbl (Ruins_AshenRuinsBlocks), Name (Name (dnam))
 {
-64
+Ruins_AshenRuinsBlocks
 }
 
 STRING 214
-// Fähigkeiten: (H)h (Bonus Int +), Name (Name (anam))
+// Doodads: CSbl (Ruins_FelwoodRuinsBlocks), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_FelwoodRuinsBlocks
 }
 
 STRING 215
-// Fähigkeiten: (H)h (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: JSax (Ruins_Archway1_Ruined (in use)), Name (Name (dnam))
 {
-128
+Ruins_Archway1_Ruined (in use)
 }
 
 STRING 216
-// Fähigkeiten: (H)i (Bonus Int +), Name (Name (anam))
+// Doodads: JSar (Ruins_Archway2_Ruined (in use)), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_Archway2_Ruined (in use)
 }
 
 STRING 217
-// Fähigkeiten: (H)i (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ISa1 (IC_IceArch45), Name (Name (dnam))
 {
-256
+IC_IceArch45
 }
 
 STRING 218
-// Fähigkeiten: (H)j (Bonus Int +), Name (Name (anam))
+// Doodads: ISar (IC_IceArch), Name (Name (dnam))
 {
-Bonus Int +
+IC_IceArch
 }
 
 STRING 219
-// Fähigkeiten: (H)j (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YSaw (City_Archway1), Name (Name (dnam))
 {
-512
+City_Archway1
 }
 
 STRING 220
-// Fähigkeiten: (H)k (Bonus Int +), Name (Name (anam))
+// Doodads: GSah (UndergroundArchway1), Name (Name (dnam))
 {
-Bonus Int +
+UndergroundArchway1
 }
 
 STRING 221
-// Fähigkeiten: (H)k (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YSa1 (Archway Angled (in use)), Name (Name (dnam))
 {
-1024
+Archway Angled (in use)
 }
 
 STRING 222
-// Fähigkeiten: (H)l (Bonus Int +), Name (Name (anam))
+// Doodads: LSwl (well), Name (Name (dnam))
 {
-Bonus Int +
+well
 }
 
 STRING 223
-// Fähigkeiten: (H)l (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: CSbc (Ruins_FelwoodBrokenColumn), Name (Name (dnam))
 {
-2048
+Ruins_FelwoodBrokenColumn
 }
 
 STRING 224
-// Fähigkeiten: (H)m (Bonus Int +), Name (Name (anam))
+// Doodads: ASbc (Ruins_AshenBrokenColumn), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_AshenBrokenColumn
 }
 
 STRING 225
-// Fähigkeiten: (H)m (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: CSbr (Ruins_FelwoodRubble), Name (Name (dnam))
 {
-4096
+Ruins_FelwoodRubble
 }
 
 STRING 226
-// Fähigkeiten: (H)n (Bonus Int +), Name (Name (anam))
+// Doodads: ASbr (Ruins_AshenRubble), Name (Name (dnam))
 {
-Bonus Int +
+Ruins_AshenRubble
 }
 
 STRING 227
-// Fähigkeiten: (H)n (Bonus Int +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ISrb (Ruins_Icecrown_Rubble), Name (Name (dnam))
 {
-8192
+Ruins_Icecrown_Rubble
 }
 
 STRING 228
-// Fähigkeiten: (H)- (Bonus Int -), Name (Name (anam))
+// Doodads: NSrb (Ruins_NorthrendRubble), Name (Name (dnam))
 {
-Bonus Int -
+Ruins_NorthrendRubble
 }
 
 STRING 229
-// Fähigkeiten: (H)- (Bonus Int -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NSct (NorthrendCrypt), Name (Name (dnam))
 {
-16384
+NorthrendCrypt
 }
 
 STRING 230
-// Fähigkeiten: (A)a (Bonus Attack +), Name (Name (anam))
+// Doodads: LSsf (FarmScorched), Name (Name (dnam))
 {
-Bonus Attack +
+FarmScorched
 }
 
 STRING 231
-// Fähigkeiten: (A)a (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZSrb (Ruins_Buildings), Name (Name (dnam))
 {
-1
+Ruins_Buildings
 }
 
 STRING 232
-// Fähigkeiten: (A)b (Bonus Attack +), Name (Name (anam))
+// Doodads: JSco (City_ColumnSingle1_Ruined (in use)), Name (Name (dnam))
 {
-Bonus Attack +
+City_ColumnSingle1_Ruined (in use)
 }
 
 STRING 233
-// Fähigkeiten: (A)b (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YSco (City_ColumnSingle), Name (Name (dnam))
 {
-2
+City_ColumnSingle
 }
 
 STRING 234
-// Fähigkeiten: (A)c (Bonus Attack +), Name (Name (anam))
+// Doodads: YScd (City_ColumnDouble), Name (Name (dnam))
 {
-Bonus Attack +
+City_ColumnDouble
 }
 
 STRING 235
-// Fähigkeiten: (A)c (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: JScx (City_ColumnSingle2_Ruined (in use)), Name (Name (dnam))
 {
-4
+City_ColumnSingle2_Ruined (in use)
 }
 
 STRING 236
-// Fähigkeiten: (A)d (Bonus Attack +), Name (Name (anam))
+// Doodads: JSc4 (City_ColumnSemiCircle_Ruined (in use)), Name (Name (dnam))
 {
-Bonus Attack +
+City_ColumnSemiCircle_Ruined (in use)
 }
 
 STRING 237
-// Fähigkeiten: (A)d (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YSc2 (City_ColumnSemiCircle (in use)), Name (Name (dnam))
 {
-8
+City_ColumnSemiCircle (in use)
 }
 
 STRING 238
-// Fähigkeiten: (A)e (Bonus Attack +), Name (Name (anam))
+// Doodads: LSst (TowerScorched), Name (Name (dnam))
 {
-Bonus Attack +
+TowerScorched
 }
 
 STRING 239
-// Fähigkeiten: (A)e (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: BSrw (RuinedWall), Name (Name (dnam))
 {
-16
+RuinedWall
 }
 
 STRING 240
-// Fähigkeiten: (A)f (Bonus Attack +), Name (Name (anam))
+// Doodads: BSrv (RuinedCurvedWall), Name (Name (dnam))
 {
-Bonus Attack +
+RuinedCurvedWall
 }
 
 STRING 241
-// Fähigkeiten: (A)f (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: BSar (RuinedArch), Name (Name (dnam))
 {
-32
+RuinedArch
 }
 
 STRING 242
-// Fähigkeiten: (A)g (Bonus Attack +), Name (Name (anam))
+// Doodads: BSrc (RuinedChunk), Name (Name (dnam))
 {
-Bonus Attack +
+RuinedChunk
 }
 
 STRING 243
-// Fähigkeiten: (A)g (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YSw0 (City_LowWall02), Name (Name (dnam))
 {
-64
+City_LowWall02
 }
 
 STRING 244
-// Fähigkeiten: (A)h (Bonus Attack +), Name (Name (anam))
+// Doodads: DSp0 (PorticulisWall0_), Name (Name (dnam))
 {
-Bonus Attack +
+PorticulisWall0_
 }
 
 STRING 245
-// Fähigkeiten: (A)h (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: GSp0 (GPorticulisWall0_), Name (Name (dnam))
 {
-128
+GPorticulisWall0_
 }
 
 STRING 246
-// Fähigkeiten: (A)i (Bonus Attack +), Name (Name (anam))
+// Doodads: YSls (City_Block02), Name (Name (dnam))
 {
-Bonus Attack +
+City_Block02
 }
 
 STRING 247
-// Fähigkeiten: (A)i (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YSll (City_LowWall_TallEndCapWithLantern), Name (Name (dnam))
 {
-256
+City_LowWall_TallEndCapWithLantern
 }
 
 STRING 248
-// Fähigkeiten: (A)j (Bonus Attack +), Name (Name (anam))
+// Doodads: YSlt (City_LowWall_TallEndCap), Name (Name (dnam))
 {
-Bonus Attack +
+City_LowWall_TallEndCap
 }
 
 STRING 249
-// Fähigkeiten: (A)j (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: COlg (FelwoodLogStraight), Name (Name (dnam))
 {
-512
+FelwoodLogStraight
 }
 
 STRING 250
-// Fähigkeiten: (A)k (Bonus Attack +), Name (Name (anam))
+// Doodads: COla (FelwoodLogAngled), Name (Name (dnam))
 {
-Bonus Attack +
+FelwoodLogAngled
 }
 
 STRING 251
-// Fähigkeiten: (A)k (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: AOla (AshenLogAngled), Name (Name (dnam))
 {
-1024
+AshenLogAngled
 }
 
 STRING 252
-// Fähigkeiten: (A)l (Bonus Attack +), Name (Name (anam))
+// Doodads: AOlg (AshenLogStraight), Name (Name (dnam))
 {
-Bonus Attack +
+AshenLogStraight
 }
 
 STRING 253
-// Fähigkeiten: (A)l (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: COhs (FelwoodHollowStump), Name (Name (dnam))
 {
-2048
+FelwoodHollowStump
 }
 
 STRING 254
-// Fähigkeiten: (A)m (Bonus Attack +), Name (Name (anam))
+// Doodads: AOhs (AshenHollowStump), Name (Name (dnam))
 {
-Bonus Attack +
+AshenHollowStump
 }
 
 STRING 255
-// Fähigkeiten: (A)m (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZPru (Ruins_Rush), Name (Name (dnam))
 {
-4096
+Ruins_Rush
 }
 
 STRING 256
-// Fähigkeiten: (A)n (Bonus Attack +), Name (Name (anam))
+// Doodads: CPct (FelwoodCatTail), Name (Name (dnam))
 {
-Bonus Attack +
+FelwoodCatTail
 }
 
 STRING 257
-// Fähigkeiten: (A)n (Bonus Attack +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LPrs (RiverRushes), Name (Name (dnam))
 {
-8192
+RiverRushes
 }
 
 STRING 258
-// Fähigkeiten: (A)- (Bonus Attack -), Name (Name (anam))
+// Doodads: APct (AshenCatTail), Name (Name (dnam))
 {
-Bonus Attack -
+AshenCatTail
 }
 
 STRING 259
-// Fähigkeiten: (A)- (Bonus Attack -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZPfw (Ruins_Flower), Name (Name (dnam))
 {
-16384
+Ruins_Flower
 }
 
 STRING 260
-// Fähigkeiten: (B)a (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: YPfa (FlowerBedAngled), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+FlowerBedAngled
 }
 
 STRING 261
-// Fähigkeiten: (B)a (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YPfs (FlowerBedStraight), Name (Name (dnam))
 {
-1
+FlowerBedStraight
 }
 
 STRING 262
-// Fähigkeiten: (B)b (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: BPtw (Barrens_TreeDoodad), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Barrens_TreeDoodad
 }
 
 STRING 263
-// Fähigkeiten: (B)b (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: APbs (AshenBush0), Name (Name (dnam))
 {
-2
+AshenBush0
 }
 
 STRING 264
-// Fähigkeiten: (B)c (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: CPbs (FelwoodBush), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+FelwoodBush
 }
 
 STRING 265
-// Fähigkeiten: (B)c (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: YPbs (CityBush), Name (Name (dnam))
 {
-4
+CityBush
 }
 
 STRING 266
-// Fähigkeiten: (B)d (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: ORmk (Rock_Outland_MagmaRock), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Rock_Outland_MagmaRock
 }
 
 STRING 267
-// Fähigkeiten: (B)d (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: IRrk (Rock_Ice_Rock), Name (Name (dnam))
 {
-8
+Rock_Ice_Rock
 }
 
 STRING 268
-// Fähigkeiten: (B)e (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: ARrk (Rock_AshenRock), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Rock_AshenRock
 }
 
 STRING 269
-// Fähigkeiten: (B)e (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: DRrk (Rock_DungeonRock), Name (Name (dnam))
 {
-16
+Rock_DungeonRock
 }
 
 STRING 270
-// Fähigkeiten: (B)f (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: CRrk (Rock_FelwoodRock), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Rock_FelwoodRock
 }
 
 STRING 271
-// Fähigkeiten: (B)f (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZRrk (Ruins_Rock), Name (Name (dnam))
 {
-32
+Ruins_Rock
 }
 
 STRING 272
-// Fähigkeiten: (B)g (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: NRwr (Rock_North_WebRocks), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Rock_North_WebRocks
 }
 
 STRING 273
-// Fähigkeiten: (B)g (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NRrk (Rock_North_Rocks), Name (Name (dnam))
 {
-64
+Rock_North_Rocks
 }
 
 STRING 274
-// Fähigkeiten: (B)h (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: BRrk (Rock_Barrens_Rocks), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Rock_Barrens_Rocks
 }
 
 STRING 275
-// Fähigkeiten: (B)h (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: GRrk (Rock_UndergoundRock), Name (Name (dnam))
 {
-128
+Rock_UndergoundRock
 }
 
 STRING 276
-// Fähigkeiten: (B)i (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: LRrk (Rock_Lords_Rock), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Rock_Lords_Rock
 }
 
 STRING 277
-// Fähigkeiten: (B)i (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: BRsp (Barrens_Spires), Name (Name (dnam))
 {
-256
+Barrens_Spires
 }
 
 STRING 278
-// Fähigkeiten: (B)j (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: BRrs (Barrens_Spires2), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Barrens_Spires2
 }
 
 STRING 279
-// Fähigkeiten: (B)j (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZRsp (Ruins_Spires2), Name (Name (dnam))
 {
-512
+Ruins_Spires2
 }
 
 STRING 280
-// Fähigkeiten: (B)k (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: ZRrs (Ruins_Spires), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Ruins_Spires
 }
 
 STRING 281
-// Fähigkeiten: (B)k (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: CRrs (Felwood_Spires), Name (Name (dnam))
 {
-1024
+Felwood_Spires
 }
 
 STRING 282
-// Fähigkeiten: (B)l (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: BRfs (BarrensFissure), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+BarrensFissure
 }
 
 STRING 283
-// Fähigkeiten: (B)l (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: CRfs (FelwoodFissure), Name (Name (dnam))
 {
-2048
+FelwoodFissure
 }
 
 STRING 284
-// Fähigkeiten: (B)m (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: NRfs (NorthrendFissure), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+NorthrendFissure
 }
 
 STRING 285
-// Fähigkeiten: (B)m (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: BRrp (RockPillar), Name (Name (dnam))
 {
-4096
+RockPillar
 }
 
 STRING 286
-// Fähigkeiten: (B)n (Bonus AttackSpeed +), Name (Name (anam))
+// Doodads: OPop (Outland_Plant), Name (Name (dnam))
 {
-Bonus AttackSpeed +
+Outland_Plant
 }
 
 STRING 287
-// Fähigkeiten: (B)n (Bonus AttackSpeed +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZRbd (CliffRubble_Double), Name (Name (dnam))
 {
-8192
+CliffRubble_Double
 }
 
 STRING 288
-// Fähigkeiten: (B)- (Bonus AttackSpeed -), Name (Name (anam))
+// Doodads: ZRbs (CliffRubble_Single), Name (Name (dnam))
 {
-Bonus AttackSpeed -
+CliffRubble_Single
 }
 
 STRING 289
-// Fähigkeiten: (B)- (Bonus AttackSpeed -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ORrr (RubbleRock), Name (Name (dnam))
 {
-16384
+RubbleRock
 }
 
 STRING 290
-// Fähigkeiten: (C)a (Bonus Armor +), Name (Name (anam))
+// Doodads: BRgs (Geyser), Name (Name (dnam))
 {
-Bonus Armor +
+Geyser
 }
 
 STRING 291
-// Fähigkeiten: (C)a (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LPcw (CornWheatScorched), Name (Name (dnam))
 {
-1
+CornWheatScorched
 }
 
 STRING 292
-// Fähigkeiten: (C)b (Bonus Armor +), Name (Name (anam))
+// Doodads: DRfc (Cave_FieryCrator), Name (Name (dnam))
 {
-Bonus Armor +
+Cave_FieryCrator
 }
 
 STRING 293
-// Fähigkeiten: (C)b (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: BRcr (Crator), Name (Name (dnam))
 {
-2
+Crator
 }
 
 STRING 294
-// Fähigkeiten: (C)c (Bonus Armor +), Name (Name (anam))
+// Doodads: GRfc (Underground_FieryCrator), Name (Name (dnam))
 {
-Bonus Armor +
+Underground_FieryCrator
 }
 
 STRING 295
-// Fähigkeiten: (C)c (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: IRcy (Icecrown_Crystal), Name (Name (dnam))
 {
-4
+Icecrown_Crystal
 }
 
 STRING 296
-// Fähigkeiten: (C)d (Bonus Armor +), Name (Name (anam))
+// Doodads: LPcr (Corn), Name (Name (dnam))
 {
-Bonus Armor +
+Corn
 }
 
 STRING 297
-// Fähigkeiten: (C)d (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZPms (Ruins_Shroom), Name (Name (dnam))
 {
-8
+Ruins_Shroom
 }
 
 STRING 298
-// Fähigkeiten: (C)e (Bonus Armor +), Name (Name (anam))
+// Doodads: CPms (FelwoodShrooms), Name (Name (dnam))
 {
-Bonus Armor +
+FelwoodShrooms
 }
 
 STRING 299
-// Fähigkeiten: (C)e (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: APms (AshenShrooms), Name (Name (dnam))
 {
-16
+AshenShrooms
 }
 
 STRING 300
-// Fähigkeiten: (C)f (Bonus Armor +), Name (Name (anam))
+// Doodads: APtv (Felwood_Thorns), Name (Name (dnam))
 {
-Bonus Armor +
+Felwood_Thorns
 }
 
 STRING 301
-// Fähigkeiten: (C)f (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZCv2 (CityCliffVines1), Name (Name (dnam))
 {
-32
+CityCliffVines1
 }
 
 STRING 302
-// Fähigkeiten: (C)g (Bonus Armor +), Name (Name (anam))
+// Doodads: ZCv1 (CityCliffVines0), Name (Name (dnam))
 {
-Bonus Armor +
+CityCliffVines0
 }
 
 STRING 303
-// Fähigkeiten: (C)g (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: NPth (North_Thorns), Name (Name (dnam))
 {
-64
+North_Thorns
 }
 
 STRING 304
-// Fähigkeiten: (C)h (Bonus Armor +), Name (Name (anam))
+// Doodads: ZPvp (VinyPlant), Name (Name (dnam))
 {
-Bonus Armor +
+VinyPlant
 }
 
 STRING 305
-// Fähigkeiten: (C)h (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LPlp (LillyPad), Name (Name (dnam))
 {
-128
+LillyPad
 }
 
 STRING 306
-// Fähigkeiten: (C)i (Bonus Armor +), Name (Name (anam))
+// Doodads: CPlp (FelwoodLillyPad), Name (Name (dnam))
 {
-Bonus Armor +
+FelwoodLillyPad
 }
 
 STRING 307
-// Fähigkeiten: (C)i (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZPlp (Ruins_Lilypad), Name (Name (dnam))
 {
-256
+Ruins_Lilypad
 }
 
 STRING 308
-// Fähigkeiten: (C)j (Bonus Armor +), Name (Name (anam))
+// Doodads: DRst (DungeonStalagmite), Name (Name (dnam))
 {
-Bonus Armor +
+DungeonStalagmite
 }
 
 STRING 309
-// Fähigkeiten: (C)j (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: GRst (UndergroundStalagmite), Name (Name (dnam))
 {
-512
+UndergroundStalagmite
 }
 
 STRING 310
-// Fähigkeiten: (C)k (Bonus Armor +), Name (Name (anam))
+// Doodads: ZPsh (Ruins_Shrub), Name (Name (dnam))
 {
-Bonus Armor +
+Ruins_Shrub
 }
 
 STRING 311
-// Fähigkeiten: (C)k (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: ZPtw (RuinsTreeDoodad), Name (Name (dnam))
 {
-1024
+RuinsTreeDoodad
 }
 
 STRING 312
-// Fähigkeiten: (C)l (Bonus Armor +), Name (Name (anam))
+// Doodads: LPwh (Wheat), Name (Name (dnam))
 {
-Bonus Armor +
+Wheat
 }
 
 STRING 313
-// Fähigkeiten: (C)l (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: LPwb (WheatBunch), Name (Name (dnam))
 {
-2048
+WheatBunch
 }
 
 STRING 314
-// Fähigkeiten: (C)m (Bonus Armor +), Name (Name (anam))
+// Doodads: ZOsh (Ruins_Shells), Name (Name (dnam))
 {
-Bonus Armor +
+Ruins_Shells
 }
 
 STRING 315
-// Fähigkeiten: (C)m (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D000 (City_Arched Door02), Name (Name (dnam))
 {
-4096
+City_Arched Door02
 }
 
 STRING 316
-// Fähigkeiten: (C)n (Bonus Armor +), Name (Name (anam))
+// Doodads: D002 (City_Wall0102), Name (Name (dnam))
 {
-Bonus Armor +
+City_Wall0102
 }
 
 STRING 317
-// Fähigkeiten: (C)n (Bonus Armor +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D003 (City_Chains), Name (Name (dnam))
 {
-8192
+City_Chains
 }
 
 STRING 318
-// Fähigkeiten: (C)- (Bonus Armor -), Name (Name (anam))
+// Doodads: D004 (City_SemiCircle02), Name (Name (dnam))
 {
-Bonus Armor -
+City_SemiCircle02
 }
 
 STRING 319
-// Fähigkeiten: (C)- (Bonus Armor -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D005 (City_Column), Name (Name (dnam))
 {
-16384
+City_Column
 }
 
 STRING 320
-// Fähigkeiten: (I)a (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00C (City_Wall02), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Wall02
 }
 
 STRING 321
-// Fähigkeiten: (I)a (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00D (City_Wall03), Name (Name (dnam))
 {
-1
+City_Wall03
 }
 
 STRING 322
-// Fähigkeiten: (I)b (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00J (City_Door), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Door
 }
 
 STRING 323
-// Fähigkeiten: (I)b (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00L (City_Fence01), Name (Name (dnam))
 {
-2
+City_Fence01
 }
 
 STRING 324
-// Fähigkeiten: (I)c (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00M (City_Window01), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Window01
 }
 
 STRING 325
-// Fähigkeiten: (I)c (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00N (City_KnightStatueA1), Name (Name (dnam))
 {
-4
+City_KnightStatueA1
 }
 
 STRING 326
-// Fähigkeiten: (I)d (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00Q (GilneasBush), Name (Name (dnam))
 {
-Bonus LifeReg +
+GilneasBush
 }
 
 STRING 327
-// Fähigkeiten: (I)d (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00R (Eary Fog), Name (Name (dnam))
 {
-8
+Eary Fog
 }
 
 STRING 328
-// Fähigkeiten: (I)e (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00S (City_Cystal_Orange), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Cystal_Orange
 }
 
 STRING 329
-// Fähigkeiten: (I)e (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00T (City_Cystal_Purple), Name (Name (dnam))
 {
-16
+City_Cystal_Purple
 }
 
 STRING 330
-// Fähigkeiten: (I)f (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00U (City_Cystal_Red), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Cystal_Red
 }
 
 STRING 331
-// Fähigkeiten: (I)f (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00V (City_Roof00), Name (Name (dnam))
 {
-32
+City_Roof00
 }
 
 STRING 332
-// Fähigkeiten: (I)g (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00W (City_Roof01), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Roof01
 }
 
 STRING 333
-// Fähigkeiten: (I)g (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00X (SandBags), Name (Name (dnam))
 {
-64
+SandBags
 }
 
 STRING 334
-// Fähigkeiten: (I)h (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00Y (City_Shiphatch), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Shiphatch
 }
 
 STRING 335
-// Fähigkeiten: (I)h (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D00Z (OutlandBrazier), Name (Name (dnam))
 {
-128
+OutlandBrazier
 }
 
 STRING 336
-// Fähigkeiten: (I)i (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D011 (City_UndeadPedestal), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_UndeadPedestal
 }
 
 STRING 337
-// Fähigkeiten: (I)i (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D013 (Bridge Pavement 2), Name (Name (dnam))
 {
-256
+Bridge Pavement 2
 }
 
 STRING 338
-// Fähigkeiten: (I)j (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D00P (City_Door01), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Door01
 }
 
 STRING 339
-// Fähigkeiten: (I)j (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D014 (City_Block01), Name (Name (dnam))
 {
-512
+City_Block01
 }
 
 STRING 340
-// Fähigkeiten: (I)k (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D015 (City_Block03), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Block03
 }
 
 STRING 341
-// Fähigkeiten: (I)k (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D017 (City_Arched Door01), Name (Name (dnam))
 {
-1024
+City_Arched Door01
 }
 
 STRING 342
-// Fähigkeiten: (I)l (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D01D (City_Aura), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Aura
 }
 
 STRING 343
-// Fähigkeiten: (I)l (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01E (City_Grate_Window01), Name (Name (dnam))
 {
-2048
+City_Grate_Window01
 }
 
 STRING 344
-// Fähigkeiten: (I)m (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D01F (City_Grate_Window02), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Grate_Window02
 }
 
 STRING 345
-// Fähigkeiten: (I)m (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01G (City_Grate_Window03), Name (Name (dnam))
 {
-4096
+City_Grate_Window03
 }
 
 STRING 346
-// Fähigkeiten: (I)n (Bonus LifeReg +), Name (Name (anam))
+// Doodads: D01H (City_Grate_Window04), Name (Name (dnam))
 {
-Bonus LifeReg +
+City_Grate_Window04
 }
 
 STRING 347
-// Fähigkeiten: (I)n (Bonus LifeReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01I (City_Grate_Window05), Name (Name (dnam))
 {
-8192
+City_Grate_Window05
 }
 
 STRING 348
-// Fähigkeiten: (I)- (Bonus LifeReg -), Name (Name (anam))
+// Doodads: D01J (City_Block05), Name (Name (dnam))
 {
-Bonus LifeReg -
+City_Block05
 }
 
 STRING 349
-// Fähigkeiten: (I)- (Bonus LifeReg -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01K (City_Gitter), Name (Name (dnam))
 {
-16384
+City_Gitter
 }
 
 STRING 350
-// Fähigkeiten: (J)a (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D01L (Banner_Long0202), Name (Name (dnam))
 {
-Bonus ManaReg +
+Banner_Long0202
 }
 
 STRING 351
-// Fähigkeiten: (J)a (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01M (City_Block09), Name (Name (dnam))
 {
-1
+City_Block09
 }
 
 STRING 352
-// Fähigkeiten: (J)b (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D01N (City_Grate_Window06nega), Name (Name (dnam))
 {
-Bonus ManaReg +
+City_Grate_Window06nega
 }
 
 STRING 353
-// Fähigkeiten: (J)b (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01O (City_Grate_Window07nega), Name (Name (dnam))
 {
-2
+City_Grate_Window07nega
 }
 
 STRING 354
-// Fähigkeiten: (J)c (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D01P (City_Grate_Window08nega), Name (Name (dnam))
 {
-Bonus ManaReg +
+City_Grate_Window08nega
 }
 
 STRING 355
-// Fähigkeiten: (J)c (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01Q (City_Window02), Name (Name (dnam))
 {
-4
+City_Window02
 }
 
 STRING 356
-// Fähigkeiten: (J)d (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D01S (Ship_Window01), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_Window01
 }
 
 STRING 357
-// Fähigkeiten: (J)d (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01V (Ship_Gear01), Name (Name (dnam))
 {
-8
+Ship_Gear01
 }
 
 STRING 358
-// Fähigkeiten: (J)e (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D01W (Ship_Glass01), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_Glass01
 }
 
 STRING 359
-// Fähigkeiten: (J)e (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D01X (Ship_Floorlight01), Name (Name (dnam))
 {
-16
+Ship_Floorlight01
 }
 
 STRING 360
-// Fähigkeiten: (J)f (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D021 (Ship_Gear02), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_Gear02
 }
 
 STRING 361
-// Fähigkeiten: (J)f (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D023 (Ship_MetalBarrelHorizontal), Name (Name (dnam))
 {
-32
+Ship_MetalBarrelHorizontal
 }
 
 STRING 362
-// Fähigkeiten: (J)g (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D024 (Ship_MetalBarrelVertical), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_MetalBarrelVertical
 }
 
 STRING 363
-// Fähigkeiten: (J)g (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D025 (Ship_PalisadeStairs01), Name (Name (dnam))
 {
-64
+Ship_PalisadeStairs01
 }
 
 STRING 364
-// Fähigkeiten: (J)h (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D026 (Ship_FishLine), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_FishLine
 }
 
 STRING 365
-// Fähigkeiten: (J)h (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D027 (Ship_Pump), Name (Name (dnam))
 {
-128
+Ship_Pump
 }
 
 STRING 366
-// Fähigkeiten: (J)i (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D028 (Ship_Rope), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_Rope
 }
 
 STRING 367
-// Fähigkeiten: (J)i (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02A (Ship_AnchorHorizontal), Name (Name (dnam))
 {
-256
+Ship_AnchorHorizontal
 }
 
 STRING 368
-// Fähigkeiten: (J)j (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D02B (Ship_BarrelVertical), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_BarrelVertical
 }
 
 STRING 369
-// Fähigkeiten: (J)j (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02C (Ship_BarrelHorizontal), Name (Name (dnam))
 {
-512
+Ship_BarrelHorizontal
 }
 
 STRING 370
-// Fähigkeiten: (J)k (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D02F (Ship_Capstan), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_Capstan
 }
 
 STRING 371
-// Fähigkeiten: (J)k (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02G (Flag_Human), Name (Name (dnam))
 {
-1024
+Flag_Human
 }
 
 STRING 372
-// Fähigkeiten: (J)l (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D02H (Flag_Orc), Name (Name (dnam))
 {
-Bonus ManaReg +
+Flag_Orc
 }
 
 STRING 373
-// Fähigkeiten: (J)l (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02I (Ship_Mast), Name (Name (dnam))
 {
-2048
+Ship_Mast
 }
 
 STRING 374
-// Fähigkeiten: (J)m (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D02J (Ship_Mast02), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_Mast02
 }
 
 STRING 375
-// Fähigkeiten: (J)m (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02K (Ship_RopePile), Name (Name (dnam))
 {
-4096
+Ship_RopePile
 }
 
 STRING 376
-// Fähigkeiten: (J)n (Bonus ManaReg +), Name (Name (anam))
+// Doodads: D02M (Ship_WoodenFloor01), Name (Name (dnam))
 {
-Bonus ManaReg +
+Ship_WoodenFloor01
 }
 
 STRING 377
-// Fähigkeiten: (J)n (Bonus ManaReg +), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02N (Ship_WoodenFloor02), Name (Name (dnam))
 {
-8192
+Ship_WoodenFloor02
 }
 
 STRING 378
-// Fähigkeiten: (J)- (Bonus manaReg -), Name (Name (anam))
+// Doodads: D02O (Ship_WoodenPedesteral), Name (Name (dnam))
 {
-Bonus manaReg -
+Ship_WoodenPedesteral
 }
 
 STRING 379
-// Fähigkeiten: (J)- (Bonus manaReg -), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02P (-Light White), Name (Name (dnam))
 {
-16384
+-Light White
 }
 
 STRING 380
-// Fähigkeiten: BMOa (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D02R (Ship_WoodenFloor02Vertical02), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+Ship_WoodenFloor02Vertical02
 }
 
 STRING 381
-// Fähigkeiten: BMOa (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02S (Ship_WoodenFloor02Vertical01), Name (Name (dnam))
 {
-(+1)
+Ship_WoodenFloor02Vertical01
 }
 
 STRING 382
-// Fähigkeiten: BMOb (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D02T (Ship_PumpHorizontal), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+Ship_PumpHorizontal
 }
 
 STRING 383
-// Fähigkeiten: BMOb (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02U (Ship_CapstanHorizontal), Name (Name (dnam))
 {
-(+2)
+Ship_CapstanHorizontal
 }
 
 STRING 384
-// Fähigkeiten: BMOc (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D02V (Ship_Gear02Horizontal), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+Ship_Gear02Horizontal
 }
 
 STRING 385
-// Fähigkeiten: BMOc (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D02W (Ship_OrbGreenFlash), Name (Name (dnam))
 {
-(+4)
+Ship_OrbGreenFlash
 }
 
 STRING 386
-// Fähigkeiten: BMOd (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D030 (Ship_WoodenFloor02Vertical03), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+Ship_WoodenFloor02Vertical03
 }
 
 STRING 387
-// Fähigkeiten: BMOd (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D031 (Ship_MetalBarrelVertical02), Name (Name (dnam))
 {
-(+8)
+Ship_MetalBarrelVertical02
 }
 
 STRING 388
-// Fähigkeiten: BMOe (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D032 (SewerVentHorizontal), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+SewerVentHorizontal
 }
 
 STRING 389
-// Fähigkeiten: BMOe (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D033 (Ship_Gear01Horizontal), Name (Name (dnam))
 {
-(+16)
+Ship_Gear01Horizontal
 }
 
 STRING 390
-// Fähigkeiten: BMOf (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D036 (Misc: Barricade (1)), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+Misc: Barricade (1)
 }
 
 STRING 391
-// Fähigkeiten: BMOf (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D037 (Misc: Barricade (2)), Name (Name (dnam))
 {
-(+32)
+Misc: Barricade (2)
 }
 
 STRING 392
-// Fähigkeiten: BMOg (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D039 (City_Block08), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_Block08
 }
 
 STRING 393
-// Fähigkeiten: BMOg (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03A (City_Window02 angled), Name (Name (dnam))
 {
-(+64)
+City_Window02 angled
 }
 
 STRING 394
-// Fähigkeiten: BMOh (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03B (City_Window01 angled), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_Window01 angled
 }
 
 STRING 395
-// Fähigkeiten: BMOh (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03C (City_Wall04), Name (Name (dnam))
 {
-(+128)
+City_Wall04
 }
 
 STRING 396
-// Fähigkeiten: BMOi (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03D (Ship_Wall01), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+Ship_Wall01
 }
 
 STRING 397
-// Fähigkeiten: BMOi (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03F (Ship_Wall02), Name (Name (dnam))
 {
-(+256)
+Ship_Wall02
 }
 
 STRING 398
-// Fähigkeiten: BMOj (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03G (City_Tile01), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_Tile01
 }
 
 STRING 399
-// Fähigkeiten: BMOj (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03H (City_Tile02), Name (Name (dnam))
 {
-(+512)
+City_Tile02
 }
 
 STRING 400
-// Fähigkeiten: BMOk (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03L (City_Wall03anglled02), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_Wall03anglled02
 }
 
 STRING 401
-// Fähigkeiten: BMOk (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03N (City_Block03angle01), Name (Name (dnam))
 {
-(+1024)
+City_Block03angle01
 }
 
 STRING 402
-// Fähigkeiten: BMOl (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03O (City_KnightStatueA1angled01), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_KnightStatueA1angled01
 }
 
 STRING 403
-// Fähigkeiten: BMOl (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03P (City_Arched Door03), Name (Name (dnam))
 {
-(+2048)
+City_Arched Door03
 }
 
 STRING 404
-// Fähigkeiten: BMOm (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03R (City_Horse), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_Horse
 }
 
 STRING 405
-// Fähigkeiten: BMOm (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03S (City_Block10), Name (Name (dnam))
 {
-(+4096)
+City_Block10
 }
 
 STRING 406
-// Fähigkeiten: BMOn (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03U (City_KnightStatueA1angled02), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_KnightStatueA1angled02
 }
 
 STRING 407
-// Fähigkeiten: BMOn (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D03V (City_Block03angle02), Name (Name (dnam))
 {
-(+8192)
+City_Block03angle02
 }
 
 STRING 408
-// Fähigkeiten: BMOC (BonusMod - AttackPerm), Name (Name (anam))
+// Doodads: D03X (City_Archway2), Name (Name (dnam))
 {
-BonusMod - AttackPerm
+City_Archway2
 }
 
 STRING 409
-// Fähigkeiten: BMOC (BonusMod - AttackPerm), EditorSuffix (Editor-Suffix (ansf))
+// Doodads: D040 (Ship_Tooth), Name (Name (dnam))
 {
-(-16384)
+Ship_Tooth
 }
 
 STRING 410
-// Fähigkeiten: %00L (Morphability for testhero), Name (Name (anam))
+// Doodads: D041 (Ship_Tooth2), Name (Name (dnam))
 {
-Morphability for testhero
+Ship_Tooth2
 }
 
 STRING 411
-// Fähigkeiten: noat (Antiattackstun), Name (Name (anam))
+// Doodads: D03I (Ship_Wall01Angled01), Name (Name (dnam))
 {
-Antiattackstun
+Ship_Wall01Angled01
 }
 
 STRING 412
-// Fähigkeiten: dead (Dead Dummy), Name (Name (anam))
+// Doodads: D03J (Ship_Wall01Angled02), Name (Name (dnam))
 {
-Dead Dummy
+Ship_Wall01Angled02
 }
 
 STRING 413
-// Fähigkeiten: natk (No AutoAttack), Name (Name (anam))
+// Doodads: D043 (Ship_Wall01Angled03), Name (Name (dnam))
 {
-No AutoAttack
+Ship_Wall01Angled03
 }
 
 STRING 414
-// Fähigkeiten: stop (Stop), Name (Name (anam))
+// Doodads: D044 (Ship_Wall01Angled04), Name (Name (dnam))
 {
-Stop
+Ship_Wall01Angled04
 }
 
 STRING 415
-// Fähigkeiten: stop (Stop), Tip (Tooltipp - Normal (atp1))
+// Doodads: D045 (Ship_Wall01Angled05), Name (Name (dnam))
 {
-Stop [S]
+Ship_Wall01Angled05
 }
 
 STRING 416
-// Fähigkeiten: stop (Stop), Hotkey (Tastaturkürzel - Normal (ahky))
+// Doodads: D046 (Ship_Wall01Angled06), Name (Name (dnam))
 {
-S
+Ship_Wall01Angled06
 }
 
 STRING 417
-// Fähigkeiten: stop (Stop), Ubertip (Tooltipp - Normal - Erweitert (aub1))
+// Doodads: D047 (Ship_Wall01Angled07), Name (Name (dnam))
 {
-Stops the Hero imediatly. Prevents also autoattaclking
+Ship_Wall01Angled07
 }
 
 STRING 418
-// Fähigkeiten: attk (Attack), Name (Name (anam))
+// Doodads: D048 (Ship_Wall01Angled08), Name (Name (dnam))
 {
-Attack
+Ship_Wall01Angled08
 }
 
 STRING 419
-// Fähigkeiten: attk (Attack), Tip (Tooltipp - Normal (atp1))
+// Doodads: D049 (Ship_MastAngled01), Name (Name (dnam))
 {
-Attack [A]
+Ship_MastAngled01
 }
 
 STRING 420
-// Fähigkeiten: attk (Attack), Hotkey (Tastaturkürzel - Normal (ahky))
+// Doodads: D04A (Ship_MetalBarrelVertical03), Name (Name (dnam))
 {
-A
+Ship_MetalBarrelVertical03
 }
 
 STRING 421
-// Fähigkeiten: attk (Attack), Ubertip (Tooltipp - Normal - Erweitert (aub1))
+// Doodads: D04B (Ship_Tooth3), Name (Name (dnam))
 {
-Attacks the target.
+Ship_Tooth3
 }
 
 STRING 422
-// Fähigkeiten: scor (Scoreboard), Name (Name (anam))
+// Doodads: D04C (Flag_OrcAngled01), Name (Name (dnam))
 {
-Scoreboard
+Flag_OrcAngled01
 }
 
 STRING 423
-// Fähigkeiten: scor (Scoreboard), Tip (Tooltipp - Normal (atp1))
+// Doodads: D04F (City_KnightStatueAcolor01), Name (Name (dnam))
 {
-Open/Close Scoreboard [Shift]
+City_KnightStatueAcolor01
 }
 
 STRING 424
-// Fähigkeiten: scor (Scoreboard), Hotkey (Tastaturkürzel - Normal (ahky))
+// Doodads: D04I (SkullPile01), Name (Name (dnam))
 {
-0
+SkullPile01
 }
 
 STRING 425
-// Fähigkeiten: scor (Scoreboard), Ubertip (Tooltipp - Normal - Erweitert (aub1))
+// Doodads: D04L (City_ChainsAngled01), Name (Name (dnam))
 {
-Open or closes the scoreboard.
+City_ChainsAngled01
 }
 
 STRING 426
-// Fähigkeiten: scor (Scoreboard), Tip (Tooltipp - Normal (atp1))
+// Doodads: D04S (City_Roof02), Name (Name (dnam))
 {
-Open/Close Scoreboard [Shift]
+City_Roof02
 }
 
 STRING 427
-// Fähigkeiten: scor (Scoreboard), Ubertip (Tooltipp - Normal - Erweitert (aub1))
+// Doodads: D050 (Village_Greifenhorst), Name (Name (dnam))
 {
-Open or closes the scoreboard.
+Village_Greifenhorst
 }
 
 STRING 428
-// Fähigkeiten: rami (Conduct�r), Hotkey (Tastaturkürzel - Normal (ahky))
+// Doodads: D051 (Village_Kriegswerkstatt), Name (Name (dnam))
 {
-Q
+Village_Kriegswerkstatt
 }
 
 STRING 429
-// Fähigkeiten: rami (Conduct�r), Name (Name (anam))
+// Doodads: D055 (Village_Smith), Name (Name (dnam))
 {
-Conduct�r
+Village_Smith
 }
 
 STRING 430
+// Doodads: D057 (Village_Taschefabrik), Name (Name (dnam))
+{
+Village_Taschefabrik
+}
+
+STRING 431
+// Doodads: D058 (Village_Tavern), Name (Name (dnam))
+{
+Village_Tavern
+}
+
+STRING 432
+// Doodads: D059 (Village_Werkstatt), Name (Name (dnam))
+{
+Village_Werkstatt
+}
+
+STRING 433
+// Doodads: D05B (AncientTree), Name (Name (dnam))
+{
+AncientTree
+}
+
+STRING 434
+// Doodads: D05C (Ship_Tile1_45), Name (Name (dnam))
+{
+Ship_Tile1_45
+}
+
+STRING 435
+// Doodads: D05D (Ship_Tile1_90), Name (Name (dnam))
+{
+Ship_Tile1_90
+}
+
+STRING 436
+// Doodads: D05E (Ship_Tile2_45), Name (Name (dnam))
+{
+Ship_Tile2_45
+}
+
+STRING 437
+// Doodads: D05F (Ship_Tile2_90), Name (Name (dnam))
+{
+Ship_Tile2_90
+}
+
+STRING 438
+// Doodads: D05G (Ship_Window02), Name (Name (dnam))
+{
+Ship_Window02
+}
+
+STRING 439
+// Doodads: D05J (City_Archway1_angled), Name (Name (dnam))
+{
+City_Archway1_angled
+}
+
+STRING 440
+// Doodads: D05K (City_FountainRuined02), Name (Name (dnam))
+{
+City_FountainRuined02
+}
+
+STRING 441
+// Doodads: D05O (Ruins_Flower02), Name (Name (dnam))
+{
+Ruins_Flower02
+}
+
+STRING 442
+// Doodads: D00H (City_Archway3), Name (Name (dnam))
+{
+City_Archway3
+}
+
+STRING 443
+// Doodads: D05Q (Lore_Angled), Name (Name (dnam))
+{
+Lore_Angled
+}
+
+STRING 444
+// Doodads: D05Y (Rock_Chunks02), Name (Name (dnam))
+{
+Rock_Chunks02
+}
+
+STRING 445
+// Doodads: D065 (Ship_Window01angled), Name (Name (dnam))
+{
+Ship_Window01angled
+}
+
+STRING 446
+// Doodads: D066 (City_Block14), Name (Name (dnam))
+{
+City_Block14
+}
+
+STRING 447
+// Doodads: D067 (Ship_Gear02Horizontal2), Name (Name (dnam))
+{
+Ship_Gear02Horizontal2
+}
+
+STRING 448
+// Doodads: D068 (City_DoorAngled), Name (Name (dnam))
+{
+City_DoorAngled
+}
+
+STRING 449
+// Doodads: D069 (City_Block14_180), Name (Name (dnam))
+{
+City_Block14_180
+}
+
+STRING 450
+// Doodads: D06A (SewerVentHorizontal2), Name (Name (dnam))
+{
+SewerVentHorizontal2
+}
+
+STRING 451
+// Doodads: D06B (Ship_Floorlight01Horizontal), Name (Name (dnam))
+{
+Ship_Floorlight01Horizontal
+}
+
+STRING 452
+// Doodads: D06C (Ship_Floorlight01Vertical), Name (Name (dnam))
+{
+Ship_Floorlight01Vertical
+}
+
+STRING 453
+// Doodads: D06D (Ship_Glass01_horizontal), Name (Name (dnam))
+{
+Ship_Glass01_horizontal
+}
+
+STRING 454
+// Doodads: D06E (Ship_WoodenPedesteral_vertical), Name (Name (dnam))
+{
+Ship_WoodenPedesteral_vertical
+}
+
+STRING 455
+// Doodads: D06F (City_ColumnSingle Gray), Name (Name (dnam))
+{
+City_ColumnSingle Gray
+}
+
+STRING 456
+// Doodads: D06G (City_ColumnSingle1_Ruined Lying), Name (Name (dnam))
+{
+City_ColumnSingle1_Ruined Lying
+}
+
+STRING 457
+// Doodads: D06I (City_Block15), Name (Name (dnam))
+{
+City_Block15
+}
+
+STRING 458
+// Doodads: D06J (Icecrown_Crystal green), Name (Name (dnam))
+{
+Icecrown_Crystal green
+}
+
+STRING 459
+// Doodads: D06K (-Blocker:01), Name (Name (dnam))
+{
+-Blocker:01
+}
+
+STRING 460
+// Doodads: D06L (-Blocker:02), Name (Name (dnam))
+{
+-Blocker:02
+}
+
+STRING 461
+// Doodads: D06M (Ship_Rope Crane), Name (Name (dnam))
+{
+Ship_Rope Crane
+}
+
+STRING 462
+// Doodads: D06N (City_LowWall_Angeled), Name (Name (dnam))
+{
+City_LowWall_Angeled
+}
+
+STRING 463
+// Doodads: D06O (City_ColumnSingle DarkGray), Name (Name (dnam))
+{
+City_ColumnSingle DarkGray
+}
+
+STRING 464
+// Doodads: D06P (Gebüsch), Name (Name (dnam))
+{
+Gebüsch
+}
+
+STRING 465
+// Doodads: D06Q (Ship_Muehlrad), Name (Name (dnam))
+{
+Ship_Muehlrad
+}
+
+STRING 466
+// Doodads: D05Z (Rock_Chunks03), Name (Name (dnam))
+{
+Rock_Chunks03
+}
+
+STRING 467
+// Doodads: D060 (Rock_Chunks04), Name (Name (dnam))
+{
+Rock_Chunks04
+}
+
+STRING 468
+// Doodads: D061 (Rock_Chunks05), Name (Name (dnam))
+{
+Rock_Chunks05
+}
+
+STRING 469
+// Doodads: D062 (Rock_Chunks06), Name (Name (dnam))
+{
+Rock_Chunks06
+}
+
+STRING 470
+// Doodads: D05X (Rock_Chunks01), Name (Name (dnam))
+{
+Rock_Chunks01
+}
+
+STRING 471
+// Doodads: D064 (Busch), Name (Name (dnam))
+{
+Busch
+}
+
+STRING 472
+// Doodads: D06R (Lichtstrahlen), Name (Name (dnam))
+{
+Lichtstrahlen
+}
+
+STRING 473
+// Doodads: D06S (City_LowWall_TallEndCapDark), Name (Name (dnam))
+{
+City_LowWall_TallEndCapDark
+}
+
+STRING 474
+// Doodads: D06T (City_LowWall_0.79rad), Name (Name (dnam))
+{
+City_LowWall_0.79rad
+}
+
+STRING 475
+// Doodads: D06U (City_LowWall_0.61rad), Name (Name (dnam))
+{
+City_LowWall_0.61rad
+}
+
+STRING 476
+// Doodads: D06V (City_LowWall_0.45rad), Name (Name (dnam))
+{
+City_LowWall_0.45rad
+}
+
+STRING 477
+// Doodads: D06W (City_StonePedestal), Name (Name (dnam))
+{
+City_StonePedestal
+}
+
+STRING 478
+// Doodads: D06X (City_ColumnDoubleDarkGrey), Name (Name (dnam))
+{
+City_ColumnDoubleDarkGrey
+}
+
+STRING 479
+// Doodads: D06Y (Glow_green), Name (Name (dnam))
+{
+Glow_green
+}
+
+STRING 480
+// Doodads: D06Z (Wasserfall2), Name (Name (dnam))
+{
+Wasserfall2
+}
+
+STRING 481
+// Doodads: D070 (Glow_Orange), Name (Name (dnam))
+{
+Glow_Orange
+}
+
+STRING 482
+// Doodads: D071 (BodenKacheln), Name (Name (dnam))
+{
+BodenKacheln
+}
+
+STRING 483
+// Doodads: D072 (Glow_Teal), Name (Name (dnam))
+{
+Glow_Teal
+}
+
+STRING 484
+// Doodads: D073 (Glow_Purple), Name (Name (dnam))
+{
+Glow_Purple
+}
+
+STRING 485
+// Doodads: D074 (BodenKacheln2), Name (Name (dnam))
+{
+BodenKacheln2
+}
+
+STRING 486
+// Doodads: D075 (BodenKacheln3), Name (Name (dnam))
+{
+BodenKacheln3
+}
+
+STRING 487
+// Doodads: D076 (City_LowWall_0.49rad), Name (Name (dnam))
+{
+City_LowWall_0.49rad
+}
+
+STRING 488
+// Doodads: D077 (Glow_lantern), Name (Name (dnam))
+{
+Glow_lantern
+}
+
+STRING 489
+// Doodads: D078 (City_WindowGLOW), Name (Name (dnam))
+{
+City_WindowGLOW
+}
+
+STRING 490
+// Doodads: D079 (Fearies), Name (Name (dnam))
+{
+Fearies
+}
+
+STRING 491
+// Doodads: D07A (City_WindowGLOW_Rect), Name (Name (dnam))
+{
+City_WindowGLOW_Rect
+}
+
+STRING 492
+// Doodads: D07B (Glow_linear), Name (Name (dnam))
+{
+Glow_linear
+}
+
+STRING 493
+// Doodads: D07C (City_Cystal_Green), Name (Name (dnam))
+{
+City_Cystal_Green
+}
+
+STRING 494
+// Doodads: D07D (Gebüsch2), Name (Name (dnam))
+{
+Gebüsch2
+}
+
+STRING 495
+// Doodads: D07E (Kornkammer), Name (Name (dnam))
+{
+Kornkammer
+}
+
+STRING 496
+// Doodads: D07H (Candle), Name (Name (dnam))
+{
+Candle
+}
+
+STRING 497
+// Doodads: D07I (Schiff_Bogen), Name (Name (dnam))
+{
+Schiff_Bogen
+}
+
+STRING 498
+// Doodads: D07J (Ship_ColumnDouble), Name (Name (dnam))
+{
+Ship_ColumnDouble
+}
+
+STRING 499
+// Doodads: D07K (Ship_Glow_green), Name (Name (dnam))
+{
+Ship_Glow_green
+}
+
+STRING 500
+// Doodads: D07L (Ship_Spike), Name (Name (dnam))
+{
+Ship_Spike
+}
+
+STRING 501
+// Doodads: D07M (Ship_Iron_Tile), Name (Name (dnam))
+{
+Ship_Iron_Tile
+}
+
+STRING 502
+// Doodads: D001 (Ship_Iron_Tile_Horizontal), Name (Name (dnam))
+{
+Ship_Iron_Tile_Horizontal
+}
+
+STRING 503
+// Doodads: D006 (Ship_Floorlight01Horizontal_no_glow), Name (Name (dnam))
+{
+Ship_Floorlight01Horizontal_no_glow
+}
+
+STRING 504
+// Doodads: D009 (Center_Crystal), Name (Name (dnam))
+{
+Center_Crystal
+}
+
+STRING 505
+// Doodads: D00A (Center_Rings), Name (Name (dnam))
+{
+Center_Rings
+}
+
+STRING 506
+// Doodads: D00B (Glow_Red), Name (Name (dnam))
+{
+Glow_Red
+}
+
+STRING 507
+// Doodads: D00E (Center_Crystal2), Name (Name (dnam))
+{
+Center_Crystal2
+}
+
+STRING 508
+// Doodads: D00G (Rock_Cliff1), Name (Name (dnam))
+{
+Rock_Cliff1
+}
+
+STRING 509
+// Doodads: D00K (Rock_Cliff2), Name (Name (dnam))
+{
+Rock_Cliff2
+}
+
+STRING 510
+// Doodads: D012 (BlackFade), Name (Name (dnam))
+{
+BlackFade
+}
+
+STRING 511
+// Doodads: D016 (BlackFade_Horizontal), Name (Name (dnam))
+{
+BlackFade_Horizontal
+}
+
+STRING 512
+// Doodads: D019 (Corpse_Sitting), Name (Name (dnam))
+{
+Corpse_Sitting
+}
+
+STRING 513
+// Doodads: D01A (Corpse_Impaled1), Name (Name (dnam))
+{
+Corpse_Impaled1
+}
+
+STRING 514
+// Doodads: D01B (Corpse_Impaled3), Name (Name (dnam))
+{
+Corpse_Impaled3
+}
+
+STRING 515
+// Doodads: D01C (Ruins_Archway2_Ruined), Name (Name (dnam))
+{
+Ruins_Archway2_Ruined
+}
+
+STRING 516
+// Doodads: D01R (Ship_WoodenFloor02_tilt), Name (Name (dnam))
+{
+Ship_WoodenFloor02_tilt
+}
+
+STRING 517
+// Doodads: D01T (Feuer_small), Name (Name (dnam))
+{
+Feuer_small
+}
+
+STRING 518
+// Doodads: D01U (Ship_WoodenFloor02_tilt2), Name (Name (dnam))
+{
+Ship_WoodenFloor02_tilt2
+}
+
+STRING 519
+// Doodads: D01Y (Ship_Exhaust_Grate), Name (Name (dnam))
+{
+Ship_Exhaust_Grate
+}
+
+STRING 520
+// Doodads: D01Z (Baum_01_Hell), Name (Name (dnam))
+{
+Baum_01_Hell
+}
+
+STRING 521
+// Doodads: D020 (Baum_02_Hell), Name (Name (dnam))
+{
+Baum_02_Hell
+}
+
+STRING 522
+// Doodads: D022 (Baum_03_Hell), Name (Name (dnam))
+{
+Baum_03_Hell
+}
+
+STRING 523
+// Doodads: D029 (Baum_04_Hell), Name (Name (dnam))
+{
+Baum_04_Hell
+}
+
+STRING 524
+// Doodads: D02D (Blätter), Name (Name (dnam))
+{
+Blätter
+}
+
+STRING 525
+// Doodads: D02E (Rune_Stone), Name (Name (dnam))
+{
+Rune_Stone
+}
+
+STRING 526
+// Doodads: D007 (City_MonkStatue), Name (Name (dnam))
+{
+City_MonkStatue
+}
+
+STRING 527
 // Zauberverstärker/Effekte: sthe (), Bufftip (Tooltipp (ftip))
 {
 Casting
