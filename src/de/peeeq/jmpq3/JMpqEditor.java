@@ -311,38 +311,6 @@ public class JMpqEditor implements AutoCloseable{
 		}	
 	}
 	
-//	/**
-//	 * Inserts the specified file into the mpq once you close te editor
-//	 * 
-//	 * @param name
-//	 *            internal file name
-//	 * @param content
-//	 *            the file represented as byte array
-//	 * @throws JMpqException
-//	 *             if access errors occur
-//	 */
-//	public void insertFile(String name, byte[] content) throws JMpqException {
-//		try {
-//			listFile.addFile(name);
-//			FileInputStream in = new FileInputStream(f);
-//			File temp = File.createTempFile("wurst", "crig");
-//			FileOutputStream out = new FileOutputStream(temp);
-//			int i = in.read();
-//			while(i != -1){
-//				out.write(i);
-//				i = in.read();
-//			}
-//			in.close();
-//			out.flush();
-//			out.close();
-//			filesToAdd.add(temp);
-//			internalFilename.put(temp, name);
-//		} catch (IOException e) {
-//			throw new JMpqException(e);
-//		}
-//		
-//	}
-	
 	public void close() throws IOException{
 		File temp = File.createTempFile("crig", "mpq");
 		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
