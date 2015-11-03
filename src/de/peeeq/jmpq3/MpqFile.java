@@ -104,7 +104,8 @@ public class MpqFile {
 		}
 		extractToOutputStream(new FileOutputStream(f));
 	}
-	//TODO method way to unstable
+
+	
 	public void extractToOutputStream(OutputStream writer) throws IOException {
 		if(sectorCount == 1){
 			writer.close();
