@@ -91,9 +91,13 @@ public class JMpqEditor implements AutoCloseable{
 			blockTable = new BlockTable(blockBuffer);
 			
 			if(hasFile("(listfile)")){
-				File tempFile = File.createTempFile("list", "file");
-				extractFile("(listfile)", tempFile);
-				listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+				try{
+					File tempFile = File.createTempFile("list", "file");
+					extractFile("(listfile)", tempFile);
+					listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+				}catch (IOException e) { 
+					listFile = null;
+				}
 			}
 		} catch (IOException e) {
 			throw new JMpqException(e);
