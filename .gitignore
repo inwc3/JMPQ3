@@ -1,6 +1,6 @@
 .gradle
 build/
-.properties
+gradle.properties
 
 # Ignore Gradle GUI config
 gradle-app.setting
