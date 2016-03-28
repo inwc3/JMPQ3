@@ -1,3 +1,6 @@
+/*
+ * 
+ */
 package systems.crigges.jmpq3;
 
 import com.jcraft.jzlib.Deflater;
@@ -5,8 +8,20 @@ import com.jcraft.jzlib.GZIPException;
 import com.jcraft.jzlib.Inflater;
 import com.jcraft.jzlib.JZlib;
 
+// TODO: Auto-generated Javadoc
+/**
+ * The Class JzLibHelper.
+ */
 public class JzLibHelper {
 
+	/**
+	 * Inflate.
+	 *
+	 * @param bytes the bytes
+	 * @param offset the offset
+	 * @param uncompSize the uncomp size
+	 * @return the byte[]
+	 */
 	@SuppressWarnings("deprecation")
 	public static byte[] inflate(byte[] bytes, int offset,int uncompSize) {
 		byte[] uncomp = new byte[uncompSize];
@@ -23,6 +38,12 @@ public class JzLibHelper {
 		return uncomp;
 	}
 
+	/**
+	 * Deflate.
+	 *
+	 * @param bytes the bytes
+	 * @return the byte[]
+	 */
 	@SuppressWarnings("deprecation")
 	public static byte[] deflate(byte[] bytes) {
 		byte[] comp = new byte[bytes.length];

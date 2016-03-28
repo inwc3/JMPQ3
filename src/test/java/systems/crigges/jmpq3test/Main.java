@@ -1,3 +1,6 @@
+/*
+ * 
+ */
 package systems.crigges.jmpq3test;
 
 import java.io.File;
@@ -6,8 +9,20 @@ import java.io.IOException;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.JMpqException;
 
+// TODO: Auto-generated Javadoc
+/**
+ * The Class Main.
+ */
 public class Main {
 
+	/**
+	 * The main method.
+	 *
+	 * @param args the arguments
+	 * @throws JMpqException the j mpq exception
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 * @throws InterruptedException the interrupted exception
+	 */
 	public static void main(String[] args) throws JMpqException, IOException, InterruptedException {
 //		// before 118.052 bytes
 //

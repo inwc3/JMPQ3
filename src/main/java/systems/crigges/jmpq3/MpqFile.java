@@ -1,3 +1,6 @@
+/*
+ * 
+ */
  package systems.crigges.jmpq3;
 
 
@@ -15,46 +18,115 @@ import javax.management.remote.JMXProviderException;
 
 import systems.crigges.jmpq3.BlockTable.Block;
 
+// TODO: Auto-generated Javadoc
+/**
+ * The Class MpqFile.
+ */
 public class MpqFile {
+	
+	/** The Constant COMPRESSED. */
 	public static final int COMPRESSED = 0x00000200;
+	
+	/** The Constant ENCRYPTED. */
 	public static final int ENCRYPTED = 0x00010000;
+	
+	/** The Constant SINGLEUNIT. */
 	public static final int SINGLEUNIT = 0x01000000;
+	
+	/** The Constant ADJUSTED_ENCRYPTED. */
 	public static final int ADJUSTED_ENCRYPTED = 0x00020000;
+	
+	/** The Constant EXISTS. */
 	public static final int EXISTS = 0x80000000;
+	
+	/** The Constant DELETED. */
 	public static final int DELETED = 0x02000000;
 	
+	/** The buf. */
 	private MappedByteBuffer buf;
+	
+	/** The block. */
 	private Block block;
+	
+	/** The crypto. */
 	private MpqCrypto crypto = null;
+	
+	/** The sector size. */
 	private int sectorSize;
+	
+	/** The offset. */
 	private int offset;
+	
+	/** The comp size. */
 	private int compSize;
+	
+	/** The normal size. */
 	private int normalSize;
+	
+	/** The flags. */
 	private int flags;
+	
+	/** The block index. */
 	private int blockIndex;
+	
+	/** The name. */
 	private String name;
+	
+	/** The sector count. */
 	private int sectorCount;
+	
+	/** The base key. */
 	private int baseKey;
+	
+	/** The sep index. */
 	private int sepIndex;
 
+	/**
+	 * Gets the block index.
+	 *
+	 * @return the block index
+	 */
 	public int getBlockIndex() {
 		return blockIndex;
 	}
 
+	/**
+	 * Sets the block index.
+	 *
+	 * @param blockIndex the new block index
+	 */
 	public void setBlockIndex(int blockIndex) {
 		this.blockIndex = blockIndex;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
 	@Override
 	public String toString() {
 		return "MpqFile [sectorSize=" + sectorSize + ", offset=" + offset + ", compSize=" + compSize + ", normalSize="
 				+ normalSize + ", flags=" + flags + ", blockIndex=" + blockIndex + ", name=" + name + "]";
 	}
 
+	/**
+	 * Sets the offset.
+	 *
+	 * @param newOffset the new offset
+	 */
 	public void setOffset(int newOffset) {
 		offset = newOffset;
 	}
 
+	/**
+	 * Instantiates a new mpq file.
+	 *
+	 * @param buf the buf
+	 * @param b the b
+	 * @param sectorSize the sector size
+	 * @param name the name
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 * @throws JMpqException the j mpq exception
+	 */
 	public MpqFile(MappedByteBuffer buf, Block b, int sectorSize, String name) throws IOException, JMpqException {
 		this.buf = buf;
 		this.block = b;
@@ -78,26 +150,57 @@ public class MpqFile {
 	
 	
 	
+	/**
+	 * Gets the offset.
+	 *
+	 * @return the offset
+	 */
 	public int getOffset() {
 		return offset;
 	}
 
+	/**
+	 * Gets the comp size.
+	 *
+	 * @return the comp size
+	 */
 	public int getCompSize() {
 		return compSize;
 	}
 
+	/**
+	 * Gets the normal size.
+	 *
+	 * @return the normal size
+	 */
 	public int getNormalSize() {
 		return normalSize;
 	}
 
+	/**
+	 * Gets the flags.
+	 *
+	 * @return the flags
+	 */
 	public int getFlags() {
 		return flags;
 	}
 
+	/**
+	 * Gets the name.
+	 *
+	 * @return the name
+	 */
 	public String getName() {
 		return name;
 	}
 	
+	/**
+	 * Extract to file.
+	 *
+	 * @param f the f
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	public void extractToFile(File f) throws IOException {
 		if(sectorCount == 1){
 			f.createNewFile();
@@ -106,6 +209,12 @@ public class MpqFile {
 	}
 
 	
+	/**
+	 * Extract to output stream.
+	 *
+	 * @param writer the writer
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	public void extractToOutputStream(OutputStream writer) throws IOException {
 		if(sectorCount == 1){
 			writer.close();
@@ -181,6 +290,12 @@ public class MpqFile {
 		}
 	}
 	
+	/**
+	 * Write file and block.
+	 *
+	 * @param newBlock the new block
+	 * @param writeBuffer the write buffer
+	 */
 	public void writeFileAndBlock(Block newBlock,  MappedByteBuffer writeBuffer){
 		newBlock.setNormalSize(normalSize);
 		newBlock.setCompressedSize(compSize);
@@ -235,6 +350,14 @@ public class MpqFile {
 		}
 	}
 	
+	/**
+	 * Write file and block.
+	 *
+	 * @param f the f
+	 * @param b the b
+	 * @param buf the buf
+	 * @param sectorSize the sector size
+	 */
 	public static void writeFileAndBlock(File f, Block b, MappedByteBuffer buf, int sectorSize){
 		try {
 			writeFileAndBlock(Files.readAllBytes(f.toPath()), b, buf, sectorSize);
@@ -244,6 +367,14 @@ public class MpqFile {
 		
 	}
 	
+	/**
+	 * Write file and block.
+	 *
+	 * @param fileArr the file arr
+	 * @param b the b
+	 * @param buf the buf
+	 * @param sectorSize the sector size
+	 */
 	public static void writeFileAndBlock(byte[] fileArr, Block b, MappedByteBuffer buf, int sectorSize){
 		ByteBuffer fileBuf = ByteBuffer.wrap(fileArr);
 		fileBuf.position(0);
@@ -286,12 +417,28 @@ public class MpqFile {
 	}
 	
 	
+	/**
+	 * Gets the sector as byte array.
+	 *
+	 * @param buf the buf
+	 * @param sectorSize the sector size
+	 * @return the sector as byte array
+	 */
 	private byte[] getSectorAsByteArray(MappedByteBuffer buf, int sectorSize){
 		byte[] arr = new byte[sectorSize];
 		buf.get(arr);
 		return arr;
 	}
 	
+	/**
+	 * Decompress sector.
+	 *
+	 * @param sector the sector
+	 * @param normalSize the normal size
+	 * @param uncompSize the uncomp size
+	 * @return the byte[]
+	 * @throws JMpqException the j mpq exception
+	 */
 	private byte[] decompressSector(byte[] sector, int normalSize, int uncompSize) throws JMpqException{
 		if(normalSize == uncompSize){
 			return sector;

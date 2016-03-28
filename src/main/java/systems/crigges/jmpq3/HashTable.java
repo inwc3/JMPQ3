@@ -1,3 +1,6 @@
+/*
+ * 
+ */
 package systems.crigges.jmpq3;
 
 import java.io.File;
@@ -11,11 +14,27 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 
+// TODO: Auto-generated Javadoc
+/**
+ * The Class HashTable.
+ */
 public class HashTable {
+	
+	/** The c. */
 	private MpqCrypto c;
+	
+	/** The hash map. */
 	private MappedByteBuffer hashMap;
+	
+	/** The hash size. */
 	private int hashSize;
 
+	/**
+	 * Instantiates a new hash table.
+	 *
+	 * @param buf the buf
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	public HashTable(MappedByteBuffer buf) throws IOException {
 		this.hashSize = buf.capacity() / 16;
 		c = new MpqCrypto();
@@ -32,6 +51,15 @@ public class HashTable {
 		hashMap.order(ByteOrder.LITTLE_ENDIAN);
 	}
 
+	/**
+	 * Write new hash table.
+	 *
+	 * @param size the size
+	 * @param names the names
+	 * @param writeBuffer the write buffer
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 * @throws JMpqException the j mpq exception
+	 */
 	public static void writeNewHashTable(int size, ArrayList<String> names, MappedByteBuffer writeBuffer) throws IOException, JMpqException {
 		Entry[] content = new Entry[size];
 		for (int i = 0; i < size; i++) {
@@ -65,6 +93,13 @@ public class HashTable {
 		writeBuffer.put(arr);
 	}
 
+	/**
+	 * Gets the block index of file.
+	 *
+	 * @param name the name
+	 * @return the block index of file
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
 	public int getBlockIndexOfFile(String name) throws IOException {
 		int index = c.hash(name, MpqCrypto.MPQ_HASH_TABLE_INDEX);
 		int name1 = c.hash(name, MpqCrypto.MPQ_HASH_NAME_A);
@@ -84,13 +119,35 @@ public class HashTable {
 		throw new JMpqException("File Not Found");
 	}
 
+	/**
+	 * The Class Entry.
+	 */
 	public static class Entry {
+		
+		/** The dw name1. */
 		private int dwName1;
+		
+		/** The dw name2. */
 		private int dwName2;
+		
+		/** The lc locale. */
 		private int lcLocale;
+		
+		/** The w platform. */
 		private int wPlatform;
+		
+		/** The dw block index. */
 		private int dwBlockIndex;
 
+		/**
+		 * Instantiates a new entry.
+		 *
+		 * @param dwName1 the dw name1
+		 * @param dwName2 the dw name2
+		 * @param lcLocale the lc locale
+		 * @param wPlatform the w platform
+		 * @param dwBlockIndex the dw block index
+		 */
 		public Entry(int dwName1, int dwName2, int lcLocale, int wPlatform, int dwBlockIndex) {
 			this.dwName1 = dwName1;
 			this.dwName2 = dwName2;
@@ -99,6 +156,12 @@ public class HashTable {
 			this.dwBlockIndex = dwBlockIndex;
 		}
 
+		/**
+		 * Instantiates a new entry.
+		 *
+		 * @param in the in
+		 * @throws IOException Signals that an I/O exception has occurred.
+		 */
 		public Entry(MappedByteBuffer in) throws IOException {
 			this.dwName1 = in.getInt();
 			this.dwName2 = in.getInt();
@@ -107,6 +170,11 @@ public class HashTable {
 			this.dwBlockIndex = in.getInt();
 		}
 
+		/**
+		 * Write to buffer.
+		 *
+		 * @param bb the bb
+		 */
 		public void writeToBuffer(ByteBuffer bb) {
 			bb.putInt(dwName1);
 			bb.putInt(dwName2);
@@ -115,10 +183,18 @@ public class HashTable {
 			bb.putInt(dwBlockIndex);
 		}
 		
+		/**
+		 * Sets the block index.
+		 *
+		 * @param index the new block index
+		 */
 		public void setBlockIndex(int index){
 			dwBlockIndex = index;
 		}
 
+		/* (non-Javadoc)
+		 * @see java.lang.Object#toString()
+		 */
 		@Override
 		public String toString() {
 			return "Entry [dwName1=" + dwName1 + ",	dwName2=" + dwName2 + ",	lcLocale=" + lcLocale + ",	wPlatform="
