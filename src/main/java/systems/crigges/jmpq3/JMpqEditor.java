@@ -418,14 +418,12 @@ public class JMpqEditor implements AutoCloseable{
 		newFormatVersion = formatVersion;
 		newDiscBlockSize = discBlockSize;
 		calcNewTableSize();
-		newHashPos = headerSize + 8;
-		newBlockPos = headerSize + 8 + newHashSize * 16;
 		
 		ArrayList<Block> newBlocks = new ArrayList<>();
 		ArrayList<String> newFiles = new ArrayList<>();
 		@SuppressWarnings("unchecked")
 		LinkedList<String> remainingFiles = (LinkedList<String>) listFile.getFiles().clone();
-		int currentPos = headerOffset + headerSize + 8 + newHashSize * 16 + newBlockSize * 16;
+		int currentPos = headerOffset + headerSize;// + newHashSize * 16 + newBlockSize * 16;
 		for(File f : filesToAdd){
 			newFiles.add(internalFilename.get(f));
 			remainingFiles.remove(internalFilename.get(f));
@@ -448,7 +446,6 @@ public class JMpqEditor implements AutoCloseable{
 			f.writeFileAndBlock(newBlock, fileWriter);
 			currentPos += b.getCompressedSize();
 		}
-		
 		newFiles.add("(listfile)");
 		byte[] listfileArr = listFile.asByteArray();
 		MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
@@ -457,15 +454,20 @@ public class JMpqEditor implements AutoCloseable{
 		MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize);
 		currentPos += newBlock.getCompressedSize();
 		
-		newArchiveSize = currentPos + 1 - headerOffset;
+		newHashPos = currentPos - headerOffset;
+		newBlockPos = newHashPos + newHashSize * 16;
 		
-		MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newHashPos, newHashSize * 16);
+		MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newHashSize * 16);
 		hashtableWriter.order(ByteOrder.LITTLE_ENDIAN);
 		HashTable.writeNewHashTable(newHashSize, newFiles, hashtableWriter);
+		currentPos += newHashSize * 16;
 		
-		MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + newBlockPos, newBlockSize * 16);
+		MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16);
 		blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
 		BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
+		currentPos += newBlockSize * 16;
+		
+		newArchiveSize = currentPos + 1 - headerOffset;
 		
 		MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + 4, headerSize + 4);
 		headerWriter.order(ByteOrder.LITTLE_ENDIAN);

@@ -362,7 +362,7 @@ public class MpqFile {
 		try {
 			writeFileAndBlock(Files.readAllBytes(f.toPath()), b, buf, sectorSize);
 		} catch (IOException e) {
-			throw new RuntimeException("Internal JMpq Error");
+			throw new RuntimeException("Internal JMpq Error", e);
 		}
 		
 	}

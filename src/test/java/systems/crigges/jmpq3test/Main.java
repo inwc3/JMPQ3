@@ -36,8 +36,10 @@ public class Main {
 //		e.close();												//Rebuilds the mpq and applies all changes which was made
 		
 		JMpqEditor e = new JMpqEditor(new File("newTestMap.w3x"));
-		e.extractAllFiles(new File("testfolder"));
-		e.insertFile("blurp.jar",new File("jmpq3.jar"),false);
+		File f = new File("testfolder");
+		f.mkdirs();
+		e.extractAllFiles(f);
+		e.insertFile("blurp.jar", new File("build.gradle"),false);
 		e.close();
 	}
 
