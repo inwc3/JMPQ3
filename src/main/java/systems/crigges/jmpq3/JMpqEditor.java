@@ -405,10 +405,11 @@ public class JMpqEditor implements AutoCloseable{
 		}	
 	}
 	
-	/* (non-Javadoc)
-	 * @see java.lang.AutoCloseable#close()
-	 */
 	public void close() throws IOException{
+		if(listFile == null){
+			fc.close();
+			return;
+		}
 		File temp = File.createTempFile("crig", "mpq");
 		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
 		
