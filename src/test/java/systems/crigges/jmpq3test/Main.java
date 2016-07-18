@@ -35,7 +35,7 @@ public class Main {
 //		e.getFileNames();										//Get the listfile as java List<String>
 //		e.close();												//Rebuilds the mpq and applies all changes which was made
 		
-		JMpqEditor e = new JMpqEditor(new File("C:\\Users\\Crigges\\Desktop\\Neuer Ordner\\asdf.w3x"));
+		JMpqEditor e = new JMpqEditor(new File("C:\\Program Files (x86)\\Warcraft III\\Maps\\Download\\dwwedit.w3x"));
 //		File f = new File("testfolder");
 //		f.mkdirs();
 //		e.extractAllFiles(f);

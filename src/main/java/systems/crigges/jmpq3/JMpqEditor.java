@@ -452,6 +452,8 @@ public class JMpqEditor implements AutoCloseable{
 		}
 		newFiles.add("(listfile)");
 		byte[] listfileArr = listFile.asByteArray();
+		System.out.println(listfileArr.length);
+		System.out.println(new String(listfileArr));
 		MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
 		Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
 		newBlocks.add(newBlock);
@@ -484,8 +486,11 @@ public class JMpqEditor implements AutoCloseable{
 		FileOutputStream out = new FileOutputStream(mpqFile);
 		WritableByteChannel ch = Channels.newChannel(out);
 		ch.write(tempReader);
+		tempReader.position(tempReader.position() - 1);
+		ch.write(tempReader);
 		ch.close();
 		out.close();
+		System.out.println(currentPos + " vs " + mpqFile.length());
 		
 //		FileChannel mpqChannel = FileChannel.open(mpqFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
 //		mpqChannel.truncate(currentPos + 1);
