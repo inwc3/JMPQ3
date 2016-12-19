@@ -5,7 +5,7 @@ https://mvnrepository.com/artifact/systems.crigges/jmpq3
 
 Quick API Overview:
 
-```
+```java
     JMpqEditor e = new JMpqEditor(new File("my.mpq")); 		//Opens a new editor
     e.deleteFile("filename");								//Deletes a specific file out of the mpq
     e.extractFile("filename", new File("target location"));	//Extracts a specific file out of the mpq to the target location			
