@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/inwc3/JMPQ-v3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ-v3)
+
 JMPQ-v3 is a Small Libary which allows to access and modify MoPaQ Archives
 
 Get the latest Maven Artifacts:
