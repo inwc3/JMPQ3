@@ -222,7 +222,8 @@ public class JMpqEditor implements AutoCloseable {
     private static final byte[] MPQ_VERSION_1_HEADER = new byte[]{77, 80, 81, 26};
 
     /**
-     * Search header.
+     * Searches for a correct MPQ\x1A header at the start of a 512 byte chunk.
+     * Other formats should be supported in the future.
      *
      * @return the int
      * @throws JMpqException the j mpq exception
