@@ -38,9 +38,9 @@ public class MpqTests {
             JMpqEditor mpqEditor = new JMpqEditor(mpq);
             File temp = File.createTempFile("war3mapj", "extracted");
             temp.deleteOnExit();
-            String extractedFile = mpqEditor.extractFileAsString("war3map.j");
-            String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath()));
-            Assert.assertTrue(extractedFile.equals(existingFile));
+            String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+            String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+            Assert.assertTrue(extractedFile.equalsIgnoreCase(existingFile));
         }
     }
 
