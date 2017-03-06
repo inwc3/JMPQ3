@@ -18,8 +18,6 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.*;
 import java.util.*;
 
-// TODO: Auto-generated Javadoc
-
 /**
  * The Class JMpqEditor.
  *
@@ -28,7 +26,6 @@ import java.util.*;
  *         https://github.com/Crigges/JMpq-v2/issues/new
  */
 public class JMpqEditor implements AutoCloseable {
-
     /**
      * The fc.
      */
@@ -47,7 +44,6 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * The header size.
      */
-    // Header
     private int headerSize;
 
     /**
@@ -157,7 +153,7 @@ public class JMpqEditor implements AutoCloseable {
     private int newBlockSize;
 
     /**
-     * Creates a new editor by parsing an exisiting mpq.
+     * Creates a new editor by parsing an existing mpq.
      *
      * @param mpqW the mpq w
      * @throws JMpqException if mpq is damaged or not supported
@@ -212,6 +208,11 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
+    /**
+     * Loads a default listfile for mpqs that have none
+     *
+     * @throws IOException
+     */
     private void loadDefaultListFile() throws IOException {
         Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile()).toPath();
         listFile = new Listfile(Files.readAllBytes(defaultListfile));
@@ -552,11 +553,6 @@ public class JMpqEditor implements AutoCloseable {
         ch.close();
         out.close();
 
-//		FileChannel mpqChannel = FileChannel.open(mpqFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
-//		mpqChannel.truncate(currentPos + 1);
-//		MappedByteBuffer tempWriter = mpqChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
-//		tempWriter.position(0);
-//		tempWriter.put(tempReader);
         fc.close();
         writeChannel.close();
     }

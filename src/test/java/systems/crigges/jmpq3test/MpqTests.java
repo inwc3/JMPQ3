@@ -38,7 +38,7 @@ public class MpqTests {
         for (File mpq : mpqs) {
             JMpqEditor mpqEditor = new JMpqEditor(mpq);
             File temp = new File("war3map_ex.j");
-            mpqEditor.extractFile("war3map.j",temp);
+            mpqEditor.extractFile("war3map.j", temp);
             Assert.assertTrue(Arrays.equals(Files.readAllBytes(temp.toPath()), Files.readAllBytes(getFile("war3map.j").toPath())));
             temp.delete();
         }
