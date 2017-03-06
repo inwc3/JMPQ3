@@ -7,7 +7,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -22,6 +21,7 @@ public class BlockTable {
 		MpqCrypto c = new MpqCrypto();
 		byte[] decrypted = c.decryptBlock(buf, this.size * 16, -326913117);
 		File block = File.createTempFile("block", "crig");
+		block.deleteOnExit();
 		FileOutputStream blockStream = new FileOutputStream(block);
 		blockStream.write(decrypted);
 		blockStream.flush();

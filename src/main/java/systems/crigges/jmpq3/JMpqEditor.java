@@ -3,6 +3,8 @@
  */
 package systems.crigges.jmpq3;
 
+import systems.crigges.jmpq3.BlockTable.Block;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -13,15 +15,11 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-
-import systems.crigges.jmpq3.BlockTable.Block;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -119,6 +117,7 @@ public class JMpqEditor implements AutoCloseable{
 	public JMpqEditor(File mpqW) throws JMpqException {
 		this.mpqFile = mpqW;
 		try {
+			long kbSize = mpqW.length() / 1024;
 			//TODO fix this bad workaround
 			File tempMpq = File.createTempFile("work", "around");
 			tempMpq.deleteOnExit();
@@ -131,34 +130,42 @@ public class JMpqEditor implements AutoCloseable{
 			MappedByteBuffer temp = fc.map(MapMode.READ_ONLY, headerOffset + 4, 4);
 			temp.order(ByteOrder.LITTLE_ENDIAN);
 			headerSize = temp.getInt();
-			
+
 			MappedByteBuffer headerBuffer = fc.map(MapMode.READ_ONLY, headerOffset + 8, headerSize);
 			headerBuffer.order(ByteOrder.LITTLE_ENDIAN);
 			readHeader(headerBuffer);
-			
+
 			MappedByteBuffer hashBuffer = fc.map(MapMode.READ_ONLY, hashPos + headerOffset, hashSize * 16);
 			hashBuffer.order(ByteOrder.LITTLE_ENDIAN);
 			hashTable = new HashTable(hashBuffer);
-			
+
+
 			MappedByteBuffer blockBuffer = fc.map(MapMode.READ_ONLY, blockPos + headerOffset, blockSize * 16);
 			blockBuffer.order(ByteOrder.LITTLE_ENDIAN);
 			blockTable = new BlockTable(blockBuffer);
-			
+
 			if(hasFile("(listfile)")){
 				try{
 					File tempFile = File.createTempFile("list", "file");
 					extractFile("(listfile)", tempFile);
 					listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
-				}catch (IOException e) { 
-					listFile = null;
+				}catch (IOException e) {
+					loadDefaultListFile();
 				}
-			}
+			}else {
+                loadDefaultListFile();
+            }
 		} catch (IOException e) {
 			throw new JMpqException(e);
 		}
 	}
-	
-	/**
+
+    private void loadDefaultListFile() throws IOException {
+        Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile()).toPath();
+        listFile = new Listfile(Files.readAllBytes(defaultListfile));
+    }
+
+    /**
 	 * Search header.
 	 *
 	 * @return the int
@@ -393,6 +400,7 @@ public class JMpqEditor implements AutoCloseable{
 			listFile.addFile(name);
 			if(backupFile){
 				File temp = File.createTempFile("wurst", "crig");
+				temp.deleteOnExit();
 				Files.copy(f.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
 				filesToAdd.add(temp);
 				internalFilename.put(temp, name);
@@ -411,6 +419,7 @@ public class JMpqEditor implements AutoCloseable{
 			return;
 		}
 		File temp = File.createTempFile("crig", "mpq");
+        temp.deleteOnExit();
 		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
 		
 		if(keepHeaderOffset){
@@ -452,8 +461,6 @@ public class JMpqEditor implements AutoCloseable{
 		}
 		newFiles.add("(listfile)");
 		byte[] listfileArr = listFile.asByteArray();
-		System.out.println(listfileArr.length);
-		System.out.println(new String(listfileArr));
 		MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
 		Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
 		newBlocks.add(newBlock);
@@ -490,8 +497,7 @@ public class JMpqEditor implements AutoCloseable{
 		ch.write(tempReader);
 		ch.close();
 		out.close();
-		System.out.println(currentPos + " vs " + mpqFile.length());
-		
+
 //		FileChannel mpqChannel = FileChannel.open(mpqFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
 //		mpqChannel.truncate(currentPos + 1);
 //		MappedByteBuffer tempWriter = mpqChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);

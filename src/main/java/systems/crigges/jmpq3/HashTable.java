@@ -7,7 +7,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -22,6 +21,7 @@ public class HashTable {
 		this.c = new MpqCrypto();
 		byte[] decrypted = this.c.decryptBlock(buf, 16 * this.hashSize, -1011927184);
 		File hash = File.createTempFile("block", "crig");
+		hash.deleteOnExit();
 		FileOutputStream hashStream = new FileOutputStream(hash);
 		hashStream.write(decrypted);
 		hashStream.flush();
