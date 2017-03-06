@@ -7,6 +7,7 @@ import systems.crigges.jmpq3.JMpqException;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 /**
  * Created by Frotty on 06.03.2017.
@@ -30,17 +31,18 @@ public class MpqTests {
         }
     }
 
-//    @Test
-//    public void testExtractScriptFile() throws IOException {
-//        File[] mpqs = getMpqs();
-//        for (File mpq : mpqs) {
-//            JMpqEditor mpqEditor = new JMpqEditor(mpq);
-//            File temp = File.createTempFile("war3mapj", "extracted");
-//            temp.deleteOnExit();
-//            mpqEditor.extractFile("war3map.j", temp);
-//            Assert.assertTrue(Arrays.equals(Files.readAllBytes(temp.toPath()), Files.readAllBytes(getFile("war3map.j").toPath())));
-//        }
-//    }
+    @Test
+    public void testExtractScriptFile() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            JMpqEditor mpqEditor = new JMpqEditor(mpq);
+            File temp = File.createTempFile("war3mapj", "extracted");
+            temp.deleteOnExit();
+            String extractedFile = mpqEditor.extractFileAsString("war3map.j");
+            String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath()));
+            Assert.assertTrue(extractedFile.equals(existingFile));
+        }
+    }
 
     @Test
     public void testInsertDeleteFile() throws IOException {

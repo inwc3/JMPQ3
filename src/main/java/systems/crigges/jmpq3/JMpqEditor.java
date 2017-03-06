@@ -360,12 +360,23 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void extractFile(String name, File dest) throws JMpqException {
         try {
-            int pos = hashTable.getBlockIndexOfFile(name);
-            Block b = blockTable.getBlockAtPos(pos);
-            MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size() - headerOffset);
-            buf.order(ByteOrder.LITTLE_ENDIAN);
-            MpqFile f = new MpqFile(buf, b, discBlockSize, name);
+            MpqFile f = getMpqFile(name);
             f.extractToFile(dest);
+        } catch (IOException e) {
+            throw new JMpqException(e);
+        }
+    }
+
+    /**
+     * Extracts the specified file out of the mpq to the target location.
+     *
+     * @param name name of the file
+     * @throws JMpqException if file is not found or access errors occur
+     */
+    public String extractFileAsString(String name) throws JMpqException {
+        try {
+            MpqFile f = getMpqFile(name);
+            return f.extractToString();
         } catch (IOException e) {
             throw new JMpqException(e);
         }
@@ -405,11 +416,7 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void extractFile(String name, OutputStream dest) throws JMpqException {
         try {
-            int pos = hashTable.getBlockIndexOfFile(name);
-            Block b = blockTable.getBlockAtPos(pos);
-            MappedByteBuffer buf = fc.map(MapMode.READ_ONLY, headerOffset, fc.size() - headerOffset);
-            buf.order(ByteOrder.LITTLE_ENDIAN);
-            MpqFile f = new MpqFile(buf, b, discBlockSize, name);
+            MpqFile f = getMpqFile(name);
             f.extractToOutputStream(dest);
         } catch (IOException e) {
             throw new JMpqException(e);

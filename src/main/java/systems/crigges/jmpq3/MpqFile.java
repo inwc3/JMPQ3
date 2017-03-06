@@ -4,10 +4,7 @@ package systems.crigges.jmpq3;
 
 import systems.crigges.jmpq3.BlockTable.Block;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -104,6 +101,12 @@ public class MpqFile {
         extractToOutputStream(new FileOutputStream(f));
     }
 
+    public String extractToString() throws IOException {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        extractToOutputStream(byteArrayOutputStream);
+        return byteArrayOutputStream.toString();
+    }
+
     public void extractToOutputStream(OutputStream writer) throws IOException {
         if (sectorCount == 1) {
             writer.close();
@@ -121,14 +124,7 @@ public class MpqFile {
                 writer.flush();
                 writer.close();
             } else {
-                buf.position(block.getFilePos());
-                byte[] arr = getSectorAsByteArray(buf, compSize);
-                if (crypto != null) {
-                    arr = crypto.decryptBlock(arr, baseKey);
-                }
-                writer.write(arr);
-                writer.flush();
-                writer.close();
+                check(writer);
             }
             return;
         }
@@ -168,15 +164,19 @@ public class MpqFile {
             writer.flush();
             writer.close();
         } else {
-            buf.position(block.getFilePos());
-            byte[] arr = getSectorAsByteArray(buf, compSize);
-            if (crypto != null) {
-                arr = crypto.decryptBlock(arr, baseKey);
-            }
-            writer.write(arr);
-            writer.flush();
-            writer.close();
+            check(writer);
         }
+    }
+
+    private void check(OutputStream writer) throws IOException {
+        buf.position(block.getFilePos());
+        byte[] arr = getSectorAsByteArray(buf, compSize);
+        if (crypto != null) {
+            arr = crypto.decryptBlock(arr, baseKey);
+        }
+        writer.write(arr);
+        writer.flush();
+        writer.close();
     }
 
     /**
