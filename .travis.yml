@@ -12,7 +12,7 @@ cache:
   directories:
     - $HOME/.gradle/wrapper
     - $HOME/.gradle/caches/modules-2/files-2.1
-	
+    
 script: gradlew check build
 
 deploy:
