@@ -195,6 +195,7 @@ public class JMpqEditor implements AutoCloseable {
             if (hasFile("(listfile)")) {
                 try {
                     File tempFile = File.createTempFile("list", "file");
+                    tempFile.deleteOnExit();
                     extractFile("(listfile)", tempFile);
                     listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
                 } catch (IOException e) {
