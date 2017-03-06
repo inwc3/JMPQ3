@@ -37,10 +37,10 @@ public class MpqTests {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             JMpqEditor mpqEditor = new JMpqEditor(mpq);
-            File temp = new File("war3map_ex.j");
+            File temp = File.createTempFile("war3mapj", "extracted");
+            temp.deleteOnExit();
             mpqEditor.extractFile("war3map.j", temp);
             Assert.assertTrue(Arrays.equals(Files.readAllBytes(temp.toPath()), Files.readAllBytes(getFile("war3map.j").toPath())));
-            temp.delete();
         }
     }
 
