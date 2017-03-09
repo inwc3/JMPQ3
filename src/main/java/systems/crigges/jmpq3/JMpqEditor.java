@@ -216,16 +216,19 @@ public class JMpqEditor implements AutoCloseable {
         try {
             Path path = Paths.get(System.getProperty("java.io.tmpdir") + "jmpq");
             JMpqEditor.tempDir = path.toFile();
-            if(!JMpqEditor.tempDir.exists())
+            if (!JMpqEditor.tempDir.exists())
                 Files.createDirectory(path);
 
-
             File[] files = JMpqEditor.tempDir.listFiles();
-            for(File f : files) {
+            for (File f : files) {
                 f.delete();
             }
         } catch (IOException e) {
-            throw new JMpqException(e);
+            try {
+                JMpqEditor.tempDir = Files.createTempDirectory("jmpq").toFile();
+            } catch (IOException e1) {
+                throw new JMpqException(e1);
+            }
         }
     }
 
@@ -584,7 +587,7 @@ public class JMpqEditor implements AutoCloseable {
         tempReader.position(0);
 
         mpqFile.delete();
-        try(FileOutputStream out = new FileOutputStream(mpqFile)) {
+        try (FileOutputStream out = new FileOutputStream(mpqFile)) {
             WritableByteChannel ch = Channels.newChannel(out);
             ch.write(tempReader);
             tempReader.position(tempReader.position() - 1);
