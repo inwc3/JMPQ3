@@ -11,6 +11,6 @@ public class DebugHelper {
             hexChars[(j * 3 + 1)] = hexArray[(v & 0xF)];
             hexChars[(j * 3 + 2)] = ' ';
         }
-        return new String(hexChars);
+        return new String(hexChars).trim();
     }
 }

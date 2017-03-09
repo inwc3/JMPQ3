@@ -1,7 +1,7 @@
 package systems.crigges.jmpq3test;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MpqCrypto;
 
@@ -25,7 +25,7 @@ public class MpqTests {
     }
 
     @Test
-    public void cryptoTest() {
+    public void cryptoTest() throws IOException {
         byte[] bytes = "Hello World!".getBytes();
         byte[] a = MpqCrypto.encryptMpqBlock(ByteBuffer.wrap(bytes), bytes.length, -1011927184);
         byte[] b = MpqCrypto.decryptBlock(ByteBuffer.wrap(a), bytes.length, -1011927184);
