@@ -67,6 +67,32 @@ public class MpqTests {
         }
     }
 
+    @Test
+    public void testMultipleInstances() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            JMpqEditor mpqEditors[] = new JMpqEditor[]{new JMpqEditor(mpq),new JMpqEditor(mpq),new JMpqEditor(mpq)};
+            for (int i = 0; i < mpqEditors.length; i++) {
+                mpqEditors[i].extractAllFiles(JMpqEditor.tempDir);
+            }
+            for (int i = 0; i < mpqEditors.length; i++) {
+                mpqEditors[i].close();
+            }
+        }
+    }
+
+    @Test
+    public void testFail() throws IOException {
+        try{
+            JMpqEditor mpqEditor = new JMpqEditor(getFile("broken/brokenMap.w3x"));
+            mpqEditor.extractAllFiles(JMpqEditor.tempDir);
+            mpqEditor.close();
+            Assert.fail();
+        } catch (IllegalArgumentException j) {
+        }
+
+    }
+
     private void insertAndDelete(File mpq, String filename) throws IOException {
         JMpqEditor mpqEditor = new JMpqEditor(mpq);
         Assert.assertFalse(mpqEditor.hasFile(filename));

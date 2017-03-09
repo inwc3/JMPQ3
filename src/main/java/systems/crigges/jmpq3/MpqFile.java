@@ -235,7 +235,6 @@ public class MpqFile {
             if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
                 newBlock.setFlags(EXISTS | COMPRESSED);
             } else {
-                ;
                 newBlock.setFlags(EXISTS);
             }
         }
