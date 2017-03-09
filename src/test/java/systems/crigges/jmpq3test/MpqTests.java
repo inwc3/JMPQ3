@@ -3,11 +3,13 @@ package systems.crigges.jmpq3test;
 import org.junit.Assert;
 import org.junit.Test;
 import systems.crigges.jmpq3.JMpqEditor;
-import systems.crigges.jmpq3.JMpqException;
+import systems.crigges.jmpq3.MpqCrypto;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.util.Arrays;
 
 /**
  * Created by Frotty on 06.03.2017.
@@ -23,11 +25,23 @@ public class MpqTests {
     }
 
     @Test
-    public void testHasScriptFile() throws JMpqException {
+    public void cryptoTest() {
+        byte[] bytes = "Hello World!".getBytes();
+        byte[] a = MpqCrypto.encryptMpqBlock(ByteBuffer.wrap(bytes), bytes.length, -1011927184);
+        byte[] b = MpqCrypto.decryptBlock(ByteBuffer.wrap(a), bytes.length, -1011927184);
+
+        Assert.assertTrue(Arrays.equals(new byte[]{-96, -93, 89, -50, 43, -60, 18, -33, -31, -71, -81, 86}, a));
+        Assert.assertTrue(Arrays.equals(new byte[]{2, -106, -97, 38, 5, -82, -88, -91, -6, 63, 114, -31}, b));
+    }
+
+
+    @Test
+    public void testHasScriptFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             JMpqEditor mpqEditor = new JMpqEditor(mpq);
             Assert.assertTrue(mpqEditor.hasFile("war3map.j"));
+            mpqEditor.close();
         }
     }
 
@@ -41,6 +55,7 @@ public class MpqTests {
             String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
             String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
             Assert.assertTrue(extractedFile.equalsIgnoreCase(existingFile));
+            mpqEditor.close();
         }
     }
 
@@ -65,6 +80,7 @@ public class MpqTests {
         mpqEditor.close();
         mpqEditor = new JMpqEditor(mpq);
         Assert.assertFalse(mpqEditor.hasFile(filename));
+        mpqEditor.close();
     }
 
 

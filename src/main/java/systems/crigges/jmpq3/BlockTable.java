@@ -18,8 +18,7 @@ public class BlockTable {
     public BlockTable(MappedByteBuffer buf) throws IOException {
         this.size = (buf.capacity() / 16);
 
-        MpqCrypto c = new MpqCrypto();
-        byte[] decrypted = c.decryptBlock(buf, this.size * 16, -326913117);
+        byte[] decrypted = MpqCrypto.decryptBlock(buf, this.size * 16, -326913117);
         File block = File.createTempFile("block", "crig");
         block.deleteOnExit();
         FileOutputStream blockStream = new FileOutputStream(block);
@@ -41,8 +40,7 @@ public class BlockTable {
             b.writeToBuffer(temp);
         }
         byte[] arr = temp.array();
-        MpqCrypto c = new MpqCrypto();
-        arr = c.encryptMpqBlock(arr, arr.length, -326913117);
+        arr = MpqCrypto.encryptMpqBlock(arr, arr.length, -326913117);
         buf.put(arr);
     }
 

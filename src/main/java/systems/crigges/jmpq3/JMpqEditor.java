@@ -374,13 +374,23 @@ public class JMpqEditor implements AutoCloseable {
      * @param name name of the file
      * @throws JMpqException if file is not found or access errors occur
      */
-    public String extractFileAsString(String name) throws JMpqException {
+    public byte[] extractFileAsBytes(String name) throws JMpqException {
         try {
             MpqFile f = getMpqFile(name);
-            return f.extractToString();
+            return f.extractToBytes();
         } catch (IOException e) {
             throw new JMpqException(e);
         }
+    }
+
+    /**
+     * Extracts the specified file out of the mpq to the target location.
+     *
+     * @param name name of the file
+     * @throws JMpqException if file is not found or access errors occur
+     */
+    public String extractFileAsString(String name) throws JMpqException {
+        return new String(extractFileAsBytes(name));
     }
 
     /**

@@ -22,7 +22,7 @@ public class MpqFile {
     public static final int DELETED = 0x02000000;
     private MappedByteBuffer buf;
     private Block block;
-    private MpqCrypto crypto = null;
+    private boolean isEncrypted = false;
     private int sectorSize;
     private int offset;
     private int compSize;
@@ -66,8 +66,8 @@ public class MpqFile {
         this.sepIndex = name.lastIndexOf('\\');
         String pathlessName = name.substring(sepIndex + 1);
         if ((b.getFlags() & ENCRYPTED) == ENCRYPTED) {
-            crypto = new MpqCrypto();
-            baseKey = crypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
+            isEncrypted = true;
+            baseKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
             if ((b.getFlags() & ADJUSTED_ENCRYPTED) == ADJUSTED_ENCRYPTED) {
                 baseKey = ((baseKey + b.getFilePos()) ^ b.getNormalSize());
             }
@@ -101,10 +101,10 @@ public class MpqFile {
         extractToOutputStream(new FileOutputStream(f));
     }
 
-    public String extractToString() throws IOException {
+    public byte[] extractToBytes() throws IOException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         extractToOutputStream(byteArrayOutputStream);
-        return byteArrayOutputStream.toString();
+        return byteArrayOutputStream.toByteArray();
     }
 
     public void extractToOutputStream(OutputStream writer) throws IOException {
@@ -116,8 +116,8 @@ public class MpqFile {
             if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
                 buf.position(block.getFilePos());
                 byte[] arr = getSectorAsByteArray(buf, compSize);
-                if (crypto != null) {
-                    arr = crypto.decryptBlock(arr, baseKey);
+                if (isEncrypted) {
+                    arr = MpqCrypto.decryptBlock(arr, baseKey);
                 }
                 arr = decompressSector(arr, block.getCompressedSize(), block.getNormalSize());
                 writer.write(arr);
@@ -133,8 +133,8 @@ public class MpqFile {
             buf.position(block.getFilePos());
             byte[] sot = new byte[sectorCount * 4];
             buf.get(sot);
-            if (crypto != null) {
-                sot = crypto.decryptBlock(sot, baseKey - 1);
+            if (isEncrypted) {
+                sot = MpqCrypto.decryptBlock(sot, baseKey - 1);
             }
             sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
             int start = sotBuffer.getInt();
@@ -143,8 +143,8 @@ public class MpqFile {
             for (int i = 0; i < sectorCount - 1; i++) {
                 buf.position(block.getFilePos() + start);
                 byte[] arr = getSectorAsByteArray(buf, end - start);
-                if (crypto != null) {
-                    arr = crypto.decryptBlock(arr, baseKey + i);
+                if (isEncrypted) {
+                    arr = MpqCrypto.decryptBlock(arr, baseKey + i);
                 }
                 if (block.getNormalSize() - finalSize <= sectorSize) {
                     arr = decompressSector(arr, end - start, block.getNormalSize() - finalSize);
@@ -171,8 +171,8 @@ public class MpqFile {
     private void check(OutputStream writer) throws IOException {
         buf.position(block.getFilePos());
         byte[] arr = getSectorAsByteArray(buf, compSize);
-        if (crypto != null) {
-            arr = crypto.decryptBlock(arr, baseKey);
+        if (isEncrypted) {
+            arr = MpqCrypto.decryptBlock(arr, baseKey);
         }
         writer.write(arr);
         writer.flush();
@@ -196,7 +196,7 @@ public class MpqFile {
             if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
                 buf.position(block.getFilePos());
                 byte[] arr = getSectorAsByteArray(buf, compSize);
-                arr = crypto.decryptBlock(arr, baseKey);
+                arr = MpqCrypto.decryptBlock(arr, baseKey);
                 writeBuffer.put(arr);
             }
             if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
@@ -208,8 +208,8 @@ public class MpqFile {
             buf.position(block.getFilePos());
             byte[] sot = new byte[sectorCount * 4];
             buf.get(sot);
-            if (crypto != null) {
-                sot = crypto.decryptBlock(sot, baseKey - 1);
+            if (isEncrypted) {
+                sot = MpqCrypto.decryptBlock(sot, baseKey - 1);
             }
             writeBuffer.put(sot);
             ByteBuffer sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
@@ -218,8 +218,8 @@ public class MpqFile {
             for (int i = 0; i < sectorCount - 1; i++) {
                 buf.position(block.getFilePos() + start);
                 byte[] arr = getSectorAsByteArray(buf, end - start);
-                if (crypto != null) {
-                    arr = crypto.decryptBlock(arr, baseKey + i);
+                if (isEncrypted) {
+                    arr = MpqCrypto.decryptBlock(arr, baseKey + i);
                 }
                 writeBuffer.put(arr);
 

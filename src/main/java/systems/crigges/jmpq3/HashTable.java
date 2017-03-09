@@ -12,14 +12,12 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 
 public class HashTable {
-    private MpqCrypto c;
     private MappedByteBuffer hashMap;
     private int hashSize;
 
     public HashTable(MappedByteBuffer buf) throws IOException {
         this.hashSize = (buf.capacity() / 16);
-        this.c = new MpqCrypto();
-        byte[] decrypted = this.c.decryptBlock(buf, 16 * this.hashSize, -1011927184);
+        byte[] decrypted = MpqCrypto.decryptBlock(buf, 16 * this.hashSize, -1011927184);
         File hash = File.createTempFile("block", "crig");
         hash.deleteOnExit();
         FileOutputStream hashStream = new FileOutputStream(hash);
@@ -39,15 +37,14 @@ public class HashTable {
         for (int i = 0; i < size; i++) {
             content[i] = new Entry(-1, -1, -1, -1, -1);
         }
-        MpqCrypto c = new MpqCrypto();
         int blockIndex = 0;
         int index;
         int name1;
         int name2;
         for (String s : names) {
-            index = c.hash(s, 0);
-            name1 = c.hash(s, 1);
-            name2 = c.hash(s, 2);
+            index = MpqCrypto.hash(s, 0);
+            name1 = MpqCrypto.hash(s, 1);
+            name2 = MpqCrypto.hash(s, 2);
             int start = index & size - 1;
             while (true) {
                 if (content[start].wPlatform == -1) {
@@ -66,14 +63,14 @@ public class HashTable {
             e.writeToBuffer(temp);
         }
         byte[] arr = temp.array();
-        arr = c.encryptMpqBlock(arr, arr.length, -1011927184);
+        arr = MpqCrypto.encryptMpqBlock(arr, arr.length, -1011927184);
         writeBuffer.put(arr);
     }
 
     public int getBlockIndexOfFile(String name) throws IOException {
-        int index = this.c.hash(name, 0);
-        int name1 = this.c.hash(name, 1);
-        int name2 = this.c.hash(name, 2);
+        int index = MpqCrypto.hash(name, 0);
+        int name1 = MpqCrypto.hash(name, 1);
+        int name2 = MpqCrypto.hash(name, 2);
         int start = index & this.hashSize - 1;
         for (int c = 0; c <= this.hashSize; c++) {
             this.hashMap.position(start * 16);
