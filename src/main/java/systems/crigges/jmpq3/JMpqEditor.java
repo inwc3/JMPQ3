@@ -26,6 +26,7 @@ import java.util.*;
  *         https://github.com/Crigges/JMpq-v2/issues/new
  */
 public class JMpqEditor implements AutoCloseable {
+    public static File tempDir;
     /**
      * The fc.
      */
@@ -161,9 +162,11 @@ public class JMpqEditor implements AutoCloseable {
     public JMpqEditor(File mpqW) throws JMpqException {
         this.mpqFile = mpqW;
         try {
+            setupTempDir();
+
             long kbSize = mpqW.length() / 1024;
             //TODO fix this bad workaround
-            File tempMpq = File.createTempFile("work", "around");
+            File tempMpq = File.createTempFile("work", "around", tempDir);
             tempMpq.deleteOnExit();
             Files.copy(mpqW.toPath(), tempMpq.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
@@ -194,7 +197,7 @@ public class JMpqEditor implements AutoCloseable {
 
             if (hasFile("(listfile)")) {
                 try {
-                    File tempFile = File.createTempFile("list", "file");
+                    File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
                     tempFile.deleteOnExit();
                     extractFile("(listfile)", tempFile);
                     listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
@@ -203,6 +206,23 @@ public class JMpqEditor implements AutoCloseable {
                 }
             } else {
                 loadDefaultListFile();
+            }
+        } catch (IOException e) {
+            throw new JMpqException(e);
+        }
+    }
+
+    private void setupTempDir() throws JMpqException {
+        try {
+            Path path = Paths.get(System.getProperty("java.io.tmpdir") + "jmpq");
+            JMpqEditor.tempDir = path.toFile();
+            if(!JMpqEditor.tempDir.exists())
+                Files.createDirectory(path);
+
+
+            File[] files = JMpqEditor.tempDir.listFiles();
+            for(File f : files) {
+                f.delete();
             }
         } catch (IOException e) {
             throw new JMpqException(e);
@@ -473,7 +493,7 @@ public class JMpqEditor implements AutoCloseable {
         try {
             listFile.addFile(name);
             if (backupFile) {
-                File temp = File.createTempFile("wurst", "crig");
+                File temp = File.createTempFile("wurst", "crig", JMpqEditor.tempDir);
                 temp.deleteOnExit();
                 Files.copy(f.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 filesToAdd.add(temp);
@@ -492,7 +512,7 @@ public class JMpqEditor implements AutoCloseable {
             fc.close();
             return;
         }
-        File temp = File.createTempFile("crig", "mpq");
+        File temp = File.createTempFile("crig", "mpq", JMpqEditor.tempDir);
         temp.deleteOnExit();
         FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
 
@@ -564,13 +584,13 @@ public class JMpqEditor implements AutoCloseable {
         tempReader.position(0);
 
         mpqFile.delete();
-        FileOutputStream out = new FileOutputStream(mpqFile);
-        WritableByteChannel ch = Channels.newChannel(out);
-        ch.write(tempReader);
-        tempReader.position(tempReader.position() - 1);
-        ch.write(tempReader);
-        ch.close();
-        out.close();
+        try(FileOutputStream out = new FileOutputStream(mpqFile)) {
+            WritableByteChannel ch = Channels.newChannel(out);
+            ch.write(tempReader);
+            tempReader.position(tempReader.position() - 1);
+            ch.write(tempReader);
+            ch.close();
+        }
 
         fc.close();
         writeChannel.close();

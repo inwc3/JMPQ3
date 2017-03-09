@@ -7,9 +7,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.OpenOption;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+
+import static java.nio.file.StandardOpenOption.*;
 
 public class BlockTable {
     private MappedByteBuffer blockMap;
@@ -17,19 +17,19 @@ public class BlockTable {
 
     public BlockTable(MappedByteBuffer buf) throws IOException {
         this.size = (buf.capacity() / 16);
-
         byte[] decrypted = MpqCrypto.decryptBlock(buf, this.size * 16, -326913117);
-        File block = File.createTempFile("block", "crig");
-        block.deleteOnExit();
-        FileOutputStream blockStream = new FileOutputStream(block);
-        blockStream.write(decrypted);
-        blockStream.flush();
-        blockStream.close();
 
-        FileChannel blockChannel = FileChannel.open(block.toPath(),
-                new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ});
-        this.blockMap = blockChannel.map(FileChannel.MapMode.READ_WRITE, 0L, blockChannel.size());
-        this.blockMap.order(ByteOrder.LITTLE_ENDIAN);
+        File block = File.createTempFile("block", "crig", JMpqEditor.tempDir);
+        block.deleteOnExit();
+
+        try (FileOutputStream blockStream = new FileOutputStream(block);
+             FileChannel blockChannel = FileChannel.open(block.toPath(), CREATE, WRITE, READ)) {
+
+            blockStream.write(decrypted);
+            blockStream.flush();
+            this.blockMap = blockChannel.map(FileChannel.MapMode.READ_WRITE, 0L, blockChannel.size());
+            this.blockMap.order(ByteOrder.LITTLE_ENDIAN);
+        }
     }
 
     public static void writeNewBlocktable(ArrayList<Block> blocks, int size, MappedByteBuffer buf) {

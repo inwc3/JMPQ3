@@ -104,7 +104,9 @@ public class MpqFile {
     public byte[] extractToBytes() throws IOException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         extractToOutputStream(byteArrayOutputStream);
-        return byteArrayOutputStream.toByteArray();
+        byte[] bytes = byteArrayOutputStream.toByteArray();
+        byteArrayOutputStream.close();
+        return bytes;
     }
 
     public void extractToOutputStream(OutputStream writer) throws IOException {

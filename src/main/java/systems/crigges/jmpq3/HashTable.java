@@ -7,9 +7,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.OpenOption;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+
+import static java.nio.file.StandardOpenOption.*;
 
 public class HashTable {
     private MappedByteBuffer hashMap;
@@ -18,21 +18,20 @@ public class HashTable {
     public HashTable(MappedByteBuffer buf) throws IOException {
         this.hashSize = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, 16 * this.hashSize, -1011927184);
-        File hash = File.createTempFile("block", "crig");
+        File hash = File.createTempFile("block", "crig", JMpqEditor.tempDir);
         hash.deleteOnExit();
-        FileOutputStream hashStream = new FileOutputStream(hash);
-        hashStream.write(decrypted);
-        hashStream.flush();
-        hashStream.close();
+        try (FileOutputStream hashStream = new FileOutputStream(hash);
+             FileChannel hashChannel = FileChannel.open(hash.toPath(), CREATE, WRITE, READ)) {
+            hashStream.write(decrypted);
+            hashStream.flush();
+            this.hashMap = hashChannel.map(FileChannel.MapMode.READ_WRITE, 0L, hashChannel.size());
+            this.hashMap.order(ByteOrder.LITTLE_ENDIAN);
+        }
 
-        FileChannel hashChannel = FileChannel.open(hash.toPath(),
-                new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ});
-        this.hashMap = hashChannel.map(FileChannel.MapMode.READ_WRITE, 0L, hashChannel.size());
-        this.hashMap.order(ByteOrder.LITTLE_ENDIAN);
     }
 
     public static void writeNewHashTable(int size, ArrayList<String> names, MappedByteBuffer writeBuffer)
-            throws IOException, JMpqException {
+            throws IOException {
         Entry[] content = new Entry[size];
         for (int i = 0; i < size; i++) {
             content[i] = new Entry(-1, -1, -1, -1, -1);

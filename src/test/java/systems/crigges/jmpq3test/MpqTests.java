@@ -50,7 +50,7 @@ public class MpqTests {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             JMpqEditor mpqEditor = new JMpqEditor(mpq);
-            File temp = File.createTempFile("war3mapj", "extracted");
+            File temp = File.createTempFile("war3mapj", "extracted", JMpqEditor.tempDir);
             temp.deleteOnExit();
             String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
             String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
