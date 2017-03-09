@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/inwc3/JMPQ-v3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ-v3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ-v3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ-v3?branch=master)
+[![Build Status](https://travis-ci.org/inwc3/JMPQ-v3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ-v3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ-v3/badge.png?branch=master)](https://coveralls.io/github/inwc3/JMPQ-v3?branch=master)
 
 JMPQ-v3 is a Small Libary which allows to access and modify MoPaQ Archives
 
