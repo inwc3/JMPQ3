@@ -344,10 +344,17 @@ public class JMpqEditor implements AutoCloseable {
         }
         if (listFile != null) {
             for (String s : listFile.getFiles()) {
+                System.out.println("extracting: " + s);
                 File temp = new File(dest.getAbsolutePath() + "\\" + s);
                 temp.getParentFile().mkdirs();
                 extractFile(s, temp);
             }
+            if(hasFile("(attributes)")) {
+                File temp = new File(dest.getAbsolutePath() + "\\" + "(attributes)");
+                extractFile("(attributes)",temp);
+            }
+            File temp = new File(dest.getAbsolutePath() + "\\" + "(listfile)");
+            extractFile("(listfile)",temp);
         } else {
             ArrayList<Block> blocks = blockTable.getAllVaildBlocks();
             try {

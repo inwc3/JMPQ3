@@ -77,12 +77,12 @@ public class HashTable {
             if ((cur.dwName1 == name1) && (cur.dwName2 == name2))
                 return cur.dwBlockIndex;
             if (cur.wPlatform != 0) {
-                throw new JMpqException("File Not Found");
+                throw new JMpqException("File Not Found: " + name);
             }
             start++;
             start %= this.hashSize;
         }
-        throw new JMpqException("File Not Found");
+        throw new JMpqException("File Not Found" + name);
     }
 
     public static class Entry {
