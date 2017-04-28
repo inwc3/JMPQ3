@@ -49,12 +49,15 @@ public class MpqTests {
     public void testExtractScriptFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
+            System.out.println("test extract script: " + mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq);
             File temp = File.createTempFile("war3mapj", "extracted", JMpqEditor.tempDir);
             temp.deleteOnExit();
-            String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
-            String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
-            Assert.assertTrue(extractedFile.equalsIgnoreCase(existingFile));
+            if(mpqEditor.hasFile("war3map.j")) {
+                String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+                String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+                Assert.assertTrue(extractedFile.equalsIgnoreCase(existingFile));
+            }
             mpqEditor.close();
         }
     }
@@ -79,18 +82,6 @@ public class MpqTests {
                 mpqEditors[i].close();
             }
         }
-    }
-
-    @Test
-    public void testFail() throws IOException {
-        try{
-            JMpqEditor mpqEditor = new JMpqEditor(getFile("broken/brokenMap.w3x"));
-            mpqEditor.extractAllFiles(JMpqEditor.tempDir);
-            mpqEditor.close();
-            Assert.fail();
-        } catch (IllegalArgumentException j) {
-        }
-
     }
 
     private void insertAndDelete(File mpq, String filename) throws IOException {
