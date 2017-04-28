@@ -194,7 +194,7 @@ public class MpqFile {
             newBlock.setFlags(block.getFlags());
             return;
         }
-        if ((block.getFlags() & SINGLEUNIT) == SINGLEUNIT) {
+        if (((block.getFlags() & SINGLEUNIT) == SINGLEUNIT) || (block.getFlags() & COMPRESSED) == COMPRESSED) {
             if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
                 buf.position(block.getFilePos());
                 byte[] arr = getSectorAsByteArray(buf, compSize);

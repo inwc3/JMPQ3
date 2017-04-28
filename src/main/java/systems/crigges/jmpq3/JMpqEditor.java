@@ -221,7 +221,10 @@ public class JMpqEditor implements AutoCloseable {
 
             File[] files = JMpqEditor.tempDir.listFiles();
             for (File f : files) {
-                f.delete();
+                // Delete existing tempfiles that are older than 1 day
+                if ((System.currentTimeMillis() - f.lastModified()) > 1000 * 60 * 60 * 24) {
+                    f.delete();
+                }
             }
         } catch (IOException e) {
             try {
