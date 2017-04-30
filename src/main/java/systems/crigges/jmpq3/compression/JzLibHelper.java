@@ -1,4 +1,4 @@
-package systems.crigges.jmpq3;
+package systems.crigges.jmpq3.compression;
 
 import com.jcraft.jzlib.Deflater;
 import com.jcraft.jzlib.GZIPException;

@@ -3,6 +3,8 @@ package systems.crigges.jmpq3;
 
 
 import systems.crigges.jmpq3.BlockTable.Block;
+import systems.crigges.jmpq3.compression.CompressionUtil;
+import systems.crigges.jmpq3.compression.JzLibHelper;
 
 import java.io.*;
 import java.nio.BufferUnderflowException;
@@ -324,19 +326,11 @@ public class MpqFile {
      *
      * @param sector     the sector
      * @param normalSize the normal size
-     * @param uncompSize the uncomp size
+     * @param uncompressedSize the uncomp size
      * @return the byte[]
      * @throws JMpqException the j mpq exception
      */
-    private byte[] decompressSector(byte[] sector, int normalSize, int uncompSize) throws JMpqException {
-        if (normalSize == uncompSize) {
-            return sector;
-        } else {
-            byte compressionType = sector[0];
-            if (((compressionType & 2) == 2)) {
-                return JzLibHelper.inflate(sector, 1, uncompSize);
-            }
-            throw new JMpqException("Unsupported compression algorithm");
-        }
+    private byte[] decompressSector(byte[] sector, int normalSize, int uncompressedSize) throws JMpqException {
+        return CompressionUtil.decompress(sector, uncompressedSize);
     }
 }
