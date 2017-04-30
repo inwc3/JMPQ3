@@ -331,6 +331,6 @@ public class MpqFile {
      * @throws JMpqException the j mpq exception
      */
     private byte[] decompressSector(byte[] sector, int normalSize, int uncompressedSize) throws JMpqException {
-        return CompressionUtil.decompress(sector, uncompressedSize);
+        return CompressionUtil.decompress(sector, normalSize, uncompressedSize);
     }
 }
