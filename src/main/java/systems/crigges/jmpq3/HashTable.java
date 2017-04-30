@@ -70,17 +70,15 @@ public class HashTable {
         int index = MpqCrypto.hash(name, 0);
         int name1 = MpqCrypto.hash(name, 1);
         int name2 = MpqCrypto.hash(name, 2);
-        int start = index & this.hashSize - 1;
+        int mask = this.hashSize - 1;
+        int start = index & mask;
         for (int c = 0; c <= this.hashSize; c++) {
             this.hashMap.position(start * 16);
             Entry cur = new Entry(this.hashMap);
+            if(cur.dwBlockIndex == 0xFFFFFFFF) break;
             if ((cur.dwName1 == name1) && (cur.dwName2 == name2))
                 return cur.dwBlockIndex;
-            if (cur.wPlatform != 0) {
-                throw new JMpqException("File Not Found: " + name);
-            }
-            start++;
-            start %= this.hashSize;
+            start = (start + 1) & mask;
         }
         throw new JMpqException("File Not Found" + name);
     }

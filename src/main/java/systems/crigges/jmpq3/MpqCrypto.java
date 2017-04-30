@@ -70,7 +70,7 @@ public class MpqCrypto {
             int ch = buf.getInt() ^ key + seed;
             resultBuffer.putInt(ch);
 
-            key = ((key ^ 0xFFFFFFFF) << 21) + 286331153 | key >>> 11;
+            key = ((~key) << 21) + 286331153 | key >>> 11;
             seed = ch + seed + (seed << 5) + 3;
         }
 
@@ -90,7 +90,7 @@ public class MpqCrypto {
             int dwValue32 = buf.getInt();
             resultBuffer.putInt(dwValue32 ^ dwKey1 + dwKey2);
 
-            dwKey1 = ((dwKey1 ^ 0xFFFFFFFF) << 21) + 286331153 | dwKey1 >>> 11;
+            dwKey1 = ((~dwKey1) << 21) + 286331153 | dwKey1 >>> 11;
             dwKey2 = dwValue32 + dwKey2 + (dwKey2 << 5) + 3;
         }
         return resultBuffer.array();

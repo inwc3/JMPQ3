@@ -126,6 +126,10 @@ public class BlockTable {
             this.flags = flags;
         }
 
+        public boolean hasFlag(int flag) {
+            return (flags & flag) == flag;
+        }
+
         public String toString() {
             return "Block [filePos=" + this.filePos + ", compressedSize=" + this.compressedSize + ", normalSize="
                     + this.normalSize + ", flags=" + this.flags + "]";

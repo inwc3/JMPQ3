@@ -15,77 +15,43 @@ import java.nio.file.Files;
 
 
 public class MpqFile {
-
     public static final int COMPRESSED = 0x00000200;
     public static final int ENCRYPTED = 0x00010000;
     public static final int SINGLEUNIT = 0x01000000;
     public static final int ADJUSTED_ENCRYPTED = 0x00020000;
     public static final int EXISTS = 0x80000000;
     public static final int DELETED = 0x02000000;
+
     private MappedByteBuffer buf;
     private Block block;
+    private String name;
     private boolean isEncrypted = false;
     private int sectorSize;
-    private int offset;
-    private int compSize;
+    private int compressedSize;
     private int normalSize;
     private int flags;
-    private int blockIndex;
-    private String name;
     private int sectorCount;
     private int baseKey;
-    private int sepIndex;
-
-
-    public int getBlockIndex() {
-        return blockIndex;
-    }
-
-    public void setBlockIndex(int blockIndex) {
-        this.blockIndex = blockIndex;
-    }
-
-    @Override
-    public String toString() {
-        return "MpqFile [sectorSize=" + sectorSize + ", offset=" + offset + ", compSize=" + compSize + ", normalSize="
-                + normalSize + ", flags=" + flags + ", blockIndex=" + blockIndex + ", name=" + name + "]";
-    }
-
-    public void setOffset(int newOffset) {
-        offset = newOffset;
-    }
 
     public MpqFile(MappedByteBuffer buf, Block b, int sectorSize, String name) throws IOException, JMpqException {
         this.buf = buf;
         this.block = b;
         this.sectorSize = sectorSize;
         this.name = name;
-        this.compSize = b.getCompressedSize();
+        this.compressedSize = b.getCompressedSize();
         this.normalSize = b.getNormalSize();
-        this.flags = (int) b.getFlags();
+        this.flags = b.getFlags();
         this.sectorCount = (int) (Math.ceil(((double) normalSize / (double) sectorSize)) + 1);
         this.baseKey = 0;
-        this.sepIndex = name.lastIndexOf('\\');
+        int sepIndex = name.lastIndexOf('\\');
         String pathlessName = name.substring(sepIndex + 1);
-        if ((b.getFlags() & ENCRYPTED) == ENCRYPTED) {
+        if (b.hasFlag(ENCRYPTED)) {
             isEncrypted = true;
             baseKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
-            if ((b.getFlags() & ADJUSTED_ENCRYPTED) == ADJUSTED_ENCRYPTED) {
+            if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
                 baseKey = ((baseKey + b.getFilePos()) ^ b.getNormalSize());
             }
         }
-    }
-
-    public int getOffset() {
-        return offset;
-    }
-
-    public int getCompSize() {
-        return compSize;
-    }
-
-    public int getNormalSize() {
-        return normalSize;
     }
 
     public int getFlags() {
@@ -116,10 +82,10 @@ public class MpqFile {
             writer.close();
             return;
         }
-        if ((block.getFlags() & SINGLEUNIT) == SINGLEUNIT) {
-            if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
+        if (block.hasFlag(SINGLEUNIT)) {
+            if (block.hasFlag(COMPRESSED)) {
                 buf.position(block.getFilePos());
-                byte[] arr = getSectorAsByteArray(buf, compSize);
+                byte[] arr = getSectorAsByteArray(buf, compressedSize);
                 if (isEncrypted) {
                     arr = MpqCrypto.decryptBlock(arr, baseKey);
                 }
@@ -132,7 +98,7 @@ public class MpqFile {
             }
             return;
         }
-        if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
+        if (block.hasFlag(COMPRESSED)) {
             ByteBuffer sotBuffer = null;
             buf.position(block.getFilePos());
             byte[] sot = new byte[sectorCount * 4];
@@ -174,7 +140,7 @@ public class MpqFile {
 
     private void check(OutputStream writer) throws IOException {
         buf.position(block.getFilePos());
-        byte[] arr = getSectorAsByteArray(buf, compSize);
+        byte[] arr = getSectorAsByteArray(buf, compressedSize);
         if (isEncrypted) {
             arr = MpqCrypto.decryptBlock(arr, baseKey);
         }
@@ -191,7 +157,7 @@ public class MpqFile {
      */
     public void writeFileAndBlock(Block newBlock, MappedByteBuffer writeBuffer) {
         newBlock.setNormalSize(normalSize);
-        newBlock.setCompressedSize(compSize);
+        newBlock.setCompressedSize(compressedSize);
         if (normalSize == 0) {
             newBlock.setFlags(block.getFlags());
             return;
@@ -199,7 +165,7 @@ public class MpqFile {
         if (((block.getFlags() & SINGLEUNIT) == SINGLEUNIT) || (block.getFlags() & COMPRESSED) != COMPRESSED) {
             if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
                 buf.position(block.getFilePos());
-                byte[] arr = getSectorAsByteArray(buf, compSize);
+                byte[] arr = getSectorAsByteArray(buf, compressedSize);
                 arr = MpqCrypto.decryptBlock(arr, baseKey);
                 writeBuffer.put(arr);
             }
@@ -307,7 +273,6 @@ public class MpqFile {
         buf.put(sot);
     }
 
-
     /**
      * Gets the sector as byte array.
      *
@@ -321,16 +286,23 @@ public class MpqFile {
         return arr;
     }
 
+
     /**
      * Decompress sector.
      *
-     * @param sector     the sector
-     * @param normalSize the normal size
+     * @param sector           the sector
+     * @param normalSize       the normal size
      * @param uncompressedSize the uncomp size
      * @return the byte[]
      * @throws JMpqException the j mpq exception
      */
     private byte[] decompressSector(byte[] sector, int normalSize, int uncompressedSize) throws JMpqException {
         return CompressionUtil.decompress(sector, normalSize, uncompressedSize);
+    }
+
+    @Override
+    public String toString() {
+        return "MpqFile [sectorSize=" + sectorSize + ", compressedSize=" + compressedSize + ", normalSize="
+                + normalSize + ", flags=" + flags + ", name=" + name + "]";
     }
 }
