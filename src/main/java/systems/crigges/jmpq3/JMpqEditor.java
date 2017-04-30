@@ -27,6 +27,7 @@ import java.util.*;
  */
 public class JMpqEditor implements AutoCloseable {
     public static File tempDir;
+    private AttributesFile attributes;
     /**
      * The fc.
      */
@@ -207,6 +208,13 @@ public class JMpqEditor implements AutoCloseable {
             } else {
                 loadDefaultListFile();
             }
+
+            if (hasFile("(attributes)")) {
+                try {
+                    attributes = new AttributesFile(extractFileAsBytes("(attributes)"));
+                } catch (IOException e) {
+                }
+            }
         } catch (IOException e) {
             throw new JMpqException(e);
         }
@@ -349,12 +357,12 @@ public class JMpqEditor implements AutoCloseable {
                 temp.getParentFile().mkdirs();
                 extractFile(s, temp);
             }
-            if(hasFile("(attributes)")) {
+            if (hasFile("(attributes)")) {
                 File temp = new File(dest.getAbsolutePath() + "\\" + "(attributes)");
-                extractFile("(attributes)",temp);
+                extractFile("(attributes)", temp);
             }
             File temp = new File(dest.getAbsolutePath() + "\\" + "(listfile)");
-            extractFile("(listfile)",temp);
+            extractFile("(listfile)", temp);
         } else {
             ArrayList<Block> blocks = blockTable.getAllVaildBlocks();
             try {
@@ -543,6 +551,19 @@ public class JMpqEditor implements AutoCloseable {
         ArrayList<String> newFiles = new ArrayList<>();
         @SuppressWarnings("unchecked")
         LinkedList<String> remainingFiles = (LinkedList<String>) listFile.getFiles().clone();
+        remainingFiles.sort((o1, o2) -> {
+            int pos1 = 999999999;
+            int pos2 = 999999999;
+            try {
+                pos1 = hashTable.getBlockIndexOfFile(o1);
+            } catch (IOException ignored) {
+            }
+            try {
+                pos2 = hashTable.getBlockIndexOfFile(o2);
+            } catch (IOException ignored) {
+            }
+            return pos1 - pos2;
+        });
         int currentPos = headerOffset + headerSize;// + newHashSize * 16 + newBlockSize * 16;
         for (File f : filesToAdd) {
             newFiles.add(internalFilename.get(f));
