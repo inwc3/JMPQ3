@@ -36,11 +36,10 @@ public class MpqTests {
 
 
     @Test
-    public void testHasScriptFile() throws IOException {
+    public void testRebuild() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             JMpqEditor mpqEditor = new JMpqEditor(mpq);
-            Assert.assertTrue(mpqEditor.hasFile("war3map.j"));
             mpqEditor.close();
         }
     }
