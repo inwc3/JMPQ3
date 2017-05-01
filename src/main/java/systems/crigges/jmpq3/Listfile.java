@@ -10,7 +10,7 @@ public class Listfile {
         String list = new String(file);
         Scanner sc = new Scanner(list);
         while (sc.hasNextLine()) {
-            this.files.add(sc.nextLine());
+            addFile(sc.nextLine());
         }
         sc.close();
     }
@@ -20,7 +20,7 @@ public class Listfile {
     }
 
     public void addFile(String name) {
-        if (!this.files.contains(name))
+        if (name != null && name.length() > 0 && !this.files.contains(name))
             this.files.add(name);
     }
 
@@ -31,7 +31,7 @@ public class Listfile {
     public byte[] asByteArray() {
         String temp = "";
         for (String s : this.files) {
-            temp = temp + s + "\n";
+            temp = temp + s + "\r\n";
         }
         return temp.getBytes();
     }

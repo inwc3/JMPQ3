@@ -80,7 +80,7 @@ public class HashTable {
                 return cur.dwBlockIndex;
             start = (start + 1) & mask;
         }
-        throw new JMpqException("File Not Found" + name);
+        throw new JMpqException("File Not Found <" + name + ">");
     }
 
     public static class Entry {

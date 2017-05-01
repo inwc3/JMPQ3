@@ -45,6 +45,17 @@ public class MpqTests {
     }
 
     @Test
+    public void testExtractAll() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            JMpqEditor mpqEditor = new JMpqEditor(mpq);
+            File file = new File("out/");
+            file.mkdirs();
+            mpqEditor.extractAllFiles(file);
+        }
+    }
+
+    @Test
     public void testExtractScriptFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {

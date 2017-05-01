@@ -16,3 +16,5 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 src/test/resources/mpqs/war3.w3x
 src/test/resources/war3.w3x
+
+out/
