@@ -10,6 +10,7 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
 import static java.nio.file.StandardOpenOption.*;
+import static systems.crigges.jmpq3.MpqFile.*;
 
 public class BlockTable {
     private MappedByteBuffer blockMap;
@@ -133,6 +134,15 @@ public class BlockTable {
         public String toString() {
             return "Block [filePos=" + this.filePos + ", compressedSize=" + this.compressedSize + ", normalSize="
                     + this.normalSize + ", flags=" + this.flags + "]";
+        }
+
+        public String printFlags() {
+            return (hasFlag(EXISTS) ? "EXISTS " : "") +
+                    (hasFlag(SINGLEUNIT) ? "SINGLEUNIT " : "") +
+                    (hasFlag(COMPRESSED) ? "COMPRESSED " : "") +
+                    (hasFlag(ENCRYPTED) ? "ENCRYPTED " : "") +
+                    (hasFlag(ADJUSTED_ENCRYPTED) ? "ADJUSTED " : "") +
+                    (hasFlag(DELETED) ? "DELETED " : "");
         }
     }
 }

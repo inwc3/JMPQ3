@@ -155,20 +155,24 @@ public class MpqFile {
      * @param newBlock    the new block
      * @param writeBuffer the write buffer
      */
-    public void writeFileAndBlock(Block newBlock, MappedByteBuffer writeBuffer) {
+    public void writeFileAndBlock(Block newBlock, MappedByteBuffer writeBuffer) throws JMpqException {
         newBlock.setNormalSize(normalSize);
         newBlock.setCompressedSize(compressedSize);
         if (normalSize == 0) {
             newBlock.setFlags(block.getFlags());
             return;
         }
-        if ((block.hasFlag(SINGLEUNIT)) || (block.getFlags() & COMPRESSED) != COMPRESSED) {
+        if ((block.hasFlag(SINGLEUNIT)) || (! block.hasFlag(COMPRESSED))) {
+            buf.position(block.getFilePos());
+            byte[] arr = getSectorAsByteArray(buf, block.hasFlag(COMPRESSED) ? compressedSize : normalSize);
             if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
-                buf.position(block.getFilePos());
-                byte[] arr = getSectorAsByteArray(buf, compressedSize);
+                if(block.hasFlag(ADJUSTED_ENCRYPTED)) {
+                    throw new JMpqException("fucvk");
+                }
                 arr = MpqCrypto.decryptBlock(arr, baseKey);
-                writeBuffer.put(arr);
             }
+            writeBuffer.put(arr);
+
             if (block.hasFlag(SINGLEUNIT)) {
                 System.out.println("singleunit detected");
                 if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
@@ -256,7 +260,7 @@ public class MpqFile {
         buf.position(sectorCount * 4);
         int sotPos = sectorCount * 4;
         byte[] temp = new byte[sectorSize];
-        for (int i = 1; i <= sectorCount - 1; i++) {
+        for (int i = 0; i < sectorCount - 1; i++) {
             if (fileBuf.position() + sectorSize > fileArr.length) {
                 temp = new byte[fileArr.length - fileBuf.position()];
             }
@@ -273,7 +277,7 @@ public class MpqFile {
                     if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
                         bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
                     }
-                    byte[] encryptedSector = MpqCrypto.encryptMpqBlock(DebugHelper.appendData((byte) 2, compSector), compSector.length + 1, bKey + (i-1));
+                    byte[] encryptedSector = MpqCrypto.encryptMpqBlock(DebugHelper.appendData((byte) 2, compSector), compSector.length + 1, bKey + (i));
                     buf.put(encryptedSector);
                 } else {
                     // deflate compression indicator
@@ -282,7 +286,16 @@ public class MpqFile {
                 }
                 sotPos += compSector.length + 1;
             } else {
-                buf.put(temp);
+                if(b.hasFlag(ENCRYPTED)) {
+                    int bKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
+                    if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
+                        bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
+                    }
+                    byte[] encryptedSector = MpqCrypto.encryptMpqBlock(temp, temp.length, bKey + (i));
+                    buf.put(encryptedSector);
+                } else {
+                    buf.put(temp);
+                }
                 sotPos += temp.length;
             }
             sot.putInt(sotPos);

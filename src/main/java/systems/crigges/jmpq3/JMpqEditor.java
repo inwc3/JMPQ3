@@ -551,8 +551,7 @@ public class JMpqEditor implements AutoCloseable {
 
         ArrayList<Block> newBlocks = new ArrayList<>();
         ArrayList<String> newFiles = new ArrayList<>();
-        @SuppressWarnings("unchecked")
-        LinkedList<String> remainingFiles = (LinkedList<String>) listFile.getFiles().clone();
+        LinkedList<String> remainingFiles = new LinkedList<>(listFile.getFiles());
         // Sort entries to preserve block table order
         remainingFiles.sort((o1, o2) -> {
             int pos1 = 999999999;
@@ -592,7 +591,7 @@ public class JMpqEditor implements AutoCloseable {
             buf.order(ByteOrder.LITTLE_ENDIAN);
             MpqFile f = new MpqFile(buf, b, discBlockSize, s);
             MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-            Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
+            Block newBlock = new Block(currentPos - headerOffset, 0, 0, b.getFlags());
             newBlocks.add(newBlock);
             f.writeFileAndBlock(newBlock, fileWriter);
             currentPos += b.getCompressedSize();
@@ -608,21 +607,21 @@ public class JMpqEditor implements AutoCloseable {
         currentPos += newBlock.getCompressedSize();
 
         // Add attributes
-        if (attributes != null) {
-            // newfiles don't contain the attributes file yet, hence -1
-            if(attributes.entries() -1 == newFiles.size()) {
-                System.out.println("mpq has not been modified, writing original attributes");
-                newFiles.add("(attributes)");
-                byte[] attrArr = attributes.getFile();
-                fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, attrArr.length);
-                newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-                newBlocks.add(newBlock);
-                MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter, newDiscBlockSize, "(attributes)");
-                currentPos += newBlock.getCompressedSize();
-            } else {
-                System.out.println("mpq has been modified");
-            }
-        }
+//        if (attributes != null) {
+//            // newfiles don't contain the attributes file yet, hence -1
+//            if(attributes.entries() -1 == newFiles.size()) {
+//                System.out.println("mpq has not been modified, writing original attributes");
+//                newFiles.add("(attributes)");
+//                byte[] attrArr = attributes.getFile();
+//                fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, attrArr.length);
+//                newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+//                newBlocks.add(newBlock);
+//                MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter, newDiscBlockSize, "(attributes)");
+//                currentPos += newBlock.getCompressedSize();
+//            } else {
+//                System.out.println("mpq has been modified");
+//            }
+//        }
 
 
         newHashPos = currentPos - headerOffset;
