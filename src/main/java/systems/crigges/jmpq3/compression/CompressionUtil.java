@@ -54,16 +54,15 @@ public class CompressionUtil {
                 flip = !flip;
             }
             if (((compressionType & FLAG_ADPCM2C) != 0)) {
-                (flip ? in : out).clear();
-                ADPCM.decompress(flip ? out : in, flip ? in : out, 2);
+                ByteBuffer newOut = ByteBuffer.wrap(new byte[uncompressedSize]);
+                ADPCM.decompress(flip ? out : in, newOut, 2);
                 (flip ? out : in).position(0);
-                flip = !flip;
+                return newOut.array();
             }
             if (((compressionType & FLAG_ADPCM1C) != 0)) {
                 ByteBuffer newOut = ByteBuffer.wrap(new byte[uncompressedSize]);
                 ADPCM.decompress(flip ? out : in, newOut, 1);
                 (flip ? out : in).position(0);
-                flip = !flip;
                 return newOut.array();
             }
             return (flip ? out : in).array();
