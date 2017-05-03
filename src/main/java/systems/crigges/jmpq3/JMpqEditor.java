@@ -17,6 +17,7 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.*;
 import java.util.*;
+import java.util.zip.CRC32;
 
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -531,6 +532,7 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     public void close() throws IOException {
+        System.out.println("Building mpq");
         if (listFile == null) {
             fc.close();
             return;
@@ -551,7 +553,7 @@ public class JMpqEditor implements AutoCloseable {
 
         ArrayList<Block> newBlocks = new ArrayList<>();
         ArrayList<String> newFiles = new ArrayList<>();
-        LinkedList<String> remainingFiles = new LinkedList<>(listFile.getFiles());
+        ArrayList<String> remainingFiles = new ArrayList<>(listFile.getFiles());
         // Sort entries to preserve block table order
         remainingFiles.sort((o1, o2) -> {
             int pos1 = 999999999;
@@ -566,24 +568,15 @@ public class JMpqEditor implements AutoCloseable {
             }
             return pos1 - pos2;
         });
+        System.out.println("Sorted blocks");
+        if(attributes != null) {
+            attributes.setNames(remainingFiles);
+        }
         int currentPos = headerOffset + headerSize;// + newHashSize * 16 + newBlockSize * 16;
         for (File f : filesToAdd) {
-            newFiles.add(internalFilename.get(f));
             remainingFiles.remove(internalFilename.get(f));
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length() * 2);
-            Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
-            newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(f, newBlock, fileWriter, newDiscBlockSize);
-            currentPos += newBlock.getCompressedSize();
         }
-        int c = 0;
         for (String s : remainingFiles) {
-            if(s == null || s.length() < 1 || s.isEmpty()) {
-                int i = attributes.getCrc32()[c];
-
-                break;
-            }
-            c++;
             newFiles.add(s);
             int pos = hashTable.getBlockIndexOfFile(s);
             Block b = blockTable.getBlockAtPos(pos);
@@ -596,7 +589,19 @@ public class JMpqEditor implements AutoCloseable {
             f.writeFileAndBlock(newBlock, fileWriter);
             currentPos += b.getCompressedSize();
         }
-
+        System.out.println("Added existing files");
+        HashMap<String, File> newFileMap = new HashMap<>();
+        for (File f : filesToAdd) {
+            newFiles.add(internalFilename.get(f));
+            newFileMap.put(internalFilename.get(f), f);
+            remainingFiles.remove(internalFilename.get(f));
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length() * 2);
+            Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
+            newBlocks.add(newBlock);
+            MpqFile.writeFileAndBlock(f, newBlock, fileWriter, newDiscBlockSize);
+            currentPos += newBlock.getCompressedSize();
+        }
+        System.out.println("Added new files");
         // Add listfile
         newFiles.add("(listfile)");
         byte[] listfileArr = listFile.asByteArray();
@@ -605,22 +610,36 @@ public class JMpqEditor implements AutoCloseable {
         newBlocks.add(newBlock);
         MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)");
         currentPos += newBlock.getCompressedSize();
+        System.out.println("Added listfile");
 
-        // Add attributes
 //        if (attributes != null) {
-//            // newfiles don't contain the attributes file yet, hence -1
-//            if(attributes.entries() -1 == newFiles.size()) {
-//                System.out.println("mpq has not been modified, writing original attributes");
-//                newFiles.add("(attributes)");
-//                byte[] attrArr = attributes.getFile();
-//                fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, attrArr.length);
-//                newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-//                newBlocks.add(newBlock);
-//                MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter, newDiscBlockSize, "(attributes)");
-//                currentPos += newBlock.getCompressedSize();
-//            } else {
-//                System.out.println("mpq has been modified");
+//            newFiles.add("(attributes)");
+//            // Only generate attributes file when there has been one before
+//            AttributesFile attributesFile = new AttributesFile(newFiles.size());
+//            // Generate new values
+//            long time = (new Date().getTime() + 11644473600000L) * 10000L;
+//            for (int i = 0; i < newFiles.size() - 1; i++) {
+//                String name = newFiles.get(i);
+//                int entry = attributes.getEntry(name);
+//                if (newFileMap.containsKey(name)){
+//                    // new file
+//                    attributesFile.setEntry(i, getCrc32(newFileMap.get(name)), time);
+//                }else if (entry >= 0) {
+//                    // has timestamp
+//                    attributesFile.setEntry(i, getCrc32(name), attributes.getTimestamps()[entry]);
+//                } else {
+//                    // doesnt have timestamp
+//                    attributesFile.setEntry(i, getCrc32(name), time);
+//                }
 //            }
+//            // newfiles don't contain the attributes file yet, hence -1
+//            System.out.println("added attributes");
+//            byte[] attrArr = attributesFile.buildFile();
+//            fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, attrArr.length);
+//            newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+//            newBlocks.add(newBlock);
+//            MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter, newDiscBlockSize, "(attributes)");
+//            currentPos += newBlock.getCompressedSize();
 //        }
 
 
@@ -657,6 +676,22 @@ public class JMpqEditor implements AutoCloseable {
 
         fc.close();
         writeChannel.close();
+    }
+
+    private CRC32 crc32 = new CRC32();
+
+    private int getCrc32(String name) throws JMpqException {
+        return getCrc32(extractFileAsBytes(name));
+    }
+
+    private int getCrc32(File file) throws IOException {
+        return getCrc32(Files.readAllBytes(file.toPath()));
+    }
+
+    public int getCrc32(byte[] bytes) throws JMpqException {
+        crc32.reset();
+        crc32.update(bytes);
+        return (int) crc32.getValue();
     }
 
     /* (non-Javadoc)
