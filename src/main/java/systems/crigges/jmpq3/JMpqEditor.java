@@ -532,6 +532,7 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     public void close() throws IOException {
+        long t = System.nanoTime();
         System.out.println("Building mpq");
         if (listFile == null) {
             fc.close();
@@ -676,6 +677,9 @@ public class JMpqEditor implements AutoCloseable {
 
         fc.close();
         writeChannel.close();
+
+        t = System.nanoTime() - t;
+        System.out.println("Rebuild complete. Took: " + (t/1000000) + "ms");
     }
 
     private CRC32 crc32 = new CRC32();

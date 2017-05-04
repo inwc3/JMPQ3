@@ -8,12 +8,14 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import static java.nio.file.StandardOpenOption.*;
 
 public class HashTable {
     private MappedByteBuffer hashMap;
     private int hashSize;
+    private HashMap<String, Integer> positionCache = new HashMap<>();
 
     public HashTable(MappedByteBuffer buf) throws IOException {
         this.hashSize = (buf.capacity() / 16);
@@ -67,20 +69,25 @@ public class HashTable {
     }
 
     public int getBlockIndexOfFile(String name) throws IOException {
-        int index = MpqCrypto.hash(name, 0);
-        int name1 = MpqCrypto.hash(name, 1);
-        int name2 = MpqCrypto.hash(name, 2);
-        int mask = this.hashSize - 1;
-        int start = index & mask;
-        for (int c = 0; c <= this.hashSize; c++) {
-            this.hashMap.position(start * 16);
-            Entry cur = new Entry(this.hashMap);
-            if(cur.dwBlockIndex == 0xFFFFFFFF) break;
-            if ((cur.dwName1 == name1) && (cur.dwName2 == name2))
-                return cur.dwBlockIndex;
-            start = (start + 1) & mask;
+        if(!positionCache.containsKey(name)) {
+            int index = MpqCrypto.hash(name, 0);
+            int name1 = MpqCrypto.hash(name, 1);
+            int name2 = MpqCrypto.hash(name, 2);
+            int mask = this.hashSize - 1;
+            int start = index & mask;
+            for (int c = 0; c <= this.hashSize; c++) {
+                this.hashMap.position(start * 16);
+                Entry cur = new Entry(this.hashMap);
+                if(cur.dwBlockIndex == 0xFFFFFFFF) break;
+                if ((cur.dwName1 == name1) && (cur.dwName2 == name2)) {
+                    positionCache.put(name, cur.dwBlockIndex);
+                    return positionCache.get(name);
+                }
+                start = (start + 1) & mask;
+            }
+            throw new JMpqException("File Not Found <" + name + ">");
         }
-        throw new JMpqException("File Not Found <" + name + ">");
+        return positionCache.get(name);
     }
 
     public static class Entry {

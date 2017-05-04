@@ -1,10 +1,10 @@
 package systems.crigges.jmpq3;
 
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.Scanner;
 
 public class Listfile {
-    private LinkedList<String> files = new LinkedList();
+    private HashSet<String> files = new HashSet();
 
     public Listfile(byte[] file) {
         String list = new String(file);
@@ -15,7 +15,7 @@ public class Listfile {
         sc.close();
     }
 
-    public LinkedList<String> getFiles() {
+    public HashSet<String> getFiles() {
         return this.files;
     }
 
@@ -29,10 +29,11 @@ public class Listfile {
     }
 
     public byte[] asByteArray() {
-        String temp = "";
+        StringBuilder temp = new StringBuilder();
         for (String s : this.files) {
-            temp = temp + s + "\r\n";
+            temp.append(s);
+            temp.append("\r\n");
         }
-        return temp.getBytes();
+        return temp.toString().getBytes();
     }
 }
