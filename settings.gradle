@@ -16,4 +16,4 @@ include 'api'
 include 'services:webservice'
 */
 
-rootProject.name = 'jmpqv3'
+rootProject.name = 'jmpq3'

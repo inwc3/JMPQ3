@@ -17,6 +17,7 @@ repositories {
 	mavenCentral()
 }
 
+jar.archiveName = "${jar.baseName}.${jar.extension}"
 jar {
     from {configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }

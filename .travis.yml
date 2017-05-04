@@ -26,8 +26,7 @@ deploy:
   provider: releases
   api_key:
     secure: lLaMsgrBiU5O14+C0YQn5qSl1gxGdQX7EXjUDgCO0vcq2x1EDLqiM8FXHs6HhPLAeew18r+vpwxex8596tOSKDl5ZLznhWVvyqhCnGf3ky4ONjhykBU6b7qfzxAYDQeWiVIneNIJy8msLdOFAzjodOOOmwOK6Zy2VAaykBV2nuNtDVFijOV82ksX6st9ZNcYKiB96uksgs5yT9+x8GGxCsYtuh+phUnhn/ZX0COPoHIxtcCedDqzjGsNHX4shCrfgFMSDyUfTsJcCiVsLw5WvfAzMGqjsdesqnbp6gByUQ5K1WqF7T7LiyOpkqfws+nau/2T2Uf5o1/MEZrQoSmG95+wyOrZ+8k7Gl4gUjCzQFtaEldJ+L1dgg2jlDXkBqWS+FSNIM/jpABeH4kemmljb14XibRGw4Pr+IWM2IVvmOpiU2JP9a8gUl9Xh08uCQD1tlgH4Uc37tCZ8rbgqhcw9AWDXooUs4BQNQd2mxgxTDygaSCdoCIxzfA6/MKNzImqYmMaIRdCTV119jYDruvZJpQgpjZaSUKEYke4Q1clwXYqAeJKNy98MOfQkC6bIVdLeHzdFSW7rN7fTI2bQo0mANT1wFRAWbLiq+5JMzyzANtdomEsstqt8b4GisK+qz4+cLx/OaNTnA+iEcWbWD2ME/UrtkRWX5KWw3BmSP4Vszs=
-  file_glob: true
-  file: build/libs/*
+  file: "build/libs/jmpq3.jar"
   on:
     repo: inwc3/JMPQ-v3
     tags: true
