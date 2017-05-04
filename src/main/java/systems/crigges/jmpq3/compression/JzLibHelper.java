@@ -5,9 +5,12 @@ import com.jcraft.jzlib.GZIPException;
 import com.jcraft.jzlib.Inflater;
 
 public class JzLibHelper {
+    private static Inflater inf = new Inflater();
+    private static Deflater def = null;
+
     public static byte[] inflate(byte[] bytes, int offset, int uncompSize) {
         byte[] uncomp = new byte[uncompSize];
-        Inflater inf = new Inflater();
+        inf.init();
         inf.setInput(bytes, offset, bytes.length - 1, false);
         inf.setOutput(uncomp);
         while ((inf.total_out < uncompSize) && (inf.total_in < bytes.length)) {
@@ -21,13 +24,10 @@ public class JzLibHelper {
     }
 
     public static byte[] deflate(byte[] bytes) {
+        tryCreateDeflater();
+
         byte[] comp = new byte[bytes.length];
-        Deflater def = null;
-        try {
-            def = new Deflater(9);
-        } catch (GZIPException e) {
-            throw new RuntimeException(e);
-        }
+        def.init(9);
         def.setInput(bytes);
         def.setOutput(comp);
         while ((def.total_in != bytes.length) && (def.total_out < bytes.length)) {
@@ -44,5 +44,15 @@ public class JzLibHelper {
         System.arraycopy(comp, 0, temp, 0, (int) def.getTotalOut());
         def.end();
         return temp;
+    }
+
+    private static void tryCreateDeflater() {
+        if(def == null) {
+            try {
+                def = new Deflater(9);
+            } catch (GZIPException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }
