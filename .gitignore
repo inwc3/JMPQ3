@@ -1,7 +1,6 @@
 .gradle
 build/
 gradle.properties
-gradle-wrapper.properties
 .idea/
 
 # Ignore Gradle GUI config
