@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/inwc3/JMPQ3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ-v3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ-v3?branch=master)
+[![Build Status](https://travis-ci.org/inwc3/JMPQ3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ-v3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ-v3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ-v3?branch=master)
 
 JMPQ3 is a small java library for accessing and modifying MoPaQ Archives.
 
