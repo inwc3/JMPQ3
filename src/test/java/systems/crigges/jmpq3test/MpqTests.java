@@ -18,8 +18,7 @@ import java.util.Arrays;
 public class MpqTests {
 
 	private static File[] getMpqs() {
-		return new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile())
-				.listFiles((dir, name) -> name.endsWith(".w3x"));
+		return new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile()).listFiles((dir, name) -> name.endsWith(".w3x"));
 	}
 
 	private static File getFile(String name) {
@@ -67,10 +66,8 @@ public class MpqTests {
 			File temp = File.createTempFile("war3mapj", "extracted", JMpqEditor.tempDir);
 			temp.deleteOnExit();
 			if (mpqEditor.hasFile("war3map.j")) {
-				String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n")
-						.replaceAll("\\r", "\n");
-				String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath()))
-						.replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+				String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+				String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
 				Assert.assertTrue(extractedFile.equalsIgnoreCase(existingFile));
 			}
 			mpqEditor.close();
@@ -89,8 +86,7 @@ public class MpqTests {
 	public void testMultipleInstances() throws IOException {
 		File[] mpqs = getMpqs();
 		for (File mpq : mpqs) {
-			JMpqEditor mpqEditors[] = new JMpqEditor[] {
-					new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
+			JMpqEditor mpqEditors[] = new JMpqEditor[] { new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
 					new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
 					new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0) };
 			for (int i = 0; i < mpqEditors.length; i++) {

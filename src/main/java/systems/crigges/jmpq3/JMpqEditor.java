@@ -195,8 +195,7 @@ public class JMpqEditor implements AutoCloseable {
 		try {
 			setupTempDir();
 
-			final OpenOption[] fcOptions = canWrite
-					? new OpenOption[] { StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE }
+			final OpenOption[] fcOptions = canWrite ? new OpenOption[] { StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE }
 					: new OpenOption[] { StandardOpenOption.READ };
 			fc = FileChannel.open(mpqArchive, fcOptions);
 
@@ -319,8 +318,7 @@ public class JMpqEditor implements AutoCloseable {
 	 * @throws IOException
 	 */
 	private void loadDefaultListFile() throws IOException {
-		Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile())
-				.toPath();
+		Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile()).toPath();
 		listFile = new Listfile(Files.readAllBytes(defaultListfile));
 	}
 
@@ -344,11 +342,9 @@ public class JMpqEditor implements AutoCloseable {
 		}
 	}
 
-	private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1A })
-			.order(ByteOrder.LITTLE_ENDIAN).getInt();
+	private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1A }).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
-	private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1B })
-			.order(ByteOrder.LITTLE_ENDIAN).getInt();
+	private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1B }).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
 	/**
 	 * Searches the file for the MPQ archive header.
@@ -736,8 +732,7 @@ public class JMpqEditor implements AutoCloseable {
 		}
 		File temp = File.createTempFile("crig", "mpq", JMpqEditor.tempDir);
 		temp.deleteOnExit();
-		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE,
-				StandardOpenOption.READ);
+		FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
 
 		if (keepHeaderOffset) {
 			ByteBuffer headerReader = ByteBuffer.allocate((int) (headerOffset + 4)).order(ByteOrder.LITTLE_ENDIAN);
@@ -821,8 +816,7 @@ public class JMpqEditor implements AutoCloseable {
 		newFiles.add("(listfile)");
 		byte[] listfileArr = listFile.asByteArray();
 		MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
-		Block newBlock = new Block(currentPos - headerOffset, 0, 0,
-				EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+		Block newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
 		newBlocks.add(newBlock);
 		MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)");
 		currentPos += newBlock.getCompressedSize();
@@ -918,8 +912,7 @@ public class JMpqEditor implements AutoCloseable {
 	 */
 	@Override
 	public String toString() {
-		return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion="
-				+ formatVersion + ", discBlockSize=" + discBlockSize + ", hashPos=" + hashPos + ", blockPos=" + blockPos
-				+ ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
+		return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
+				+ ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
 	}
 }
