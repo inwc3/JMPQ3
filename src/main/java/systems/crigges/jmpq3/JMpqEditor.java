@@ -171,7 +171,7 @@ public class JMpqEditor implements AutoCloseable {
 	 * Creates a new MPQ editor for the MPQ file at the specified path.
 	 * <p>
 	 * If the archive file does not exist a new archive file will be
-	 * automatically created. Any changes made to the archive might only
+	 * created automatically. Any changes made to the archive might only
 	 * propagate to the file system once this's close method is called.
 	 * <p>
 	 * When READ_ONLY option is specified then the archive file will never be
@@ -266,27 +266,50 @@ public class JMpqEditor implements AutoCloseable {
 	}
 
 	/**
-	 * Creates a new MPQ editor for the specified MPQ file.
+     * Creates a new MPQ editor for the specified MPQ file.
+     * <p>
+     * If the archive file does not exist a new archive file will be created
+     * automatically. Any changes made to the archive might only propagate to
+     * the file system once this's close method is called.
+     * <p>
+     * When READ_ONLY option is specified then the archive file will never be
+     * modified by this editor.
+     *
+     * @param mpqArchive
+     *            a MPQ archive file.
+     * @param openOptions
+     *            options to use when opening the archive.
+     * @throws FileNotFoundException
+     *             if mpqArchive is not a file or does not exist and READ_ONLY
+     *             option is specified.
+     * @throws JMpqException
+     *             if mpq is damaged or not supported.
+     */
+	public JMpqEditor(File mpqArchive, MPQOpenOption... openOptions) throws IOException {
+		this(mpqArchive.toPath(), openOptions);
+	}
+	
+	/**
+	 * Creates a new MPQ editor for the specified MPQ format version 0 archive
+	 * file.
 	 * <p>
-	 * If the archive file does not exist a new archive file will be
-	 * automatically created. Any changes made to the archive might only
-	 * propagate to the file system once this's close method is called.
+	 * If the archive file does not exist a new archive file will be created
+	 * automatically. Any changes made to the archive might only propagate to
+	 * the file system once this's close method is called.
 	 * <p>
-	 * When READ_ONLY option is specified then the archive file will never be
-	 * modified by this editor.
+	 * This constructor is deprecated as it only allows the use of MPQ format
+	 * version 0 archive files and does not allow archive files to be opened as
+	 * read only. Similar behaviour can be obtained with other constructors by
+	 * using MPQOpenOption.FORCE_V0.
 	 *
 	 * @param mpqArchive
 	 *            a MPQ archive file.
-	 * @param openOptions
-	 *            options to use when opening the archive.
-	 * @throws FileNotFoundException
-	 *             if mpqArchive is not a file or does not exist and READ_ONLY
-	 *             option is specified.
 	 * @throws JMpqException
 	 *             if mpq is damaged or not supported.
 	 */
-	public JMpqEditor(File mpqArchive, MPQOpenOption... openOptions) throws IOException {
-		this(mpqArchive.toPath(), openOptions);
+	@Deprecated
+	public JMpqEditor(File mpqArchive) throws IOException {
+		this(mpqArchive.toPath(), MPQOpenOption.FORCE_V0);
 	}
 
 	private void setupTempDir() throws JMpqException {

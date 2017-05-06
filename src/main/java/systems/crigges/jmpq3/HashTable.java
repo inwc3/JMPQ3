@@ -25,7 +25,7 @@ public class HashTable {
 		try (FileOutputStream hashStream = new FileOutputStream(hash); FileChannel hashChannel = FileChannel.open(hash.toPath(), CREATE, WRITE, READ)) {
 			hashStream.write(decrypted);
 			hashStream.flush();
-			this.hashMap = hashChannel.map(FileChannel.MapMode.READ_WRITE, 0L, hashChannel.size());
+        	this.hashMap = hashChannel.map(FileChannel.MapMode.READ_WRITE, 0L, hashChannel.size());
 			this.hashMap.order(ByteOrder.LITTLE_ENDIAN);
 		}
 
