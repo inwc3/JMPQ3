@@ -17,7 +17,7 @@ public class HashTable {
     private int hashSize;
     private HashMap<String, Integer> positionCache = new HashMap<>();
 
-    public HashTable(MappedByteBuffer buf) throws IOException {
+    public HashTable(ByteBuffer buf) throws IOException {
         this.hashSize = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, 16 * this.hashSize, -1011927184);
         File hash = File.createTempFile("block", "crig", JMpqEditor.tempDir);

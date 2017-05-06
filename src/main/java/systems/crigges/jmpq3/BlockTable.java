@@ -16,7 +16,7 @@ public class BlockTable {
     private MappedByteBuffer blockMap;
     private int size;
 
-    public BlockTable(MappedByteBuffer buf) throws IOException {
+    public BlockTable(ByteBuffer buf) throws IOException {
         this.size = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, this.size * 16, -326913117);
 
@@ -69,7 +69,7 @@ public class BlockTable {
     }
 
     public static class Block {
-        private int filePos;
+        private long filePos;
         private int compressedSize;
         private int normalSize;
         private int flags;
@@ -81,7 +81,7 @@ public class BlockTable {
             this.flags = buf.getInt();
         }
 
-        public Block(int filePos, int compressedSize, int normalSize, int flags) {
+        public Block(long filePos, int compressedSize, int normalSize, int flags) {
             this.filePos = filePos;
             this.compressedSize = compressedSize;
             this.normalSize = normalSize;
@@ -89,14 +89,14 @@ public class BlockTable {
         }
 
         public void writeToBuffer(ByteBuffer bb) {
-            bb.putInt(this.filePos);
+            bb.putInt((int)this.filePos);
             bb.putInt(this.compressedSize);
             bb.putInt(this.normalSize);
             bb.putInt(this.flags);
         }
 
         public int getFilePos() {
-            return this.filePos;
+            return (int)this.filePos;
         }
 
         public int getCompressedSize() {
