@@ -165,7 +165,12 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * If write operations are supported on the archive.
      */
-    private boolean canWrite;
+    private final boolean canWrite;
+    
+    /**
+     * Archive requires a rebuild to reflect changes made.
+     */
+    private boolean needRebuild = false;
 
     /**
      * Creates a new MPQ editor for the MPQ file at the specified path.
@@ -331,13 +336,11 @@ public class JMpqEditor implements AutoCloseable {
 
     /**
      * Loads a default listfile for mpqs that have none
-     * Makes the archive readonly.
      * @throws IOException
      */
     private void loadDefaultListFile() throws IOException {
         Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile()).toPath();
         listFile = new Listfile(Files.readAllBytes(defaultListfile));
-        canWrite = false;
     }
 
     /**
@@ -701,6 +704,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         listFile.removeFile(name);
+        needRebuild = true;
     }
 
     /**
@@ -733,6 +737,8 @@ public class JMpqEditor implements AutoCloseable {
                 filesToAdd.add(f);
                 internalFilename.put(f, name);
             }
+            
+            needRebuild = true;
         } catch (IOException e) {
             throw new JMpqException(e);
         }
@@ -748,8 +754,8 @@ public class JMpqEditor implements AutoCloseable {
      * @throws IOException
      */
     public void close(boolean buildListfile, boolean buildAttributes) throws IOException {
-        // only rebuild if allowed
-        if (!canWrite) {
+        // only rebuild if required and allowed
+        if (!needRebuild || !canWrite) {
             fc.close();
             return;
         }
