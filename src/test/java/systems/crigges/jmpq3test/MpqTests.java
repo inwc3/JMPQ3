@@ -9,6 +9,7 @@ import systems.crigges.jmpq3.MpqCrypto;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.NonWritableChannelException;
 import java.nio.file.Files;
 import java.util.Arrays;
 
@@ -31,8 +32,8 @@ public class MpqTests {
         byte[] a = MpqCrypto.encryptMpqBlock(ByteBuffer.wrap(bytes), bytes.length, -1011927184);
         byte[] b = MpqCrypto.decryptBlock(ByteBuffer.wrap(a), bytes.length, -1011927184);
 
-        Assert.assertTrue(Arrays.equals(new byte[] { -96, -93, 89, -50, 43, -60, 18, -33, -31, -71, -81, 86 }, a));
-        Assert.assertTrue(Arrays.equals(new byte[] { 2, -106, -97, 38, 5, -82, -88, -91, -6, 63, 114, -31 }, b));
+        Assert.assertTrue(Arrays.equals(new byte[]{-96, -93, 89, -50, 43, -60, 18, -33, -31, -71, -81, 86}, a));
+        Assert.assertTrue(Arrays.equals(new byte[]{2, -106, -97, 38, 5, -82, -88, -91, -6, 63, 114, -31}, b));
     }
 
     @Test
@@ -86,9 +87,9 @@ public class MpqTests {
     public void testMultipleInstances() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            JMpqEditor mpqEditors[] = new JMpqEditor[] { new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
+            JMpqEditor mpqEditors[] = new JMpqEditor[]{new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
                     new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
-                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0) };
+                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)};
             for (int i = 0; i < mpqEditors.length; i++) {
                 mpqEditors[i].extractAllFiles(JMpqEditor.tempDir);
             }
@@ -101,16 +102,20 @@ public class MpqTests {
     private void insertAndDelete(File mpq, String filename) throws IOException {
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         Assert.assertFalse(mpqEditor.hasFile(filename));
+        try {
+            mpqEditor.insertFile(filename, getFile(filename), true);
+            mpqEditor.deleteFile(filename);
+            mpqEditor.insertFile(filename, getFile(filename), false);
+            mpqEditor.close();
+            mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+            Assert.assertTrue(mpqEditor.hasFile(filename));
 
-        mpqEditor.insertFile(filename, getFile(filename), false);
-        mpqEditor.close();
-        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        Assert.assertTrue(mpqEditor.hasFile(filename));
-
-        mpqEditor.deleteFile(filename);
-        mpqEditor.close();
-        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
-        Assert.assertFalse(mpqEditor.hasFile(filename));
-        mpqEditor.close();
+            mpqEditor.deleteFile(filename);
+            mpqEditor.close();
+            mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
+            Assert.assertFalse(mpqEditor.hasFile(filename));
+            mpqEditor.close();
+        } catch (NonWritableChannelException ignored) {
+        }
     }
 }

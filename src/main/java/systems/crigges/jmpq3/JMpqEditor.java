@@ -158,14 +158,14 @@ public class JMpqEditor implements AutoCloseable {
     private int newBlockSize;
 
     /**
-     * If write operations are supported on the archive.
-     */
-    private final boolean canWrite;
-
-    /**
      * MPQ format version 0 forced compatibility is being used.
      */
     private final boolean legacyCompatibility;
+
+    /**
+     * If write operations are supported on the archive.
+     */
+    private boolean canWrite;
 
     /**
      * Creates a new MPQ editor for the MPQ file at the specified path.
@@ -181,9 +181,6 @@ public class JMpqEditor implements AutoCloseable {
      *            path to a MPQ archive file.
      * @param openOptions
      *            options to use when opening the archive.
-     * @throws FileNotFoundException
-     *             if mpqArchive is not a file path or does not exist and
-     *             READ_ONLY option is specified.
      * @throws JMpqException
      *             if mpq is damaged or not supported.
      */
@@ -279,9 +276,6 @@ public class JMpqEditor implements AutoCloseable {
      *            a MPQ archive file.
      * @param openOptions
      *            options to use when opening the archive.
-     * @throws FileNotFoundException
-     *             if mpqArchive is not a file or does not exist and READ_ONLY
-     *             option is specified.
      * @throws JMpqException
      *             if mpq is damaged or not supported.
      */
@@ -343,11 +337,12 @@ public class JMpqEditor implements AutoCloseable {
     private void loadDefaultListFile() throws IOException {
         Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile()).toPath();
         listFile = new Listfile(Files.readAllBytes(defaultListfile));
+        canWrite = false;
     }
 
     /**
      * Utility method to fill a buffer from the given channel.
-     * 
+     *
      * @param buffer
      *            buffer to fill.
      * @param src
@@ -525,10 +520,11 @@ public class JMpqEditor implements AutoCloseable {
      *             the j mpq exception
      */
     public void extractAllFiles(File dest) throws JMpqException {
+
         if (!dest.isDirectory()) {
             throw new JMpqException("Destination location isn't a directory");
         }
-        if (listFile != null) {
+        if (listFile != null && canWrite) {
             for (String s : listFile.getFiles()) {
                 System.out.println("extracting: " + s);
                 File temp = new File(dest.getAbsolutePath() + "\\" + s);
@@ -792,7 +788,7 @@ public class JMpqEditor implements AutoCloseable {
 
         ArrayList<Block> newBlocks = new ArrayList<>();
         ArrayList<String> newFiles = new ArrayList<>();
-        ArrayList<String> remainingFiles = new ArrayList<>(listFile.getFiles());
+        ArrayList<String> remainingFiles = new ArrayList<>();
         // Sort entries to preserve block table order
         remainingFiles.sort((o1, o2) -> {
             int pos1 = 999999999;

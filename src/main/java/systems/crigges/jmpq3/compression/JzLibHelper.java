@@ -47,7 +47,7 @@ public class JzLibHelper {
     }
 
     private static void tryCreateDeflater() {
-        if(def == null) {
+        if (def == null) {
             try {
                 def = new Deflater(9);
             } catch (GZIPException e) {
