@@ -741,6 +741,15 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     public void close() throws IOException {
+        close(true, true);
+    }
+
+    /**
+     * @param buildListfile whether or not to add a (listfile) to this mpq
+     * @param buildAttributes whether or not to add a (attributes) file to this mpq
+     * @throws IOException
+     */
+    public void close(boolean buildListfile, boolean buildAttributes) throws IOException {
         // only rebuild if allowed
         if (!canWrite) {
             fc.close();
@@ -835,16 +844,17 @@ public class JMpqEditor implements AutoCloseable {
             currentPos += newBlock.getCompressedSize();
         }
         System.out.println("Added new files");
-        // Add listfile
-        newFiles.add("(listfile)");
-        byte[] listfileArr = listFile.asByteArray();
-        MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
-        Block newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-        newBlocks.add(newBlock);
-        MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)");
-        currentPos += newBlock.getCompressedSize();
-        System.out.println("Added listfile");
-
+        if(buildListfile) {
+            // Add listfile
+            newFiles.add("(listfile)");
+            byte[] listfileArr = listFile.asByteArray();
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
+            Block newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+            newBlocks.add(newBlock);
+            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)");
+            currentPos += newBlock.getCompressedSize();
+            System.out.println("Added listfile");
+        }
         // if (attributes != null) {
         // newFiles.add("(attributes)");
         // // Only generate attributes file when there has been one before
