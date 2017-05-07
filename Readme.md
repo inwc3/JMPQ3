@@ -1,8 +1,11 @@
-[![Build Status](https://travis-ci.org/inwc3/JMPQ3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ-v3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ-v3?branch=master)
+[![Build Status](https://travis-ci.org/inwc3/JMPQ3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master)
 
 JMPQ3 is a small java library for accessing and modifying MoPaQ (.mpq,.w3m,.w3x) Archives.
+
 MoPaQ is Blizzard's old, proprietary archive format for storing gamedata (replaced with CASC).
+
 You can find more info and an excellent editor here http://www.zezula.net/en/mpq/main.html
+
 For Java programs however it is neater to rely on Java only instead of some native libraries.
 
 **Download** the latest release here:
