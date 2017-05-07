@@ -331,7 +331,7 @@ public class JMpqEditor implements AutoCloseable {
 
     /**
      * Loads a default listfile for mpqs that have none
-     *
+     * Makes the archive readonly.
      * @throws IOException
      */
     private void loadDefaultListFile() throws IOException {
@@ -520,16 +520,18 @@ public class JMpqEditor implements AutoCloseable {
      *             the j mpq exception
      */
     public void extractAllFiles(File dest) throws JMpqException {
-
         if (!dest.isDirectory()) {
             throw new JMpqException("Destination location isn't a directory");
         }
-        if (listFile != null && canWrite) {
+        if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
                 System.out.println("extracting: " + s);
                 File temp = new File(dest.getAbsolutePath() + "\\" + s);
                 temp.getParentFile().mkdirs();
-                extractFile(s, temp);
+                if (hasFile(s)) {
+                    // Prevent exception due to nonexistent listfile entries
+                    extractFile(s, temp);
+                }
             }
             if (hasFile("(attributes)")) {
                 File temp = new File(dest.getAbsolutePath() + "\\" + "(attributes)");
@@ -788,7 +790,7 @@ public class JMpqEditor implements AutoCloseable {
 
         ArrayList<Block> newBlocks = new ArrayList<>();
         ArrayList<String> newFiles = new ArrayList<>();
-        ArrayList<String> remainingFiles = new ArrayList<>();
+        ArrayList<String> remainingFiles = new ArrayList<>(listFile.getFiles());
         // Sort entries to preserve block table order
         remainingFiles.sort((o1, o2) -> {
             int pos1 = 999999999;

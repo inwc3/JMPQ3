@@ -42,6 +42,7 @@ public class MpqTests {
         for (File mpq : mpqs) {
             System.out.println(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+            mpqEditor.printHeader();
             mpqEditor.close();
         }
     }
