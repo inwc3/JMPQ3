@@ -9,6 +9,8 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
+import systems.crigges.jmpq3.BlockTable.Block;
+
 import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -16,15 +18,14 @@ public class BlockTable {
     private MappedByteBuffer blockMap;
     private int size;
 
-    public BlockTable(MappedByteBuffer buf) throws IOException {
+    public BlockTable(ByteBuffer buf) throws IOException {
         this.size = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, this.size * 16, -326913117);
 
         File block = File.createTempFile("block", "crig", JMpqEditor.tempDir);
         block.deleteOnExit();
 
-        try (FileOutputStream blockStream = new FileOutputStream(block);
-             FileChannel blockChannel = FileChannel.open(block.toPath(), CREATE, WRITE, READ)) {
+        try (FileOutputStream blockStream = new FileOutputStream(block); FileChannel blockChannel = FileChannel.open(block.toPath(), CREATE, WRITE, READ)) {
 
             blockStream.write(decrypted);
             blockStream.flush();
@@ -58,7 +59,7 @@ public class BlockTable {
     }
 
     public ArrayList<Block> getAllVaildBlocks() throws JMpqException {
-        ArrayList list = new ArrayList();
+        ArrayList<Block> list = new ArrayList<Block>();
         for (int i = 0; i < this.size; i++) {
             Block b = getBlockAtPos(i);
             if ((b.getFlags() & 0x80000000) == -2147483648) {
@@ -69,7 +70,7 @@ public class BlockTable {
     }
 
     public static class Block {
-        private int filePos;
+        private long filePos;
         private int compressedSize;
         private int normalSize;
         private int flags;
@@ -81,7 +82,7 @@ public class BlockTable {
             this.flags = buf.getInt();
         }
 
-        public Block(int filePos, int compressedSize, int normalSize, int flags) {
+        public Block(long filePos, int compressedSize, int normalSize, int flags) {
             this.filePos = filePos;
             this.compressedSize = compressedSize;
             this.normalSize = normalSize;
@@ -89,14 +90,14 @@ public class BlockTable {
         }
 
         public void writeToBuffer(ByteBuffer bb) {
-            bb.putInt(this.filePos);
+            bb.putInt((int) this.filePos);
             bb.putInt(this.compressedSize);
             bb.putInt(this.normalSize);
             bb.putInt(this.flags);
         }
 
         public int getFilePos() {
-            return this.filePos;
+            return (int) this.filePos;
         }
 
         public int getCompressedSize() {
@@ -132,17 +133,13 @@ public class BlockTable {
         }
 
         public String toString() {
-            return "Block [filePos=" + this.filePos + ", compressedSize=" + this.compressedSize + ", normalSize="
-                    + this.normalSize + ", flags=" + this.flags + "]";
+            return "Block [filePos=" + this.filePos + ", compressedSize=" + this.compressedSize + ", normalSize=" + this.normalSize + ", flags=" + this.flags
+                    + "]";
         }
 
         public String printFlags() {
-            return (hasFlag(EXISTS) ? "EXISTS " : "") +
-                    (hasFlag(SINGLEUNIT) ? "SINGLEUNIT " : "") +
-                    (hasFlag(COMPRESSED) ? "COMPRESSED " : "") +
-                    (hasFlag(ENCRYPTED) ? "ENCRYPTED " : "") +
-                    (hasFlag(ADJUSTED_ENCRYPTED) ? "ADJUSTED " : "") +
-                    (hasFlag(DELETED) ? "DELETED " : "");
+            return (hasFlag(EXISTS) ? "EXISTS " : "") + (hasFlag(SINGLEUNIT) ? "SINGLEUNIT " : "") + (hasFlag(COMPRESSED) ? "COMPRESSED " : "")
+                    + (hasFlag(ENCRYPTED) ? "ENCRYPTED " : "") + (hasFlag(ADJUSTED_ENCRYPTED) ? "ADJUSTED " : "") + (hasFlag(DELETED) ? "DELETED " : "");
         }
     }
 }

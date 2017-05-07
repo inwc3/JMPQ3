@@ -17,13 +17,12 @@ public class HashTable {
     private int hashSize;
     private HashMap<String, Integer> positionCache = new HashMap<>();
 
-    public HashTable(MappedByteBuffer buf) throws IOException {
+    public HashTable(ByteBuffer buf) throws IOException {
         this.hashSize = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, 16 * this.hashSize, -1011927184);
         File hash = File.createTempFile("block", "crig", JMpqEditor.tempDir);
         hash.deleteOnExit();
-        try (FileOutputStream hashStream = new FileOutputStream(hash);
-             FileChannel hashChannel = FileChannel.open(hash.toPath(), CREATE, WRITE, READ)) {
+        try (FileOutputStream hashStream = new FileOutputStream(hash); FileChannel hashChannel = FileChannel.open(hash.toPath(), CREATE, WRITE, READ)) {
             hashStream.write(decrypted);
             hashStream.flush();
             this.hashMap = hashChannel.map(FileChannel.MapMode.READ_WRITE, 0L, hashChannel.size());
@@ -32,8 +31,7 @@ public class HashTable {
 
     }
 
-    public static void writeNewHashTable(int size, ArrayList<String> names, MappedByteBuffer writeBuffer)
-            throws IOException {
+    public static void writeNewHashTable(int size, ArrayList<String> names, MappedByteBuffer writeBuffer) throws IOException {
         Entry[] content = new Entry[size];
         for (int i = 0; i < size; i++) {
             content[i] = new Entry(-1, -1, -1, -1, -1);
@@ -69,7 +67,7 @@ public class HashTable {
     }
 
     public int getBlockIndexOfFile(String name) throws IOException {
-        if(!positionCache.containsKey(name)) {
+        if (!positionCache.containsKey(name)) {
             int index = MpqCrypto.hash(name, 0);
             int name1 = MpqCrypto.hash(name, 1);
             int name2 = MpqCrypto.hash(name, 2);
@@ -78,7 +76,8 @@ public class HashTable {
             for (int c = 0; c <= this.hashSize; c++) {
                 this.hashMap.position(start * 16);
                 Entry cur = new Entry(this.hashMap);
-                if(cur.dwBlockIndex == 0xFFFFFFFF) break;
+                if (cur.dwBlockIndex == 0xFFFFFFFF)
+                    break;
                 if ((cur.dwName1 == name1) && (cur.dwName2 == name2)) {
                     positionCache.put(name, cur.dwBlockIndex);
                     return positionCache.get(name);
@@ -126,8 +125,8 @@ public class HashTable {
         }
 
         public String toString() {
-            return "Entry [dwName1=" + this.dwName1 + ",\tdwName2=" + this.dwName2 + ",\tlcLocale=" + this.lcLocale
-                    + ",\twPlatform=" + this.wPlatform + ",\tdwBlockIndex=" + this.dwBlockIndex + "]";
+            return "Entry [dwName1=" + this.dwName1 + ",\tdwName2=" + this.dwName2 + ",\tlcLocale=" + this.lcLocale + ",\twPlatform=" + this.wPlatform
+                    + ",\tdwBlockIndex=" + this.dwBlockIndex + "]";
         }
     }
 }

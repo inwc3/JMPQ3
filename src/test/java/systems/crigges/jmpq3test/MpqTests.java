@@ -3,6 +3,7 @@ package systems.crigges.jmpq3test;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import systems.crigges.jmpq3.JMpqEditor;
+import systems.crigges.jmpq3.MPQOpenOption;
 import systems.crigges.jmpq3.MpqCrypto;
 
 import java.io.File;
@@ -30,16 +31,16 @@ public class MpqTests {
         byte[] a = MpqCrypto.encryptMpqBlock(ByteBuffer.wrap(bytes), bytes.length, -1011927184);
         byte[] b = MpqCrypto.decryptBlock(ByteBuffer.wrap(a), bytes.length, -1011927184);
 
-        Assert.assertTrue(Arrays.equals(new byte[]{-96, -93, 89, -50, 43, -60, 18, -33, -31, -71, -81, 86}, a));
-        Assert.assertTrue(Arrays.equals(new byte[]{2, -106, -97, 38, 5, -82, -88, -91, -6, 63, 114, -31}, b));
+        Assert.assertTrue(Arrays.equals(new byte[] { -96, -93, 89, -50, 43, -60, 18, -33, -31, -71, -81, 86 }, a));
+        Assert.assertTrue(Arrays.equals(new byte[] { 2, -106, -97, 38, 5, -82, -88, -91, -6, 63, 114, -31 }, b));
     }
-
 
     @Test
     public void testRebuild() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            JMpqEditor mpqEditor = new JMpqEditor(mpq);
+            System.out.println(mpq.getName());
+            JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
             mpqEditor.close();
         }
     }
@@ -48,10 +49,11 @@ public class MpqTests {
     public void testExtractAll() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            JMpqEditor mpqEditor = new JMpqEditor(mpq);
+            JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
             File file = new File("out/");
             file.mkdirs();
             mpqEditor.extractAllFiles(file);
+            mpqEditor.close();
         }
     }
 
@@ -60,10 +62,10 @@ public class MpqTests {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             System.out.println("test extract script: " + mpq.getName());
-            JMpqEditor mpqEditor = new JMpqEditor(mpq);
+            JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
             File temp = File.createTempFile("war3mapj", "extracted", JMpqEditor.tempDir);
             temp.deleteOnExit();
-            if(mpqEditor.hasFile("war3map.j")) {
+            if (mpqEditor.hasFile("war3map.j")) {
                 String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
                 String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
                 Assert.assertTrue(extractedFile.equalsIgnoreCase(existingFile));
@@ -84,7 +86,9 @@ public class MpqTests {
     public void testMultipleInstances() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            JMpqEditor mpqEditors[] = new JMpqEditor[]{new JMpqEditor(mpq),new JMpqEditor(mpq),new JMpqEditor(mpq)};
+            JMpqEditor mpqEditors[] = new JMpqEditor[] { new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
+                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
+                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0) };
             for (int i = 0; i < mpqEditors.length; i++) {
                 mpqEditors[i].extractAllFiles(JMpqEditor.tempDir);
             }
@@ -95,20 +99,18 @@ public class MpqTests {
     }
 
     private void insertAndDelete(File mpq, String filename) throws IOException {
-        JMpqEditor mpqEditor = new JMpqEditor(mpq);
+        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         Assert.assertFalse(mpqEditor.hasFile(filename));
 
         mpqEditor.insertFile(filename, getFile(filename), false);
         mpqEditor.close();
-        mpqEditor = new JMpqEditor(mpq);
+        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         Assert.assertTrue(mpqEditor.hasFile(filename));
 
         mpqEditor.deleteFile(filename);
         mpqEditor.close();
-        mpqEditor = new JMpqEditor(mpq);
+        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
         Assert.assertFalse(mpqEditor.hasFile(filename));
         mpqEditor.close();
     }
-
-
 }
