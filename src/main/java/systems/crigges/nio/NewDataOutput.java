@@ -19,7 +19,7 @@ import java.nio.channels.GatheringByteChannel;
  * out.
  * <p>
  * Due to the low level nature of these methods no synchronisation is performed.
- * Behaviour is undefined if multiple threads try to read data at the same time
+ * Behaviour is undefined if multiple threads try to write data at the same time
  */
 public interface NewDataOutput extends DataOutput, DataByteOrder, GatheringByteChannel {
     @Override
