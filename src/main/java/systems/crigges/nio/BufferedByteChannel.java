@@ -1,7 +1,5 @@
-package systems.crigges.util;
+package systems.crigges.nio;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -24,16 +22,16 @@ import java.nio.channels.SeekableByteChannel;
  * reduced buffer utilisation and poor performance.
  * <p>
  * The wrapped channel position does not reflect this's position. When in read
- * mode it will be placed at the end of the buffer. When in write mode it will
- * be placed at the beginning of the buffer. This allows efficient sequential
- * operation.
+ * mode it will be placed at the end of the buffer to allow for efficient
+ * sequential reads. When in write mode it will be placed at the beginning of
+ * the buffer to allow for efficient sequential writes.
  * <p>
  * Behaviour is undefined if used to wrap a non-blocking channel. Behaviour is
  * undefined if the position of the wrapped channel is manipulated by anything
  * other than this wrapper. Closing this channel will also close the wrapped
  * channel.
  */
-public class BufferedByteChannel implements SeekableByteChannel, DataInput, DataOutput {
+public class BufferedByteChannel implements SeekableByteChannel, NewDataInput, NewDataOutput {
     /**
      * The channel that is being wrapped.
      */
@@ -187,23 +185,9 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
         }
     }
 
-    /**
-     * Sets the byte order used to interpret primitive types from the buffer.
-     * 
-     * @param bo
-     *            the byte order to use.
-     */
+    @Override
     public void order(final ByteOrder bo) {
         buffer.order(bo);
-    }
-
-    /**
-     * Convenience method to read in an unsigned int in the form of a long.
-     * 
-     * @return the unsigned 32-bit value read.
-     */
-    public long readUnsignedInt() throws IOException {
-        return readInt() & 0xFFFFFFFFL;
     }
 
     @Override
@@ -316,13 +300,6 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
     }
 
     @Override
-    public void write(int b) throws IOException {
-        prepareWrite(1);
-
-        buffer.put((byte) b);
-    }
-
-    @Override
     public void write(byte[] b) throws IOException {
         write(ByteBuffer.wrap(b));
     }
@@ -333,13 +310,10 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
     }
 
     @Override
-    public void writeBoolean(boolean v) throws IOException {
-        write(v ? 1 : 0);
-    }
-
-    @Override
     public void writeByte(int v) throws IOException {
-        write(v);
+        prepareWrite(1);
+
+        buffer.put((byte) v);
     }
 
     @Override
@@ -347,11 +321,6 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
         prepareWrite(2);
 
         buffer.putShort((short) v);
-    }
-
-    @Override
-    public void writeChar(int v) throws IOException {
-        writeShort(v);
     }
 
     @Override
@@ -383,21 +352,6 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
     }
 
     @Override
-    public void writeBytes(String s) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void writeChars(String s) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void writeUTF(String s) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void readFully(byte[] b) throws IOException {
         read(ByteBuffer.wrap(b));
     }
@@ -417,11 +371,6 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
     }
 
     @Override
-    public boolean readBoolean() throws IOException {
-        return readByte() != 0 ? true : false;
-    }
-
-    @Override
     public byte readByte() throws IOException {
         prepareRead(1);
 
@@ -429,25 +378,10 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
     }
 
     @Override
-    public int readUnsignedByte() throws IOException {
-        return Byte.toUnsignedInt(readByte());
-    }
-
-    @Override
     public short readShort() throws IOException {
         prepareRead(2);
 
         return buffer.getShort();
-    }
-
-    @Override
-    public int readUnsignedShort() throws IOException {
-        return Short.toUnsignedInt(readShort());
-    }
-
-    @Override
-    public char readChar() throws IOException {
-        return (char) readShort();
     }
 
     @Override
@@ -476,15 +410,5 @@ public class BufferedByteChannel implements SeekableByteChannel, DataInput, Data
         prepareRead(8);
 
         return buffer.getDouble();
-    }
-
-    @Override
-    public String readLine() throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public String readUTF() throws IOException {
-        throw new UnsupportedOperationException();
     }
 }
