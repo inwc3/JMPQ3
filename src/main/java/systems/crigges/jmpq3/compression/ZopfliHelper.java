@@ -1,8 +1,8 @@
 package systems.crigges.jmpq3.compression;
 
-import systems.crigges.jmpq3.compression.zopfli.Buffer;
-import systems.crigges.jmpq3.compression.zopfli.Options;
-import systems.crigges.jmpq3.compression.zopfli.Zopfli;
+import ru.eustas.zopfli.Buffer;
+import ru.eustas.zopfli.Options;
+import ru.eustas.zopfli.Zopfli;
 
 /**
  * Created by Frotty on 09.05.2017.

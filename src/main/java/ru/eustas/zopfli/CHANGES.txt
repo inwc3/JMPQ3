@@ -1,0 +1,2 @@
+Components not used by jmpq have been removed, i.e. support for zlib and gzip output.
+All files have been reformatted.
