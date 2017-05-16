@@ -77,10 +77,18 @@ public class MpqTests {
     }
 
     @Test
-    public void testInsertDeleteFile() throws IOException {
+    public void testInsertDeleteRegularFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             insertAndDelete(mpq, "Example.txt");
+        }
+    }
+
+    @Test
+    public void testInsertDeleteZeroLengthFile() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            insertAndDelete(mpq, "0ByteExample.txt");
         }
     }
 

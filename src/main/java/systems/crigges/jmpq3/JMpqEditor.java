@@ -834,7 +834,6 @@ public class JMpqEditor implements AutoCloseable {
         for (File f : filesToAdd) {
             newFiles.add(internalFilename.get(f));
             newFileMap.put(internalFilename.get(f), f);
-            remainingFiles.remove(internalFilename.get(f));
             MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length() * 2);
             Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
             newBlocks.add(newBlock);

@@ -258,7 +258,12 @@ public class MpqFile {
         fileBuf.position(0);
         b.setNormalSize(fileArr.length);
         if (b.getFlags() == 0) {
-            b.setFlags(EXISTS | COMPRESSED);
+            if(fileArr.length > 0) {
+                b.setFlags(EXISTS | COMPRESSED);
+            } else {
+                b.setFlags(EXISTS);
+                return;
+            }
         }
         int sectorCount = (int) (Math.ceil(((double) fileArr.length / (double) sectorSize)) + 1);
         ByteBuffer sot = ByteBuffer.allocate(sectorCount * 4);
