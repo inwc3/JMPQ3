@@ -1,5 +1,6 @@
 package systems.crigges.jmpq3test;
 
+import com.esotericsoftware.minlog.Log;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import systems.crigges.jmpq3.JMpqEditor;
@@ -40,9 +41,8 @@ public class MpqTests {
     public void testRebuild() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            System.out.println(mpq.getName());
+            Log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-            mpqEditor.printHeader();
             mpqEditor.close();
         }
     }
@@ -63,7 +63,7 @@ public class MpqTests {
     public void testExtractScriptFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            System.out.println("test extract script: " + mpq.getName());
+            Log.info("test extract script: " + mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
             File temp = File.createTempFile("war3mapj", "extracted", JMpqEditor.tempDir);
             temp.deleteOnExit();

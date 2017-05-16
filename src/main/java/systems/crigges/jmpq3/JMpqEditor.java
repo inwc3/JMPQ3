@@ -1,11 +1,13 @@
 package systems.crigges.jmpq3;
 
+import com.esotericsoftware.minlog.Log;
 import systems.crigges.jmpq3.BlockTable.Block;
 
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -14,8 +16,10 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.*;
-import java.util.*;
-import java.util.zip.CRC32;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -34,6 +38,8 @@ import static systems.crigges.jmpq3.MpqFile.*;
  * For platform independence the implementation is pure Java.
  */
 public class JMpqEditor implements AutoCloseable {
+    private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
     public static File tempDir;
     private AttributesFile attributes;
     /** MPQ format version 0 forced compatibility is being used. */
@@ -251,34 +257,16 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Loads a default listfile for mpqs that have none
      * Makes the archive readonly.
-     *
-     * @throws IOException
      */
     private void loadDefaultListFile() throws IOException {
-        Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile()).toPath();
-        listFile = new Listfile(Files.readAllBytes(defaultListfile));
-        canWrite = false;
-    }
-
-    /**
-     * Utility method to fill a buffer from the given channel.
-     *
-     * @param buffer buffer to fill.
-     * @param src    channel to fill from.
-     * @throws IOException  if an exception occurs when reading.
-     * @throws EOFException if EoF is encountered before buffer is full or channel is non
-     *                      blocking.
-     */
-    private static void readFully(ByteBuffer buffer, ReadableByteChannel src) throws IOException {
-        while (buffer.hasRemaining()) {
-            if (src.read(buffer) < 1)
-                throw new EOFException("Cannot read enough bytes.");
+        URL resource = getClass().getClassLoader().getResource("DefaultListfile.txt");
+        if (resource != null) {
+            Path defaultListfile = new File(resource.getFile()).toPath();
+            listFile = new Listfile(Files.readAllBytes(defaultListfile));
+            canWrite = false;
         }
     }
 
-    private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
-
-    private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
     /**
      * Searches the file for the MPQ archive header.
@@ -412,20 +400,6 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
-     * Prints the header.
-     */
-    public void printHeader() {
-        System.out.println("Header offset: " + headerOffset);
-        System.out.println("Archive size: " + archiveSize);
-        System.out.println("Format version: " + formatVersion);
-        System.out.println("Disc block size: " + discBlockSize);
-        System.out.println("Hashtable position: " + hashPos);
-        System.out.println("Blocktable position: " + blockPos);
-        System.out.println("Hashtable size: " + hashSize);
-        System.out.println("Blocktable size: " + blockSize);
-    }
-
-    /**
      * Extract all files.
      *
      * @param dest the dest
@@ -437,7 +411,7 @@ public class JMpqEditor implements AutoCloseable {
         }
         if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
-                System.out.println("extracting: " + s);
+                Log.info("extracting: " + s);
                 File temp = new File(dest.getAbsolutePath() + "\\" + s);
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
@@ -514,14 +488,13 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
-    /**
-     * Extracts the specified file out of the mpq to the target location.
-     *
-     * @param name name of the file
-     * @throws JMpqException if file is not found or access errors occur
-     */
     public String extractFileAsString(String name) throws JMpqException {
-        return new String(extractFileAsBytes(name));
+        try {
+            byte[] f = extractFileAsBytes(name);
+            return new String(f);
+        } catch (IOException e) {
+            throw new JMpqException(e);
+        }
     }
 
     /**
@@ -544,9 +517,8 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @return the file names
      */
-    @SuppressWarnings("unchecked")
     public List<String> getFileNames() {
-        return (List<String>) listFile.getFiles().clone();
+        return new ArrayList<>(listFile.getFiles());
     }
 
     /**
@@ -631,7 +603,7 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     public void close() throws IOException {
-        close(true, true);
+        close(true, true, false);
     }
 
     /**
@@ -639,7 +611,7 @@ public class JMpqEditor implements AutoCloseable {
      * @param buildAttributes whether or not to add a (attributes) file to this mpq
      * @throws IOException
      */
-    public void close(boolean buildListfile, boolean buildAttributes) throws IOException {
+    public void close(boolean buildListfile, boolean buildAttributes, boolean recompress) throws IOException {
         // only rebuild if allowed
         if (!canWrite) {
             fc.close();
@@ -647,7 +619,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         long t = System.nanoTime();
-        System.out.println("Building mpq");
+        Log.info("Building mpq");
         if (listFile == null) {
             fc.close();
             return;
@@ -683,29 +655,19 @@ public class JMpqEditor implements AutoCloseable {
         ArrayList<Block> newBlocks = new ArrayList<>();
         ArrayList<String> newFiles = new ArrayList<>();
         ArrayList<String> remainingFiles = new ArrayList<>(listFile.getFiles());
-        // Sort entries to preserve block table order
-        remainingFiles.sort((o1, o2) -> {
-            int pos1 = 999999999;
-            int pos2 = 999999999;
-            try {
-                pos1 = hashTable.getBlockIndexOfFile(o1);
-            } catch (IOException ignored) {
-            }
-            try {
-                pos2 = hashTable.getBlockIndexOfFile(o2);
-            } catch (IOException ignored) {
-            }
-            return pos1 - pos2;
-        });
-        System.out.println("Sorted blocks");
+
+        sortListfileEntries(remainingFiles);
+
+        Log.info("Sorted blocks");
         if (attributes != null) {
             attributes.setNames(remainingFiles);
         }
-        long currentPos = headerOffset + headerSize;// + newHashSize * 16 +
-        // newBlockSize * 16;
+        long currentPos = headerOffset + headerSize;
+
         for (File f : filesToAdd) {
             remainingFiles.remove(internalFilename.get(f));
         }
+
         for (String s : remainingFiles) {
             newFiles.add(s);
             int pos = hashTable.getBlockIndexOfFile(s);
@@ -721,7 +683,7 @@ public class JMpqEditor implements AutoCloseable {
             f.writeFileAndBlock(newBlock, fileWriter);
             currentPos += b.getCompressedSize();
         }
-        System.out.println("Added existing files");
+        Log.info("Added existing files");
         HashMap<String, File> newFileMap = new HashMap<>();
         for (File f : filesToAdd) {
             newFiles.add(internalFilename.get(f));
@@ -732,7 +694,7 @@ public class JMpqEditor implements AutoCloseable {
             MpqFile.writeFileAndBlock(f, newBlock, fileWriter, newDiscBlockSize);
             currentPos += newBlock.getCompressedSize();
         }
-        System.out.println("Added new files");
+        Log.info("Added new files");
         if (buildListfile) {
             // Add listfile
             newFiles.add("(listfile)");
@@ -742,7 +704,7 @@ public class JMpqEditor implements AutoCloseable {
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)");
             currentPos += newBlock.getCompressedSize();
-            System.out.println("Added listfile");
+            Log.info("Added listfile");
         }
         // if (attributes != null) {
         // newFiles.add("(attributes)");
@@ -808,23 +770,40 @@ public class JMpqEditor implements AutoCloseable {
         writeChannel.close();
 
         t = System.nanoTime() - t;
-        System.out.println("Rebuild complete. Took: " + (t / 1000000) + "ms");
+        Log.info("Rebuild complete. Took: " + (t / 1000000) + "ms");
     }
 
-    private CRC32 crc32 = new CRC32();
-
-    private int getCrc32(String name) throws JMpqException {
-        return getCrc32(extractFileAsBytes(name));
+    private void sortListfileEntries(ArrayList<String> remainingFiles) {
+        // Sort entries to preserve block table order
+        remainingFiles.sort((o1, o2) -> {
+            int pos1 = 999999999;
+            int pos2 = 999999999;
+            try {
+                pos1 = hashTable.getBlockIndexOfFile(o1);
+            } catch (IOException ignored) {
+            }
+            try {
+                pos2 = hashTable.getBlockIndexOfFile(o2);
+            } catch (IOException ignored) {
+            }
+            return pos1 - pos2;
+        });
     }
 
-    private int getCrc32(File file) throws IOException {
-        return getCrc32(Files.readAllBytes(file.toPath()));
-    }
-
-    public int getCrc32(byte[] bytes) throws JMpqException {
-        crc32.reset();
-        crc32.update(bytes);
-        return (int) crc32.getValue();
+    /**
+     * Utility method to fill a buffer from the given channel.
+     *
+     * @param buffer buffer to fill.
+     * @param src    channel to fill from.
+     * @throws IOException  if an exception occurs when reading.
+     * @throws EOFException if EoF is encountered before buffer is full or channel is non
+     *                      blocking.
+     */
+    private static void readFully(ByteBuffer buffer, ReadableByteChannel src) throws IOException {
+        while (buffer.hasRemaining()) {
+            if (src.read(buffer) < 1)
+                throw new EOFException("Cannot read enough bytes.");
+        }
     }
 
     /*
@@ -837,4 +816,5 @@ public class JMpqEditor implements AutoCloseable {
         return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
                 + ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
     }
+
 }

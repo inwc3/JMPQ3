@@ -1,9 +1,15 @@
 package systems.crigges.jmpq3;
 
+import com.esotericsoftware.minlog.Log;
+
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.zip.CRC32;
 
 public class AttributesFile {
     private byte[] file;
@@ -11,6 +17,8 @@ public class AttributesFile {
     private int[] crc32;
     private long[] timestamps;
     private HashMap<String, Integer> refMap = new HashMap<>();
+
+    private CRC32 crcGen = new CRC32();
 
     public AttributesFile(int entries) {
         this.file = new byte[8 + 12 * entries];
@@ -34,7 +42,7 @@ public class AttributesFile {
         for (int i = 0; i < fileCount; i++) {
             timestamps[i] = buffer.getLong();
         }
-        System.out.println("parsed attributes");
+        Log.info("parsed attributes");
     }
 
     public void setEntry(int i, int crc, long timestamp) {
@@ -81,5 +89,15 @@ public class AttributesFile {
 
     public int getEntry(String name) {
             return refMap.containsKey(name) ? refMap.get(name) : -1;
+    }
+
+    private int getCrc32(File file) throws IOException {
+        return getCrc32(Files.readAllBytes(file.toPath()));
+    }
+
+    public int getCrc32(byte[] bytes) throws JMpqException {
+        crcGen.reset();
+        crcGen.update(bytes);
+        return (int) crcGen.getValue();
     }
 }

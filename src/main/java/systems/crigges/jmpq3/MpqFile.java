@@ -1,6 +1,7 @@
 
 package systems.crigges.jmpq3;
 
+import com.esotericsoftware.minlog.Log;
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.compression.CompressionUtil;
 import systems.crigges.jmpq3.compression.JzLibHelper;
@@ -174,7 +175,7 @@ public class MpqFile {
             writeBuffer.put(arr);
 
             if (block.hasFlag(SINGLE_UNIT)) {
-                System.out.println("singleunit detected");
+                Log.info("singleunit detected");
                 if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
                     newBlock.setFlags(EXISTS | SINGLE_UNIT | COMPRESSED);
                 } else {
