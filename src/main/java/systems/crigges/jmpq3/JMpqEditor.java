@@ -118,79 +118,26 @@ public class JMpqEditor implements AutoCloseable {
 
             headerOffset = searchHeader();
 
-            // probe to sample file with
-            ByteBuffer probe = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
+            readHeaderSize();
 
-            // read header size
-            fc.position(headerOffset + 4);
-            readFully(probe, fc);
-            headerSize = probe.getInt(0);
-            if (legacyCompatibility) {
-                // force version 0 header size
-                headerSize = 32;
-            } else if (headerSize < 32 || 208 < headerSize) {
-                // header too small or too big
-                throw new JMpqException("Bad header size.");
-            }
+            readHeader();
 
-            ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize).order(ByteOrder.LITTLE_ENDIAN);
-            readFully(headerBuffer, fc);
-            headerBuffer.rewind();
-            readHeader(headerBuffer);
+            checkLegacyCompat();
 
-            if (legacyCompatibility) {
-                // limit end of archive by end of file
-                archiveSize = Math.min(archiveSize, fc.size() - headerOffset);
+            readHashTable();
 
-                // limit block table size by end of archive
-                blockSize = (int) (Math.min(blockSize, (archiveSize - blockPos) / 16));
-            }
+            readBlockTable();
 
-            ByteBuffer hashBuffer = ByteBuffer.allocate(hashSize * 16).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(headerOffset + hashPos);
-            readFully(hashBuffer, fc);
-            hashBuffer.rewind();
-            hashTable = new HashTable(hashBuffer);
+            readListFile();
 
-            ByteBuffer blockBuffer = ByteBuffer.allocate(blockSize * 16).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(headerOffset + blockPos);
-            readFully(blockBuffer, fc);
-            blockBuffer.rewind();
-            blockTable = new BlockTable(blockBuffer);
-
-            if (hasFile("(listfile)")) {
-                try {
-                    File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
-                    tempFile.deleteOnExit();
-                    extractFile("(listfile)", tempFile);
-                    listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
-                } catch (Exception e) {
-                    loadDefaultListFile();
-                }
-            } else {
-                loadDefaultListFile();
-            }
-
-            if (hasFile("(attributes)")) {
-                try {
-                    attributes = new AttributesFile(extractFileAsBytes("(attributes)"));
-                } catch (Exception e) {
-                }
-            }
+            readAttributesFile();
         } catch (IOException e) {
             throw new JMpqException(e);
         }
     }
 
     /**
-     * Creates a new MPQ editor for the specified MPQ file.
-     * <p>
-     * If the archive file does not exist a new archive file will be created
-     * automatically. Any changes made to the archive might only propagate to
-     * the file system once this's close method is called.
-     * <p>
-     * When READ_ONLY option is specified then the archive file will never be
-     * modified by this editor.
+     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
      *
      * @param mpqArchive  a MPQ archive file.
      * @param openOptions options to use when opening the archive.
@@ -201,17 +148,8 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
-     * Creates a new MPQ editor for the specified MPQ format version 0 archive
-     * file.
-     * <p>
-     * If the archive file does not exist a new archive file will be created
-     * automatically. Any changes made to the archive might only propagate to
-     * the file system once this's close method is called.
-     * <p>
-     * This constructor is deprecated as it only allows the use of MPQ format
-     * version 0 archive files and does not allow archive files to be opened as
-     * read only. Similar behaviour can be obtained with other constructors by
-     * using MPQOpenOption.FORCE_V0.
+     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
+     * Kept for backwards compatibility, but deprecated
      *
      * @param mpqArchive a MPQ archive file.
      * @throws JMpqException if mpq is damaged or not supported.
@@ -219,6 +157,72 @@ public class JMpqEditor implements AutoCloseable {
     @Deprecated
     public JMpqEditor(File mpqArchive) throws IOException {
         this(mpqArchive.toPath(), MPQOpenOption.FORCE_V0);
+    }
+
+    private void checkLegacyCompat() throws IOException {
+        if (legacyCompatibility) {
+            // limit end of archive by end of file
+            archiveSize = Math.min(archiveSize, fc.size() - headerOffset);
+
+            // limit block table size by end of archive
+            blockSize = (int) (Math.min(blockSize, (archiveSize - blockPos) / 16));
+        }
+    }
+
+    private void readAttributesFile() {
+        if (hasFile("(attributes)")) {
+            try {
+                attributes = new AttributesFile(extractFileAsBytes("(attributes)"));
+            } catch (Exception e) {
+            }
+        }
+    }
+
+    private void readListFile() throws IOException {
+        if (hasFile("(listfile)")) {
+            try {
+                File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
+                tempFile.deleteOnExit();
+                extractFile("(listfile)", tempFile);
+                listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+            } catch (Exception e) {
+                loadDefaultListFile();
+            }
+        } else {
+            loadDefaultListFile();
+        }
+    }
+
+    private void readBlockTable() throws IOException {
+        ByteBuffer blockBuffer = ByteBuffer.allocate(blockSize * 16).order(ByteOrder.LITTLE_ENDIAN);
+        fc.position(headerOffset + blockPos);
+        readFully(blockBuffer, fc);
+        blockBuffer.rewind();
+        blockTable = new BlockTable(blockBuffer);
+    }
+
+    private void readHashTable() throws IOException {
+        ByteBuffer hashBuffer = ByteBuffer.allocate(hashSize * 16).order(ByteOrder.LITTLE_ENDIAN);
+        fc.position(headerOffset + hashPos);
+        readFully(hashBuffer, fc);
+        hashBuffer.rewind();
+        hashTable = new HashTable(hashBuffer);
+    }
+
+    private void readHeaderSize() throws IOException {
+        // probe to sample file with
+        ByteBuffer probe = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
+        // read header size
+        fc.position(headerOffset + 4);
+        readFully(probe, fc);
+        headerSize = probe.getInt(0);
+        if (legacyCompatibility) {
+            // force version 0 header size
+            headerSize = 32;
+        } else if (headerSize < 32 || 208 < headerSize) {
+            // header too small or too big
+            throw new JMpqException("Bad header size.");
+        }
     }
 
     private void setupTempDir() throws JMpqException {
@@ -318,10 +322,12 @@ public class JMpqEditor implements AutoCloseable {
 
     /**
      * Read the MPQ archive header from the header chunk.
-     *
-     * @param buffer buffer containing the header chunk.
      */
-    private void readHeader(ByteBuffer buffer) {
+    private void readHeader() throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(headerSize).order(ByteOrder.LITTLE_ENDIAN);
+        readFully(buffer, fc);
+        buffer.rewind();
+
         archiveSize = buffer.getInt() & 0xFFFFFFFFL;
         formatVersion = buffer.getShort();
         if (legacyCompatibility) {
