@@ -26,12 +26,4 @@ public class JMpqException extends IOException {
         super(msg);
     }
 
-    /**
-     * Instantiates a new j mpq exception.
-     *
-     * @param t the t
-     */
-    public JMpqException(Throwable t) {
-        super(t);
-    }
 }

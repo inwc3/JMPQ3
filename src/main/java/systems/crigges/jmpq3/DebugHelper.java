@@ -22,11 +22,6 @@ public class DebugHelper {
         return appendData(byteArray,secondObject);
     }
 
-    public static byte[] appendData(byte[] firstObject,byte secondByte){
-        byte[] byteArray= {secondByte};
-        return appendData(firstObject,byteArray);
-    }
-
     public static byte[] appendData(byte[] firstObject,byte[] secondObject){
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         try {
