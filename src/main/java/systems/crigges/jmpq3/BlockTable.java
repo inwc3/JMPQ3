@@ -20,7 +20,7 @@ public class BlockTable {
         this.size = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, this.size * 16, -326913117);
 
-        File block = File.createTempFile("block", "crig", JMpqEditor.tempDir);
+        File block = File.createTempFile("block", "jmpq", JMpqEditor.tempDir);
         block.deleteOnExit();
 
         try (FileOutputStream blockStream = new FileOutputStream(block); FileChannel blockChannel = FileChannel.open(block.toPath(), CREATE, WRITE, READ)) {

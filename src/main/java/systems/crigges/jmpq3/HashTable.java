@@ -20,7 +20,7 @@ public class HashTable {
     public HashTable(ByteBuffer buf) throws IOException {
         this.hashSize = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, 16 * this.hashSize, -1011927184);
-        File hash = File.createTempFile("block", "crig", JMpqEditor.tempDir);
+        File hash = File.createTempFile("block", "jmpq", JMpqEditor.tempDir);
         hash.deleteOnExit();
         try (FileOutputStream hashStream = new FileOutputStream(hash); FileChannel hashChannel = FileChannel.open(hash.toPath(), CREATE, WRITE, READ)) {
             hashStream.write(decrypted);

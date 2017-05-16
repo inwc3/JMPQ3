@@ -48,6 +48,16 @@ public class MpqTests {
     }
 
     @Test
+    public void testRecompressBuild() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            Log.info(mpq.getName());
+            JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+            mpqEditor.close(true, true, true);
+        }
+    }
+
+    @Test
     public void testExtractAll() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {

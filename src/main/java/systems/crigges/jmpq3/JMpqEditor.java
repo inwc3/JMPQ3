@@ -71,10 +71,10 @@ public class JMpqEditor implements AutoCloseable {
     /** The list file. */
     private Listfile listFile;
     /** The internal filename. */
-    private HashMap<File, String> internalFilename = new HashMap<>();
+    private HashMap<ByteBuffer, String> internalFilename = new HashMap<>();
     /** The files to add. */
     // BuildData
-    private ArrayList<File> filesToAdd = new ArrayList<>();
+    private ArrayList<ByteBuffer> filesToAdd = new ArrayList<>();
     /** The keep header offset. */
     private boolean keepHeaderOffset = true;
     /** The new header size. */
@@ -575,12 +575,12 @@ public class JMpqEditor implements AutoCloseable {
      * Inserts the specified file into the mpq once you close the editor.
      *
      * @param name       of the file inside the mpq
-     * @param f          the f
+     * @param file          the file
      * @param backupFile if true the editors creates a copy of the file to add, so
      *                   further changes won't affect the resulting mpq
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File f, boolean backupFile) throws JMpqException {
+    public void insertFile(String name, File file, boolean backupFile) throws JMpqException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
@@ -588,14 +588,16 @@ public class JMpqEditor implements AutoCloseable {
         try {
             listFile.addFile(name);
             if (backupFile) {
-                File temp = File.createTempFile("wurst", "crig", JMpqEditor.tempDir);
+                File temp = File.createTempFile("jmpq", "backup", JMpqEditor.tempDir);
                 temp.deleteOnExit();
-                Files.copy(f.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                filesToAdd.add(temp);
-                internalFilename.put(temp, name);
+                Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(temp.toPath()));
+                filesToAdd.add(data);
+                internalFilename.put(data, name);
             } else {
-                filesToAdd.add(f);
-                internalFilename.put(f, name);
+                ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
+                filesToAdd.add(data);
+                internalFilename.put(data, name);
             }
         } catch (IOException e) {
             throw new JMpqException(e);
@@ -624,7 +626,7 @@ public class JMpqEditor implements AutoCloseable {
             fc.close();
             return;
         }
-        File temp = File.createTempFile("crig", "mpq", JMpqEditor.tempDir);
+        File temp = File.createTempFile("jmpq", "temp", JMpqEditor.tempDir);
         temp.deleteOnExit();
         FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
 
@@ -654,44 +656,50 @@ public class JMpqEditor implements AutoCloseable {
 
         ArrayList<Block> newBlocks = new ArrayList<>();
         ArrayList<String> newFiles = new ArrayList<>();
-        ArrayList<String> remainingFiles = new ArrayList<>(listFile.getFiles());
+        ArrayList<String> existingFiles = new ArrayList<>(listFile.getFiles());
 
-        sortListfileEntries(remainingFiles);
+        sortListfileEntries(existingFiles);
 
         Log.info("Sorted blocks");
         if (attributes != null) {
-            attributes.setNames(remainingFiles);
+            attributes.setNames(existingFiles);
         }
         long currentPos = headerOffset + headerSize;
 
-        for (File f : filesToAdd) {
-            remainingFiles.remove(internalFilename.get(f));
+        for (ByteBuffer file : filesToAdd) {
+            existingFiles.remove(internalFilename.get(file));
         }
 
-        for (String s : remainingFiles) {
-            newFiles.add(s);
-            int pos = hashTable.getBlockIndexOfFile(s);
-            Block b = blockTable.getBlockAtPos(pos);
-            ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(headerOffset + b.getFilePos());
-            readFully(buf, fc);
-            buf.rewind();
-            MpqFile f = new MpqFile(buf, b, discBlockSize, s);
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-            Block newBlock = new Block(currentPos - headerOffset, 0, 0, b.getFlags());
-            newBlocks.add(newBlock);
-            f.writeFileAndBlock(newBlock, fileWriter);
-            currentPos += b.getCompressedSize();
+        for (String existingName : existingFiles) {
+            if(recompress && ! existingName.endsWith("wav")) {
+                ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
+                internalFilename.put(extracted, existingName);
+                filesToAdd.add(extracted);
+            } else {
+                newFiles.add(existingName);
+                int pos = hashTable.getBlockIndexOfFile(existingName);
+                Block b = blockTable.getBlockAtPos(pos);
+                ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+                fc.position(headerOffset + b.getFilePos());
+                readFully(buf, fc);
+                buf.rewind();
+                MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
+                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+                Block newBlock = new Block(currentPos - headerOffset, 0, 0, b.getFlags());
+                newBlocks.add(newBlock);
+                f.writeFileAndBlock(newBlock, fileWriter);
+                currentPos += b.getCompressedSize();
+            }
         }
         Log.info("Added existing files");
-        HashMap<String, File> newFileMap = new HashMap<>();
-        for (File f : filesToAdd) {
-            newFiles.add(internalFilename.get(f));
-            newFileMap.put(internalFilename.get(f), f);
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length() * 2);
+        HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
+        for (ByteBuffer newFile : filesToAdd) {
+            newFiles.add(internalFilename.get(newFile));
+            newFileMap.put(internalFilename.get(newFile), newFile);
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2);
             Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
             newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(f, newBlock, fileWriter, newDiscBlockSize);
+            MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, recompress);
             currentPos += newBlock.getCompressedSize();
         }
         Log.info("Added new files");
@@ -699,10 +707,10 @@ public class JMpqEditor implements AutoCloseable {
             // Add listfile
             newFiles.add("(listfile)");
             byte[] listfileArr = listFile.asByteArray();
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2);
             Block newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)");
+            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", recompress);
             currentPos += newBlock.getCompressedSize();
             Log.info("Added listfile");
         }

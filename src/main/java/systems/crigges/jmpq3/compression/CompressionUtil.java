@@ -10,18 +10,21 @@ import java.nio.ByteBuffer;
 public class CompressionUtil {
     private static final ADPCM ADPCM = new ADPCM(2);
     private static final Huffman huffman = new Huffman();
-	/* Masks for Decompression Type 2 */
+    private static final ZopfliHelper zopfli = new ZopfliHelper();
+    /* Masks for Decompression Type 2 */
     private static final byte FLAG_HUFFMAN = 0x01;
-    private static final byte FLAG_DEFLATE = 0x02;
+    public static final byte FLAG_DEFLATE = 0x02;
     // 0x04 is unknown
     private static final byte FLAG_IMPLODE = 0x08;
-    private static final byte FLAG_BZIP2   = 0x10;
-    private static final byte FLAG_SPARSE  = 0x20;
+    private static final byte FLAG_BZIP2 = 0x10;
+    private static final byte FLAG_SPARSE = 0x20;
     private static final byte FLAG_ADPCM1C = 0x40;
-    private static final byte FLAG_ADPCM2C =-0x80;
+    private static final byte FLAG_ADPCM2C = -0x80;
 
-    public static void compress() {
-
+    public static byte[] compress(byte[] temp, boolean recompress) {
+        byte[] zopfliA = zopfli.deflate(temp);
+        byte[] jzlib = JzLibHelper.deflate(temp);
+        return recompress ? zopfliA : jzlib;
     }
 
     public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
@@ -39,6 +42,9 @@ public class CompressionUtil {
             }
             if (((compressionType & FLAG_IMPLODE) != 0)) {
                 throw new JMpqException("Unsupported compression pkware");
+            }
+            if (((compressionType & FLAG_SPARSE) != 0)) {
+                throw new JMpqException("Unsupported compression sparse");
             }
             if (((compressionType & FLAG_DEFLATE) != 0)) {
                 out.put(JzLibHelper.inflate(sector, 1, uncompressedSize));
