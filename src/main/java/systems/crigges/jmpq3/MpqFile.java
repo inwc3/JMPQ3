@@ -1,7 +1,6 @@
 
 package systems.crigges.jmpq3;
 
-import com.esotericsoftware.minlog.Log;
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.compression.CompressionUtil;
 
@@ -162,16 +161,12 @@ public class MpqFile {
         if ((block.hasFlag(SINGLE_UNIT)) || (!block.hasFlag(COMPRESSED))) {
             buf.position(0);
             byte[] arr = getSectorAsByteArray(buf, block.hasFlag(COMPRESSED) ? compressedSize : normalSize);
-            if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
-                if (block.hasFlag(ADJUSTED_ENCRYPTED)) {
-                    throw new JMpqException("fucvk");
-                }
+            if (block.hasFlag(ENCRYPTED)) {
                 arr = MpqCrypto.decryptBlock(arr, baseKey);
             }
             writeBuffer.put(arr);
 
             if (block.hasFlag(SINGLE_UNIT)) {
-                Log.info("singleunit detected");
                 if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
                     newBlock.setFlags(EXISTS | SINGLE_UNIT | COMPRESSED);
                 } else {
@@ -220,7 +215,8 @@ public class MpqFile {
 
     /**
      * Write file and block.
-     *  @param b          the b
+     *
+     * @param b          the b
      * @param buf        the buf
      * @param sectorSize the sector size
      * @param recompress
@@ -231,7 +227,8 @@ public class MpqFile {
 
     /**
      * Write file and block.
-     *  @param fileArr    the file arr
+     *
+     * @param fileArr    the file arr
      * @param b          the b
      * @param buf        the buf
      * @param sectorSize the sector size
