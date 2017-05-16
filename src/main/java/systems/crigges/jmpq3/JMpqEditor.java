@@ -36,135 +36,58 @@ import static systems.crigges.jmpq3.MpqFile.*;
 public class JMpqEditor implements AutoCloseable {
     public static File tempDir;
     private AttributesFile attributes;
-    /**
-     * The fc.
-     */
+    /** MPQ format version 0 forced compatibility is being used. */
+    private final boolean legacyCompatibility;
+    /** The fc. */
     private FileChannel fc;
-
-    /**
-     * The header offset.
-     */
+    /** The header offset. */
     private long headerOffset = -1;
-
-    /**
-     * The header size.
-     */
+    /** The header size. */
     private int headerSize;
-
-    /**
-     * The archive size.
-     */
+    /** The archive size. */
     private long archiveSize;
-
-    /**
-     * The format version.
-     */
+    /** The format version. */
     private int formatVersion;
-
-    /**
-     * The disc block size.
-     */
+    /** The disc block size. */
     private int discBlockSize;
-
-    /**
-     * The hash table file position.
-     */
+    /** The hash table file position. */
     private long hashPos;
-
-    /**
-     * The block table file position.
-     */
+    /** The block table file position. */
     private long blockPos;
-
-    /**
-     * The hash size.
-     */
+    /** The hash size. */
     private int hashSize;
-
-    /**
-     * The block size.
-     */
+    /** The block size. */
     private int blockSize;
-
-    /**
-     * The hash table.
-     */
+    /** The hash table. */
     private HashTable hashTable;
-
-    /**
-     * The block table.
-     */
+    /** The block table. */
     private BlockTable blockTable;
-
-    /**
-     * The list file.
-     */
+    /** The list file. */
     private Listfile listFile;
-
-    /**
-     * The internal filename.
-     */
+    /** The internal filename. */
     private HashMap<File, String> internalFilename = new HashMap<>();
-
-    /**
-     * The files to add.
-     */
+    /** The files to add. */
     // BuildData
     private ArrayList<File> filesToAdd = new ArrayList<>();
-
-    /**
-     * The keep header offset.
-     */
+    /** The keep header offset. */
     private boolean keepHeaderOffset = true;
-
-    /**
-     * The new header size.
-     */
+    /** The new header size. */
     private int newHeaderSize;
-
-    /**
-     * The new archive size.
-     */
+    /** The new archive size. */
     private long newArchiveSize;
-
-    /**
-     * The new format version.
-     */
+    /** The new format version. */
     private int newFormatVersion;
-
-    /**
-     * The new disc block size.
-     */
+    /** The new disc block size. */
     private int newDiscBlockSize;
-
-    /**
-     * The new hash pos.
-     */
+    /** The new hash pos. */
     private long newHashPos;
-
-    /**
-     * The new block pos.
-     */
+    /** The new block pos. */
     private long newBlockPos;
-
-    /**
-     * The new hash size.
-     */
+    /** The new hash size. */
     private int newHashSize;
-
-    /**
-     * The new block size.
-     */
+    /** The new block size. */
     private int newBlockSize;
-
-    /**
-     * MPQ format version 0 forced compatibility is being used.
-     */
-    private final boolean legacyCompatibility;
-
-    /**
-     * If write operations are supported on the archive.
-     */
+    /** If write operations are supported on the archive. */
     private boolean canWrite;
 
     /**
@@ -177,12 +100,9 @@ public class JMpqEditor implements AutoCloseable {
      * When READ_ONLY option is specified then the archive file will never be
      * modified by this editor.
      *
-     * @param mpqArchive
-     *            path to a MPQ archive file.
-     * @param openOptions
-     *            options to use when opening the archive.
-     * @throws JMpqException
-     *             if mpq is damaged or not supported.
+     * @param mpqArchive  path to a MPQ archive file.
+     * @param openOptions options to use when opening the archive.
+     * @throws JMpqException if mpq is damaged or not supported.
      */
     public JMpqEditor(Path mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
         // process open options
@@ -192,8 +112,8 @@ public class JMpqEditor implements AutoCloseable {
         try {
             setupTempDir();
 
-            final OpenOption[] fcOptions = canWrite ? new OpenOption[] { StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE }
-                    : new OpenOption[] { StandardOpenOption.READ };
+            final OpenOption[] fcOptions = canWrite ? new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE}
+                    : new OpenOption[]{StandardOpenOption.READ};
             fc = FileChannel.open(mpqArchive, fcOptions);
 
             headerOffset = searchHeader();
@@ -272,12 +192,9 @@ public class JMpqEditor implements AutoCloseable {
      * When READ_ONLY option is specified then the archive file will never be
      * modified by this editor.
      *
-     * @param mpqArchive
-     *            a MPQ archive file.
-     * @param openOptions
-     *            options to use when opening the archive.
-     * @throws JMpqException
-     *             if mpq is damaged or not supported.
+     * @param mpqArchive  a MPQ archive file.
+     * @param openOptions options to use when opening the archive.
+     * @throws JMpqException if mpq is damaged or not supported.
      */
     public JMpqEditor(File mpqArchive, MPQOpenOption... openOptions) throws IOException {
         this(mpqArchive.toPath(), openOptions);
@@ -296,10 +213,8 @@ public class JMpqEditor implements AutoCloseable {
      * read only. Similar behaviour can be obtained with other constructors by
      * using MPQOpenOption.FORCE_V0.
      *
-     * @param mpqArchive
-     *            a MPQ archive file.
-     * @throws JMpqException
-     *             if mpq is damaged or not supported.
+     * @param mpqArchive a MPQ archive file.
+     * @throws JMpqException if mpq is damaged or not supported.
      */
     @Deprecated
     public JMpqEditor(File mpqArchive) throws IOException {
@@ -332,6 +247,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Loads a default listfile for mpqs that have none
      * Makes the archive readonly.
+     *
      * @throws IOException
      */
     private void loadDefaultListFile() throws IOException {
@@ -343,15 +259,11 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Utility method to fill a buffer from the given channel.
      *
-     * @param buffer
-     *            buffer to fill.
-     * @param src
-     *            channel to fill from.
-     * @throws IOException
-     *             if an exception occurs when reading.
-     * @throws EOFException
-     *             if EoF is encountered before buffer is full or channel is non
-     *             blocking.
+     * @param buffer buffer to fill.
+     * @param src    channel to fill from.
+     * @throws IOException  if an exception occurs when reading.
+     * @throws EOFException if EoF is encountered before buffer is full or channel is non
+     *                      blocking.
      */
     private static void readFully(ByteBuffer buffer, ReadableByteChannel src) throws IOException {
         while (buffer.hasRemaining()) {
@@ -360,18 +272,16 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
-    private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1A }).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
-    private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1B }).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
     /**
      * Searches the file for the MPQ archive header.
      *
      * @return the file position at which the MPQ archive starts.
-     * @throws IOException
-     *             if an error occurs while searching.
-     * @throws JMpqException
-     *             if file does not contain a MPQ archive.
+     * @throws IOException   if an error occurs while searching.
+     * @throws JMpqException if file does not contain a MPQ archive.
      */
     private long searchHeader() throws IOException {
         // probe to sample file with
@@ -409,8 +319,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Read the MPQ archive header from the header chunk.
      *
-     * @param buffer
-     *            buffer containing the header chunk.
+     * @param buffer buffer containing the header chunk.
      */
     private void readHeader(ByteBuffer buffer) {
         archiveSize = buffer.getInt() & 0xFFFFFFFFL;
@@ -468,8 +377,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Write header.
      *
-     * @param buffer
-     *            the buffer
+     * @param buffer the buffer
      */
     private void writeHeader(MappedByteBuffer buffer) {
         buffer.putInt(newHeaderSize);
@@ -514,10 +422,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Extract all files.
      *
-     * @param dest
-     *            the dest
-     * @throws JMpqException
-     *             the j mpq exception
+     * @param dest the dest
+     * @throws JMpqException the j mpq exception
      */
     public void extractAllFiles(File dest) throws JMpqException {
         if (!dest.isDirectory()) {
@@ -565,8 +471,7 @@ public class JMpqEditor implements AutoCloseable {
      * Gets the total file count.
      *
      * @return the total file count
-     * @throws JMpqException
-     *             the j mpq exception
+     * @throws JMpqException the j mpq exception
      */
     public int getTotalFileCount() throws JMpqException {
         return blockTable.getAllVaildBlocks().size();
@@ -575,12 +480,9 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Extracts the specified file out of the mpq to the target location.
      *
-     * @param name
-     *            name of the file
-     * @param dest
-     *            destination to that the files content is written
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name name of the file
+     * @param dest destination to that the files content is written
+     * @throws JMpqException if file is not found or access errors occur
      */
     public void extractFile(String name, File dest) throws JMpqException {
         try {
@@ -594,10 +496,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Extracts the specified file out of the mpq to the target location.
      *
-     * @param name
-     *            name of the file
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name name of the file
+     * @throws JMpqException if file is not found or access errors occur
      */
     public byte[] extractFileAsBytes(String name) throws JMpqException {
         try {
@@ -611,10 +511,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Extracts the specified file out of the mpq to the target location.
      *
-     * @param name
-     *            name of the file
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name name of the file
+     * @throws JMpqException if file is not found or access errors occur
      */
     public String extractFileAsString(String name) throws JMpqException {
         return new String(extractFileAsBytes(name));
@@ -623,8 +521,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Checks for file.
      *
-     * @param name
-     *            the name
+     * @param name the name
      * @return true, if successful
      */
     public boolean hasFile(String name) {
@@ -650,12 +547,9 @@ public class JMpqEditor implements AutoCloseable {
      * Extracts the specified file out of the mpq and writes it to the target
      * outputstream.
      *
-     * @param name
-     *            name of the file
-     * @param dest
-     *            the outputstream where the file's content is written
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name name of the file
+     * @param dest the outputstream where the file's content is written
+     * @throws JMpqException if file is not found or access errors occur
      */
     public void extractFile(String name, OutputStream dest) throws JMpqException {
         try {
@@ -669,11 +563,9 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Gets the mpq file.
      *
-     * @param name
-     *            the name
+     * @param name the name
      * @return the mpq file
-     * @throws IOException
-     *             Signals that an I/O exception has occurred.
+     * @throws IOException Signals that an I/O exception has occurred.
      */
     public MpqFile getMpqFile(String name) throws IOException {
         int pos = hashTable.getBlockIndexOfFile(name);
@@ -690,10 +582,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Deletes the specified file out of the mpq once you rebuild the mpq.
      *
-     * @param name
-     *            of the file inside the mpq
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name of the file inside the mpq
+     * @throws JMpqException if file is not found or access errors occur
      */
     public void deleteFile(String name) throws JMpqException {
         if (!canWrite) {
@@ -706,15 +596,11 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Inserts the specified file into the mpq once you close the editor.
      *
-     * @param name
-     *            of the file inside the mpq
-     * @param f
-     *            the f
-     * @param backupFile
-     *            if true the editors creates a copy of the file to add, so
-     *            further changes won't affect the resulting mpq
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name       of the file inside the mpq
+     * @param f          the f
+     * @param backupFile if true the editors creates a copy of the file to add, so
+     *                   further changes won't affect the resulting mpq
+     * @throws JMpqException if file is not found or access errors occur
      */
     public void insertFile(String name, File f, boolean backupFile) throws JMpqException {
         if (!canWrite) {
@@ -743,7 +629,7 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
-     * @param buildListfile whether or not to add a (listfile) to this mpq
+     * @param buildListfile   whether or not to add a (listfile) to this mpq
      * @param buildAttributes whether or not to add a (attributes) file to this mpq
      * @throws IOException
      */
@@ -774,16 +660,16 @@ public class JMpqEditor implements AutoCloseable {
 
         newFormatVersion = formatVersion;
         switch (newFormatVersion) {
-        case 0:
-            newHeaderSize = 32;
-            break;
-        case 1:
-            newHeaderSize = 44;
-            break;
-        case 2:
-        case 3:
-            newHeaderSize = 208;
-            break;
+            case 0:
+                newHeaderSize = 32;
+                break;
+            case 1:
+                newHeaderSize = 44;
+                break;
+            case 2:
+            case 3:
+                newHeaderSize = 208;
+                break;
         }
         newDiscBlockSize = discBlockSize;
         calcNewTableSize();
@@ -810,7 +696,7 @@ public class JMpqEditor implements AutoCloseable {
             attributes.setNames(remainingFiles);
         }
         long currentPos = headerOffset + headerSize;// + newHashSize * 16 +
-                                                    // newBlockSize * 16;
+        // newBlockSize * 16;
         for (File f : filesToAdd) {
             remainingFiles.remove(internalFilename.get(f));
         }
@@ -841,7 +727,7 @@ public class JMpqEditor implements AutoCloseable {
             currentPos += newBlock.getCompressedSize();
         }
         System.out.println("Added new files");
-        if(buildListfile) {
+        if (buildListfile) {
             // Add listfile
             newFiles.add("(listfile)");
             byte[] listfileArr = listFile.asByteArray();
