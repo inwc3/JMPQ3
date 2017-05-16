@@ -9,8 +9,6 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
-import systems.crigges.jmpq3.BlockTable.Block;
-
 import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -138,7 +136,7 @@ public class BlockTable {
         }
 
         public String printFlags() {
-            return (hasFlag(EXISTS) ? "EXISTS " : "") + (hasFlag(SINGLEUNIT) ? "SINGLEUNIT " : "") + (hasFlag(COMPRESSED) ? "COMPRESSED " : "")
+            return (hasFlag(EXISTS) ? "EXISTS " : "") + (hasFlag(SINGLE_UNIT) ? "SINGLE_UNIT " : "") + (hasFlag(COMPRESSED) ? "COMPRESSED " : "")
                     + (hasFlag(ENCRYPTED) ? "ENCRYPTED " : "") + (hasFlag(ADJUSTED_ENCRYPTED) ? "ADJUSTED " : "") + (hasFlag(DELETED) ? "DELETED " : "");
         }
     }

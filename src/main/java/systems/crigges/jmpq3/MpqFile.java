@@ -15,7 +15,7 @@ import java.nio.file.Files;
 public class MpqFile {
     public static final int COMPRESSED = 0x00000200;
     public static final int ENCRYPTED = 0x00010000;
-    public static final int SINGLEUNIT = 0x01000000;
+    public static final int SINGLE_UNIT = 0x01000000;
     public static final int ADJUSTED_ENCRYPTED = 0x00020000;
     public static final int EXISTS = 0x80000000;
     public static final int DELETED = 0x02000000;
@@ -80,7 +80,7 @@ public class MpqFile {
             writer.close();
             return;
         }
-        if (block.hasFlag(SINGLEUNIT)) {
+        if (block.hasFlag(SINGLE_UNIT)) {
             if (block.hasFlag(COMPRESSED)) {
                 buf.position(0);
                 byte[] arr = getSectorAsByteArray(buf, compressedSize);
@@ -162,7 +162,7 @@ public class MpqFile {
             newBlock.setFlags(block.getFlags());
             return;
         }
-        if ((block.hasFlag(SINGLEUNIT)) || (!block.hasFlag(COMPRESSED))) {
+        if ((block.hasFlag(SINGLE_UNIT)) || (!block.hasFlag(COMPRESSED))) {
             buf.position(0);
             byte[] arr = getSectorAsByteArray(buf, block.hasFlag(COMPRESSED) ? compressedSize : normalSize);
             if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
@@ -173,12 +173,12 @@ public class MpqFile {
             }
             writeBuffer.put(arr);
 
-            if (block.hasFlag(SINGLEUNIT)) {
+            if (block.hasFlag(SINGLE_UNIT)) {
                 System.out.println("singleunit detected");
                 if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
-                    newBlock.setFlags(EXISTS | SINGLEUNIT | COMPRESSED);
+                    newBlock.setFlags(EXISTS | SINGLE_UNIT | COMPRESSED);
                 } else {
-                    newBlock.setFlags(EXISTS | SINGLEUNIT);
+                    newBlock.setFlags(EXISTS | SINGLE_UNIT);
                 }
             } else {
                 if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
