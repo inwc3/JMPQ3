@@ -31,7 +31,7 @@ public class JMpqException extends IOException {
      *
      * @param t the t
      */
-    public JMpqException(Throwable t) {
+    JMpqException(Throwable t) {
         super(t);
     }
 }

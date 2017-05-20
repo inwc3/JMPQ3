@@ -339,27 +339,11 @@ public class JMpqEditor implements AutoCloseable {
      * @throws IOException
      */
     private void loadDefaultListFile() throws IOException {
-        Path defaultListfile = new File(getClass().getClassLoader().getResource("DefaultListfile.txt").getFile()).toPath();
-        listFile = new Listfile(Files.readAllBytes(defaultListfile));
-    }
-
-    /**
-     * Utility method to fill a buffer from the given channel.
-     *
-     * @param buffer
-     *            buffer to fill.
-     * @param src
-     *            channel to fill from.
-     * @throws IOException
-     *             if an exception occurs when reading.
-     * @throws EOFException
-     *             if EoF is encountered before buffer is full or channel is non
-     *             blocking.
-     */
-    private static void readFully(ByteBuffer buffer, ReadableByteChannel src) throws IOException {
-        while (buffer.hasRemaining()) {
-            if (src.read(buffer) < 1)
-                throw new EOFException("Cannot read enough bytes.");
+        URL resource = getClass().getClassLoader().getResource("DefaultListfile.txt");
+        if (resource != null) {
+            Path defaultListfile = new File(resource.getFile()).toPath();
+            listFile = new Listfile(Files.readAllBytes(defaultListfile));
+            canWrite = false;
         }
     }
 

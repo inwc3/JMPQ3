@@ -9,8 +9,6 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
-import systems.crigges.jmpq3.BlockTable.Block;
-
 import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -22,7 +20,7 @@ public class BlockTable {
         this.size = (buf.capacity() / 16);
         byte[] decrypted = MpqCrypto.decryptBlock(buf, this.size * 16, -326913117);
 
-        File block = File.createTempFile("block", "crig", JMpqEditor.tempDir);
+        File block = File.createTempFile("block", "jmpq", JMpqEditor.tempDir);
         block.deleteOnExit();
 
         try (FileOutputStream blockStream = new FileOutputStream(block); FileChannel blockChannel = FileChannel.open(block.toPath(), CREATE, WRITE, READ)) {
@@ -138,7 +136,7 @@ public class BlockTable {
         }
 
         public String printFlags() {
-            return (hasFlag(EXISTS) ? "EXISTS " : "") + (hasFlag(SINGLEUNIT) ? "SINGLEUNIT " : "") + (hasFlag(COMPRESSED) ? "COMPRESSED " : "")
+            return (hasFlag(EXISTS) ? "EXISTS " : "") + (hasFlag(SINGLE_UNIT) ? "SINGLE_UNIT " : "") + (hasFlag(COMPRESSED) ? "COMPRESSED " : "")
                     + (hasFlag(ENCRYPTED) ? "ENCRYPTED " : "") + (hasFlag(ADJUSTED_ENCRYPTED) ? "ADJUSTED " : "") + (hasFlag(DELETED) ? "DELETED " : "");
         }
     }

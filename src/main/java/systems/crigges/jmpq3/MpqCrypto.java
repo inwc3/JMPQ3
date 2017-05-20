@@ -1,5 +1,7 @@
 package systems.crigges.jmpq3;
 
+import com.esotericsoftware.minlog.Log;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -42,7 +44,7 @@ public class MpqCrypto {
             char ch = Character.toUpperCase(fileName.charAt(i));
             int index = (hashType << 8) + ch;
             if (index >= cryptTable.length) {
-                System.out.println(fileName);
+                Log.info(fileName);
                 break;
             }
             seed1 = cryptTable[((hashType << 8) + ch)] ^ seed1 + seed2;

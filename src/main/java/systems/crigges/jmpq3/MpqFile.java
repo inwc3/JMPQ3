@@ -3,19 +3,17 @@ package systems.crigges.jmpq3;
 
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.compression.CompressionUtil;
-import systems.crigges.jmpq3.compression.JzLibHelper;
 
 import java.io.*;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
-import java.nio.file.Files;
 
 public class MpqFile {
     public static final int COMPRESSED = 0x00000200;
     public static final int ENCRYPTED = 0x00010000;
-    public static final int SINGLEUNIT = 0x01000000;
+    public static final int SINGLE_UNIT = 0x01000000;
     public static final int ADJUSTED_ENCRYPTED = 0x00020000;
     public static final int EXISTS = 0x80000000;
     public static final int DELETED = 0x02000000;
@@ -80,7 +78,7 @@ public class MpqFile {
             writer.close();
             return;
         }
-        if (block.hasFlag(SINGLEUNIT)) {
+        if (block.hasFlag(SINGLE_UNIT)) {
             if (block.hasFlag(COMPRESSED)) {
                 buf.position(0);
                 byte[] arr = getSectorAsByteArray(buf, compressedSize);
@@ -150,10 +148,8 @@ public class MpqFile {
     /**
      * Write file and block.
      *
-     * @param newBlock
-     *            the new block
-     * @param writeBuffer
-     *            the write buffer
+     * @param newBlock    the new block
+     * @param writeBuffer the write buffer
      */
     public void writeFileAndBlock(Block newBlock, MappedByteBuffer writeBuffer) throws JMpqException {
         newBlock.setNormalSize(normalSize);
@@ -162,23 +158,19 @@ public class MpqFile {
             newBlock.setFlags(block.getFlags());
             return;
         }
-        if ((block.hasFlag(SINGLEUNIT)) || (!block.hasFlag(COMPRESSED))) {
+        if ((block.hasFlag(SINGLE_UNIT)) || (!block.hasFlag(COMPRESSED))) {
             buf.position(0);
             byte[] arr = getSectorAsByteArray(buf, block.hasFlag(COMPRESSED) ? compressedSize : normalSize);
-            if ((block.getFlags() & ENCRYPTED) == ENCRYPTED) {
-                if (block.hasFlag(ADJUSTED_ENCRYPTED)) {
-                    throw new JMpqException("fucvk");
-                }
+            if (block.hasFlag(ENCRYPTED)) {
                 arr = MpqCrypto.decryptBlock(arr, baseKey);
             }
             writeBuffer.put(arr);
 
-            if (block.hasFlag(SINGLEUNIT)) {
-                System.out.println("singleunit detected");
+            if (block.hasFlag(SINGLE_UNIT)) {
                 if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
-                    newBlock.setFlags(EXISTS | SINGLEUNIT | COMPRESSED);
+                    newBlock.setFlags(EXISTS | SINGLE_UNIT | COMPRESSED);
                 } else {
-                    newBlock.setFlags(EXISTS | SINGLEUNIT);
+                    newBlock.setFlags(EXISTS | SINGLE_UNIT);
                 }
             } else {
                 if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
@@ -224,41 +216,35 @@ public class MpqFile {
     /**
      * Write file and block.
      *
-     * @param f
-     *            the f
-     * @param b
-     *            the b
-     * @param buf
-     *            the buf
-     * @param sectorSize
-     *            the sector size
+     * @param b          the b
+     * @param buf        the buf
+     * @param sectorSize the sector size
+     * @param recompress
      */
-    public static void writeFileAndBlock(File f, Block b, MappedByteBuffer buf, int sectorSize) {
-        try {
-            writeFileAndBlock(Files.readAllBytes(f.toPath()), b, buf, sectorSize, "");
-        } catch (IOException e) {
-            throw new RuntimeException("Internal JMpq Error", e);
-        }
+    public static void writeFileAndBlock(byte[] file, Block b, MappedByteBuffer buf, int sectorSize, boolean recompress) {
+        writeFileAndBlock(file, b, buf, sectorSize, "", recompress);
     }
 
     /**
      * Write file and block.
      *
-     * @param fileArr
-     *            the file arr
-     * @param b
-     *            the b
-     * @param buf
-     *            the buf
-     * @param sectorSize
-     *            the sector size
+     * @param fileArr    the file arr
+     * @param b          the b
+     * @param buf        the buf
+     * @param sectorSize the sector size
+     * @param recompress
      */
-    public static void writeFileAndBlock(byte[] fileArr, Block b, MappedByteBuffer buf, int sectorSize, String pathlessName) {
+    public static void writeFileAndBlock(byte[] fileArr, Block b, MappedByteBuffer buf, int sectorSize, String pathlessName, boolean recompress) {
         ByteBuffer fileBuf = ByteBuffer.wrap(fileArr);
         fileBuf.position(0);
         b.setNormalSize(fileArr.length);
         if (b.getFlags() == 0) {
-            b.setFlags(EXISTS | COMPRESSED);
+            if (fileArr.length > 0) {
+                b.setFlags(EXISTS | COMPRESSED);
+            } else {
+                b.setFlags(EXISTS);
+                return;
+            }
         }
         int sectorCount = (int) (Math.ceil(((double) fileArr.length / (double) sectorSize)) + 1);
         ByteBuffer sot = ByteBuffer.allocate(sectorCount * 4);
@@ -275,7 +261,7 @@ public class MpqFile {
             fileBuf.get(temp);
             byte[] compSector = null;
             try {
-                compSector = JzLibHelper.deflate(temp);
+                compSector = CompressionUtil.compress(temp, recompress);
             } catch (ArrayIndexOutOfBoundsException e) {
                 compSector = null;
             }
@@ -327,10 +313,8 @@ public class MpqFile {
     /**
      * Gets the sector as byte array.
      *
-     * @param buf
-     *            the buf
-     * @param sectorSize
-     *            the sector size
+     * @param buf        the buf
+     * @param sectorSize the sector size
      * @return the sector as byte array
      */
     private byte[] getSectorAsByteArray(ByteBuffer buf, int sectorSize) {
@@ -342,15 +326,11 @@ public class MpqFile {
     /**
      * Decompress sector.
      *
-     * @param sector
-     *            the sector
-     * @param normalSize
-     *            the normal size
-     * @param uncompressedSize
-     *            the uncomp size
+     * @param sector           the sector
+     * @param normalSize       the normal size
+     * @param uncompressedSize the uncomp size
      * @return the byte[]
-     * @throws JMpqException
-     *             the j mpq exception
+     * @throws JMpqException the j mpq exception
      */
     private byte[] decompressSector(byte[] sector, int normalSize, int uncompressedSize) throws JMpqException {
         return CompressionUtil.decompress(sector, normalSize, uncompressedSize);
