@@ -7,7 +7,7 @@ package systems.crigges.jmpq3.security;
  * <p>
  * MPQ uses 5 tables, each having a specific purpose.
  */
-public final class CryptographicLUT {
+final class CryptographicLUT {
     /**
      * The number of cryptographic LUTs to generate. MPQ uses 5 tables.
      */
@@ -55,19 +55,19 @@ public final class CryptographicLUT {
     public static final CryptographicLUT HASH_TABLE_OFFSET = new CryptographicLUT(0);
 
     /**
-     * Table used to generate hashes for hashtable key matcher 1.
+     * Table used to generate hashes for part 1 of hashtable keys.
      */
-    public static final CryptographicLUT HASH_NAME_1 = new CryptographicLUT(1);
+    public static final CryptographicLUT HASH_TABLE_KEY1 = new CryptographicLUT(1);
 
     /**
-     * Table used to generate hashes for hashtable key matcher 2.
+     * Table used to generate hashes for part 2 of hashtable keys.
      */
-    public static final CryptographicLUT HASH_NAME_2 = new CryptographicLUT(2);
+    public static final CryptographicLUT HASH_TABLE_KEY2 = new CryptographicLUT(2);
 
     /**
-     * Table used to generate hashes for encryption keys.
+     * Table used to generate hashes for MPQ encryption keys.
      */
-    public static final CryptographicLUT HASH_FILE_KEY = new CryptographicLUT(3);
+    public static final CryptographicLUT HASH_ENCRYPTION_KEY = new CryptographicLUT(3);
 
     /**
      * Table used to encrypt data.
