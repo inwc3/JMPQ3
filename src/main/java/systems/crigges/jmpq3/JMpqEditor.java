@@ -1,11 +1,13 @@
 package systems.crigges.jmpq3;
 
+import com.esotericsoftware.minlog.Log;
 import systems.crigges.jmpq3.BlockTable.Block;
 
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -14,8 +16,10 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.*;
-import java.util.*;
-import java.util.zip.CRC32;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -34,143 +38,63 @@ import static systems.crigges.jmpq3.MpqFile.*;
  * For platform independence the implementation is pure Java.
  */
 public class JMpqEditor implements AutoCloseable {
+    private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
     public static File tempDir;
     private AttributesFile attributes;
-    /**
-     * The fc.
-     */
-    private FileChannel fc;
-
-    /**
-     * The header offset.
-     */
-    private long headerOffset = -1;
-
-    /**
-     * The header size.
-     */
-    private int headerSize;
-
-    /**
-     * The archive size.
-     */
-    private long archiveSize;
-
-    /**
-     * The format version.
-     */
-    private int formatVersion;
-
-    /**
-     * The disc block size.
-     */
-    private int discBlockSize;
-
-    /**
-     * The hash table file position.
-     */
-    private long hashPos;
-
-    /**
-     * The block table file position.
-     */
-    private long blockPos;
-
-    /**
-     * The hash size.
-     */
-    private int hashSize;
-
-    /**
-     * The block size.
-     */
-    private int blockSize;
-
-    /**
-     * The hash table.
-     */
-    private HashTable hashTable;
-
-    /**
-     * The block table.
-     */
-    private BlockTable blockTable;
-
-    /**
-     * The list file.
-     */
-    private Listfile listFile;
-
-    /**
-     * The internal filename.
-     */
-    private HashMap<File, String> internalFilename = new HashMap<>();
-
-    /**
-     * The files to add.
-     */
-    // BuildData
-    private ArrayList<File> filesToAdd = new ArrayList<>();
-
-    /**
-     * The keep header offset.
-     */
-    private boolean keepHeaderOffset = true;
-
-    /**
-     * The new header size.
-     */
-    private int newHeaderSize;
-
-    /**
-     * The new archive size.
-     */
-    private long newArchiveSize;
-
-    /**
-     * The new format version.
-     */
-    private int newFormatVersion;
-
-    /**
-     * The new disc block size.
-     */
-    private int newDiscBlockSize;
-
-    /**
-     * The new hash pos.
-     */
-    private long newHashPos;
-
-    /**
-     * The new block pos.
-     */
-    private long newBlockPos;
-
-    /**
-     * The new hash size.
-     */
-    private int newHashSize;
-
-    /**
-     * The new block size.
-     */
-    private int newBlockSize;
-
-    /**
-     * MPQ format version 0 forced compatibility is being used.
-     */
+    /** MPQ format version 0 forced compatibility is being used. */
     private final boolean legacyCompatibility;
-
-    /**
-     * If write operations are supported on the archive.
-     */
-    private final boolean canWrite;
-    
-    /**
-     * Archive requires a rebuild to reflect changes made.
-     */
-    private boolean needRebuild = false;
+    /** The fc. */
+    private FileChannel fc;
+    /** The header offset. */
+    private long headerOffset = -1;
+    /** The header size. */
+    private int headerSize;
+    /** The archive size. */
+    private long archiveSize;
+    /** The format version. */
+    private int formatVersion;
+    /** The disc block size. */
+    private int discBlockSize;
+    /** The hash table file position. */
+    private long hashPos;
+    /** The block table file position. */
+    private long blockPos;
+    /** The hash size. */
+    private int hashSize;
+    /** The block size. */
+    private int blockSize;
+    /** The hash table. */
+    private HashTable hashTable;
+    /** The block table. */
+    private BlockTable blockTable;
+    /** The list file. */
+    private Listfile listFile;
+    /** The internal filename. */
+    private HashMap<ByteBuffer, String> internalFilename = new HashMap<>();
+    /** The files to add. */
+    // BuildData
+    private ArrayList<ByteBuffer> filesToAdd = new ArrayList<>();
+    /** The keep header offset. */
+    private boolean keepHeaderOffset = true;
+    /** The new header size. */
+    private int newHeaderSize;
+    /** The new archive size. */
+    private long newArchiveSize;
+    /** The new format version. */
+    private int newFormatVersion;
+    /** The new disc block size. */
+    private int newDiscBlockSize;
+    /** The new hash pos. */
+    private long newHashPos;
+    /** The new block pos. */
+    private long newBlockPos;
+    /** The new hash size. */
+    private int newHashSize;
+    /** The new block size. */
+    private int newBlockSize;
+    /** If write operations are supported on the archive. */
+    private boolean canWrite;
 
     /**
      * Creates a new MPQ editor for the MPQ file at the specified path.
@@ -182,12 +106,9 @@ public class JMpqEditor implements AutoCloseable {
      * When READ_ONLY option is specified then the archive file will never be
      * modified by this editor.
      *
-     * @param mpqArchive
-     *            path to a MPQ archive file.
-     * @param openOptions
-     *            options to use when opening the archive.
-     * @throws JMpqException
-     *             if mpq is damaged or not supported.
+     * @param mpqArchive  path to a MPQ archive file.
+     * @param openOptions options to use when opening the archive.
+     * @throws JMpqException if mpq is damaged or not supported.
      */
     public JMpqEditor(Path mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
         // process open options
@@ -197,118 +118,117 @@ public class JMpqEditor implements AutoCloseable {
         try {
             setupTempDir();
 
-            final OpenOption[] fcOptions = canWrite ? new OpenOption[] { StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE }
-                    : new OpenOption[] { StandardOpenOption.READ };
+            final OpenOption[] fcOptions = canWrite ? new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE}
+                    : new OpenOption[]{StandardOpenOption.READ};
             fc = FileChannel.open(mpqArchive, fcOptions);
 
             headerOffset = searchHeader();
 
-            // probe to sample file with
-            ByteBuffer probe = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
+            readHeaderSize();
 
-            // read header size
-            fc.position(headerOffset + 4);
-            readFully(probe, fc);
-            headerSize = probe.getInt(0);
-            if (legacyCompatibility) {
-                // force version 0 header size
-                headerSize = 32;
-            } else if (headerSize < 32 || 208 < headerSize) {
-                // header too small or too big
-                throw new JMpqException("Bad header size.");
-            }
+            readHeader();
 
-            ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize).order(ByteOrder.LITTLE_ENDIAN);
-            readFully(headerBuffer, fc);
-            headerBuffer.rewind();
-            readHeader(headerBuffer);
+            checkLegacyCompat();
 
-            if (legacyCompatibility) {
-                // limit end of archive by end of file
-                archiveSize = Math.min(archiveSize, fc.size() - headerOffset);
+            readHashTable();
 
-                // limit block table size by end of archive
-                blockSize = (int) (Math.min(blockSize, (archiveSize - blockPos) / 16));
-            }
+            readBlockTable();
 
-            ByteBuffer hashBuffer = ByteBuffer.allocate(hashSize * 16).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(headerOffset + hashPos);
-            readFully(hashBuffer, fc);
-            hashBuffer.rewind();
-            hashTable = new HashTable(hashBuffer);
+            readListFile();
 
-            ByteBuffer blockBuffer = ByteBuffer.allocate(blockSize * 16).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(headerOffset + blockPos);
-            readFully(blockBuffer, fc);
-            blockBuffer.rewind();
-            blockTable = new BlockTable(blockBuffer);
-
-            if (hasFile("(listfile)")) {
-                try {
-                    File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
-                    tempFile.deleteOnExit();
-                    extractFile("(listfile)", tempFile);
-                    listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
-                } catch (Exception e) {
-                    loadDefaultListFile();
-                }
-            } else {
-                loadDefaultListFile();
-            }
-
-            if (hasFile("(attributes)")) {
-                try {
-                    attributes = new AttributesFile(extractFileAsBytes("(attributes)"));
-                } catch (Exception e) {
-                }
-            }
+            readAttributesFile();
         } catch (IOException e) {
             throw new JMpqException(e);
         }
     }
 
     /**
-     * Creates a new MPQ editor for the specified MPQ file.
-     * <p>
-     * If the archive file does not exist a new archive file will be created
-     * automatically. Any changes made to the archive might only propagate to
-     * the file system once this's close method is called.
-     * <p>
-     * When READ_ONLY option is specified then the archive file will never be
-     * modified by this editor.
+     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
      *
-     * @param mpqArchive
-     *            a MPQ archive file.
-     * @param openOptions
-     *            options to use when opening the archive.
-     * @throws JMpqException
-     *             if mpq is damaged or not supported.
+     * @param mpqArchive  a MPQ archive file.
+     * @param openOptions options to use when opening the archive.
+     * @throws JMpqException if mpq is damaged or not supported.
      */
     public JMpqEditor(File mpqArchive, MPQOpenOption... openOptions) throws IOException {
         this(mpqArchive.toPath(), openOptions);
     }
 
     /**
-     * Creates a new MPQ editor for the specified MPQ format version 0 archive
-     * file.
-     * <p>
-     * If the archive file does not exist a new archive file will be created
-     * automatically. Any changes made to the archive might only propagate to
-     * the file system once this's close method is called.
-     * <p>
-     * This constructor is deprecated as it only allows the use of MPQ format
-     * version 0 archive files and does not allow archive files to be opened as
-     * read only. Similar behaviour can be obtained with other constructors by
-     * using MPQOpenOption.FORCE_V0.
+     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
+     * Kept for backwards compatibility, but deprecated
      *
-     * @param mpqArchive
-     *            a MPQ archive file.
-     * @throws JMpqException
-     *             if mpq is damaged or not supported.
+     * @param mpqArchive a MPQ archive file.
+     * @throws JMpqException if mpq is damaged or not supported.
      */
     @Deprecated
     public JMpqEditor(File mpqArchive) throws IOException {
         this(mpqArchive.toPath(), MPQOpenOption.FORCE_V0);
+    }
+
+    private void checkLegacyCompat() throws IOException {
+        if (legacyCompatibility) {
+            // limit end of archive by end of file
+            archiveSize = Math.min(archiveSize, fc.size() - headerOffset);
+
+            // limit block table size by end of archive
+            blockSize = (int) (Math.min(blockSize, (archiveSize - blockPos) / 16));
+        }
+    }
+
+    private void readAttributesFile() {
+        if (hasFile("(attributes)")) {
+            try {
+                attributes = new AttributesFile(extractFileAsBytes("(attributes)"));
+            } catch (Exception e) {
+            }
+        }
+    }
+
+    private void readListFile() throws IOException {
+        if (hasFile("(listfile)")) {
+            try {
+                File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
+                tempFile.deleteOnExit();
+                extractFile("(listfile)", tempFile);
+                listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+            } catch (Exception e) {
+                loadDefaultListFile();
+            }
+        } else {
+            loadDefaultListFile();
+        }
+    }
+
+    private void readBlockTable() throws IOException {
+        ByteBuffer blockBuffer = ByteBuffer.allocate(blockSize * 16).order(ByteOrder.LITTLE_ENDIAN);
+        fc.position(headerOffset + blockPos);
+        readFully(blockBuffer, fc);
+        blockBuffer.rewind();
+        blockTable = new BlockTable(blockBuffer);
+    }
+
+    private void readHashTable() throws IOException {
+        ByteBuffer hashBuffer = ByteBuffer.allocate(hashSize * 16).order(ByteOrder.LITTLE_ENDIAN);
+        fc.position(headerOffset + hashPos);
+        readFully(hashBuffer, fc);
+        hashBuffer.rewind();
+        hashTable = new HashTable(hashBuffer);
+    }
+
+    private void readHeaderSize() throws IOException {
+        // probe to sample file with
+        ByteBuffer probe = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
+        // read header size
+        fc.position(headerOffset + 4);
+        readFully(probe, fc);
+        headerSize = probe.getInt(0);
+        if (legacyCompatibility) {
+            // force version 0 header size
+            headerSize = 32;
+        } else if (headerSize < 32 || 208 < headerSize) {
+            // header too small or too big
+            throw new JMpqException("Bad header size.");
+        }
     }
 
     private void setupTempDir() throws JMpqException {
@@ -336,7 +256,7 @@ public class JMpqEditor implements AutoCloseable {
 
     /**
      * Loads a default listfile for mpqs that have none
-     * @throws IOException
+     * Makes the archive readonly.
      */
     private void loadDefaultListFile() throws IOException {
         URL resource = getClass().getClassLoader().getResource("DefaultListfile.txt");
@@ -347,18 +267,13 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
-    private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1A }).order(ByteOrder.LITTLE_ENDIAN).getInt();
-
-    private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[] { 'M', 'P', 'Q', 0x1B }).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
     /**
      * Searches the file for the MPQ archive header.
      *
      * @return the file position at which the MPQ archive starts.
-     * @throws IOException
-     *             if an error occurs while searching.
-     * @throws JMpqException
-     *             if file does not contain a MPQ archive.
+     * @throws IOException   if an error occurs while searching.
+     * @throws JMpqException if file does not contain a MPQ archive.
      */
     private long searchHeader() throws IOException {
         // probe to sample file with
@@ -395,11 +310,12 @@ public class JMpqEditor implements AutoCloseable {
 
     /**
      * Read the MPQ archive header from the header chunk.
-     *
-     * @param buffer
-     *            buffer containing the header chunk.
      */
-    private void readHeader(ByteBuffer buffer) {
+    private void readHeader() throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(headerSize).order(ByteOrder.LITTLE_ENDIAN);
+        readFully(buffer, fc);
+        buffer.rewind();
+
         archiveSize = buffer.getInt() & 0xFFFFFFFFL;
         formatVersion = buffer.getShort();
         if (legacyCompatibility) {
@@ -455,8 +371,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Write header.
      *
-     * @param buffer
-     *            the buffer
+     * @param buffer the buffer
      */
     private void writeHeader(MappedByteBuffer buffer) {
         buffer.putInt(newHeaderSize);
@@ -485,26 +400,10 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
-     * Prints the header.
-     */
-    public void printHeader() {
-        System.out.println("Header offset: " + headerOffset);
-        System.out.println("Archive size: " + archiveSize);
-        System.out.println("Format version: " + formatVersion);
-        System.out.println("Disc block size: " + discBlockSize);
-        System.out.println("Hashtable position: " + hashPos);
-        System.out.println("Blocktable position: " + blockPos);
-        System.out.println("Hashtable size: " + hashSize);
-        System.out.println("Blocktable size: " + blockSize);
-    }
-
-    /**
      * Extract all files.
      *
-     * @param dest
-     *            the dest
-     * @throws JMpqException
-     *             the j mpq exception
+     * @param dest the dest
+     * @throws JMpqException the j mpq exception
      */
     public void extractAllFiles(File dest) throws JMpqException {
         if (!dest.isDirectory()) {
@@ -512,7 +411,7 @@ public class JMpqEditor implements AutoCloseable {
         }
         if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
-                System.out.println("extracting: " + s);
+                Log.info("extracting: " + s);
                 File temp = new File(dest.getAbsolutePath() + "\\" + s);
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
@@ -552,8 +451,7 @@ public class JMpqEditor implements AutoCloseable {
      * Gets the total file count.
      *
      * @return the total file count
-     * @throws JMpqException
-     *             the j mpq exception
+     * @throws JMpqException the j mpq exception
      */
     public int getTotalFileCount() throws JMpqException {
         return blockTable.getAllVaildBlocks().size();
@@ -562,12 +460,9 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Extracts the specified file out of the mpq to the target location.
      *
-     * @param name
-     *            name of the file
-     * @param dest
-     *            destination to that the files content is written
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name name of the file
+     * @param dest destination to that the files content is written
+     * @throws JMpqException if file is not found or access errors occur
      */
     public void extractFile(String name, File dest) throws JMpqException {
         try {
@@ -581,10 +476,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Extracts the specified file out of the mpq to the target location.
      *
-     * @param name
-     *            name of the file
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name name of the file
+     * @throws JMpqException if file is not found or access errors occur
      */
     public byte[] extractFileAsBytes(String name) throws JMpqException {
         try {
@@ -595,23 +488,19 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
-    /**
-     * Extracts the specified file out of the mpq to the target location.
-     *
-     * @param name
-     *            name of the file
-     * @throws JMpqException
-     *             if file is not found or access errors occur
-     */
     public String extractFileAsString(String name) throws JMpqException {
-        return new String(extractFileAsBytes(name));
+        try {
+            byte[] f = extractFileAsBytes(name);
+            return new String(f);
+        } catch (IOException e) {
+            throw new JMpqException(e);
+        }
     }
 
     /**
      * Checks for file.
      *
-     * @param name
-     *            the name
+     * @param name the name
      * @return true, if successful
      */
     public boolean hasFile(String name) {
@@ -628,21 +517,17 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @return the file names
      */
-    @SuppressWarnings("unchecked")
     public List<String> getFileNames() {
-        return (List<String>) listFile.getFiles().clone();
+        return new ArrayList<>(listFile.getFiles());
     }
 
     /**
      * Extracts the specified file out of the mpq and writes it to the target
      * outputstream.
      *
-     * @param name
-     *            name of the file
-     * @param dest
-     *            the outputstream where the file's content is written
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name name of the file
+     * @param dest the outputstream where the file's content is written
+     * @throws JMpqException if file is not found or access errors occur
      */
     public void extractFile(String name, OutputStream dest) throws JMpqException {
         try {
@@ -656,11 +541,9 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Gets the mpq file.
      *
-     * @param name
-     *            the name
+     * @param name the name
      * @return the mpq file
-     * @throws IOException
-     *             Signals that an I/O exception has occurred.
+     * @throws IOException Signals that an I/O exception has occurred.
      */
     public MpqFile getMpqFile(String name) throws IOException {
         int pos = hashTable.getBlockIndexOfFile(name);
@@ -677,10 +560,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Deletes the specified file out of the mpq once you rebuild the mpq.
      *
-     * @param name
-     *            of the file inside the mpq
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name of the file inside the mpq
+     * @throws JMpqException if file is not found or access errors occur
      */
     public void deleteFile(String name) throws JMpqException {
         if (!canWrite) {
@@ -688,23 +569,18 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         listFile.removeFile(name);
-        needRebuild = true;
     }
 
     /**
      * Inserts the specified file into the mpq once you close the editor.
      *
-     * @param name
-     *            of the file inside the mpq
-     * @param f
-     *            the f
-     * @param backupFile
-     *            if true the editors creates a copy of the file to add, so
-     *            further changes won't affect the resulting mpq
-     * @throws JMpqException
-     *             if file is not found or access errors occur
+     * @param name       of the file inside the mpq
+     * @param file          the file
+     * @param backupFile if true the editors creates a copy of the file to add, so
+     *                   further changes won't affect the resulting mpq
+     * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File f, boolean backupFile) throws JMpqException {
+    public void insertFile(String name, File file, boolean backupFile) throws JMpqException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
@@ -712,45 +588,45 @@ public class JMpqEditor implements AutoCloseable {
         try {
             listFile.addFile(name);
             if (backupFile) {
-                File temp = File.createTempFile("wurst", "crig", JMpqEditor.tempDir);
+                File temp = File.createTempFile("jmpq", "backup", JMpqEditor.tempDir);
                 temp.deleteOnExit();
-                Files.copy(f.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                filesToAdd.add(temp);
-                internalFilename.put(temp, name);
+                Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(temp.toPath()));
+                filesToAdd.add(data);
+                internalFilename.put(data, name);
             } else {
-                filesToAdd.add(f);
-                internalFilename.put(f, name);
+                ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
+                filesToAdd.add(data);
+                internalFilename.put(data, name);
             }
-            
-            needRebuild = true;
         } catch (IOException e) {
             throw new JMpqException(e);
         }
     }
 
     public void close() throws IOException {
-        close(true, true);
+        close(true, true, false);
     }
 
     /**
-     * @param buildListfile whether or not to add a (listfile) to this mpq
+     * @param buildListfile   whether or not to add a (listfile) to this mpq
      * @param buildAttributes whether or not to add a (attributes) file to this mpq
      * @throws IOException
      */
-    public void close(boolean buildListfile, boolean buildAttributes) throws IOException {
-        // only rebuild if required and allowed
-        if (!needRebuild || !canWrite) {
+    public void close(boolean buildListfile, boolean buildAttributes, boolean recompress) throws IOException {
+        // only rebuild if allowed
+        if (!canWrite) {
             fc.close();
             return;
         }
 
         long t = System.nanoTime();
-        System.out.println("Building mpq");
+        Log.info("Building mpq");
         if (listFile == null) {
             fc.close();
             return;
         }
-        File temp = File.createTempFile("crig", "mpq", JMpqEditor.tempDir);
+        File temp = File.createTempFile("jmpq", "temp", JMpqEditor.tempDir);
         temp.deleteOnExit();
         FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
 
@@ -764,84 +640,79 @@ public class JMpqEditor implements AutoCloseable {
 
         newFormatVersion = formatVersion;
         switch (newFormatVersion) {
-        case 0:
-            newHeaderSize = 32;
-            break;
-        case 1:
-            newHeaderSize = 44;
-            break;
-        case 2:
-        case 3:
-            newHeaderSize = 208;
-            break;
+            case 0:
+                newHeaderSize = 32;
+                break;
+            case 1:
+                newHeaderSize = 44;
+                break;
+            case 2:
+            case 3:
+                newHeaderSize = 208;
+                break;
         }
         newDiscBlockSize = discBlockSize;
         calcNewTableSize();
 
         ArrayList<Block> newBlocks = new ArrayList<>();
         ArrayList<String> newFiles = new ArrayList<>();
-        ArrayList<String> remainingFiles = new ArrayList<>(listFile.getFiles());
-        // Sort entries to preserve block table order
-        remainingFiles.sort((o1, o2) -> {
-            int pos1 = 999999999;
-            int pos2 = 999999999;
-            try {
-                pos1 = hashTable.getBlockIndexOfFile(o1);
-            } catch (IOException ignored) {
-            }
-            try {
-                pos2 = hashTable.getBlockIndexOfFile(o2);
-            } catch (IOException ignored) {
-            }
-            return pos1 - pos2;
-        });
-        System.out.println("Sorted blocks");
+        ArrayList<String> existingFiles = new ArrayList<>(listFile.getFiles());
+
+        sortListfileEntries(existingFiles);
+
+        Log.info("Sorted blocks");
         if (attributes != null) {
-            attributes.setNames(remainingFiles);
+            attributes.setNames(existingFiles);
         }
-        long currentPos = headerOffset + headerSize;// + newHashSize * 16 +
-                                                    // newBlockSize * 16;
-        for (File f : filesToAdd) {
-            remainingFiles.remove(internalFilename.get(f));
+        long currentPos = headerOffset + headerSize;
+
+        for (ByteBuffer file : filesToAdd) {
+            existingFiles.remove(internalFilename.get(file));
         }
-        for (String s : remainingFiles) {
-            newFiles.add(s);
-            int pos = hashTable.getBlockIndexOfFile(s);
-            Block b = blockTable.getBlockAtPos(pos);
-            ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(headerOffset + b.getFilePos());
-            readFully(buf, fc);
-            buf.rewind();
-            MpqFile f = new MpqFile(buf, b, discBlockSize, s);
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-            Block newBlock = new Block(currentPos - headerOffset, 0, 0, b.getFlags());
-            newBlocks.add(newBlock);
-            f.writeFileAndBlock(newBlock, fileWriter);
-            currentPos += b.getCompressedSize();
+
+        for (String existingName : existingFiles) {
+            if(recompress && ! existingName.endsWith("wav")) {
+                ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
+                internalFilename.put(extracted, existingName);
+                filesToAdd.add(extracted);
+            } else {
+                newFiles.add(existingName);
+                int pos = hashTable.getBlockIndexOfFile(existingName);
+                Block b = blockTable.getBlockAtPos(pos);
+                ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+                fc.position(headerOffset + b.getFilePos());
+                readFully(buf, fc);
+                buf.rewind();
+                MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
+                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+                Block newBlock = new Block(currentPos - headerOffset, 0, 0, b.getFlags());
+                newBlocks.add(newBlock);
+                f.writeFileAndBlock(newBlock, fileWriter);
+                currentPos += b.getCompressedSize();
+            }
         }
-        System.out.println("Added existing files");
-        HashMap<String, File> newFileMap = new HashMap<>();
-        for (File f : filesToAdd) {
-            newFiles.add(internalFilename.get(f));
-            newFileMap.put(internalFilename.get(f), f);
-            remainingFiles.remove(internalFilename.get(f));
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, f.length() * 2);
+        Log.info("Added existing files");
+        HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
+        for (ByteBuffer newFile : filesToAdd) {
+            newFiles.add(internalFilename.get(newFile));
+            newFileMap.put(internalFilename.get(newFile), newFile);
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2);
             Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
             newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(f, newBlock, fileWriter, newDiscBlockSize);
+            MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, recompress);
             currentPos += newBlock.getCompressedSize();
         }
-        System.out.println("Added new files");
-        if(buildListfile) {
+        Log.info("Added new files");
+        if (buildListfile) {
             // Add listfile
             newFiles.add("(listfile)");
             byte[] listfileArr = listFile.asByteArray();
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length);
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2);
             Block newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)");
+            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", recompress);
             currentPos += newBlock.getCompressedSize();
-            System.out.println("Added listfile");
+            Log.info("Added listfile");
         }
         // if (attributes != null) {
         // newFiles.add("(attributes)");
@@ -907,23 +778,40 @@ public class JMpqEditor implements AutoCloseable {
         writeChannel.close();
 
         t = System.nanoTime() - t;
-        System.out.println("Rebuild complete. Took: " + (t / 1000000) + "ms");
+        Log.info("Rebuild complete. Took: " + (t / 1000000) + "ms");
     }
 
-    private CRC32 crc32 = new CRC32();
-
-    private int getCrc32(String name) throws JMpqException {
-        return getCrc32(extractFileAsBytes(name));
+    private void sortListfileEntries(ArrayList<String> remainingFiles) {
+        // Sort entries to preserve block table order
+        remainingFiles.sort((o1, o2) -> {
+            int pos1 = 999999999;
+            int pos2 = 999999999;
+            try {
+                pos1 = hashTable.getBlockIndexOfFile(o1);
+            } catch (IOException ignored) {
+            }
+            try {
+                pos2 = hashTable.getBlockIndexOfFile(o2);
+            } catch (IOException ignored) {
+            }
+            return pos1 - pos2;
+        });
     }
 
-    private int getCrc32(File file) throws IOException {
-        return getCrc32(Files.readAllBytes(file.toPath()));
-    }
-
-    public int getCrc32(byte[] bytes) throws JMpqException {
-        crc32.reset();
-        crc32.update(bytes);
-        return (int) crc32.getValue();
+    /**
+     * Utility method to fill a buffer from the given channel.
+     *
+     * @param buffer buffer to fill.
+     * @param src    channel to fill from.
+     * @throws IOException  if an exception occurs when reading.
+     * @throws EOFException if EoF is encountered before buffer is full or channel is non
+     *                      blocking.
+     */
+    private static void readFully(ByteBuffer buffer, ReadableByteChannel src) throws IOException {
+        while (buffer.hasRemaining()) {
+            if (src.read(buffer) < 1)
+                throw new EOFException("Cannot read enough bytes.");
+        }
     }
 
     /*
@@ -936,4 +824,5 @@ public class JMpqEditor implements AutoCloseable {
         return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
                 + ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
     }
+
 }
