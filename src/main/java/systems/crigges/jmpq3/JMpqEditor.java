@@ -16,10 +16,7 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -71,7 +68,7 @@ public class JMpqEditor implements AutoCloseable {
     /** The list file. */
     private Listfile listFile;
     /** The internal filename. */
-    private HashMap<ByteBuffer, String> internalFilename = new HashMap<>();
+    private IdentityHashMap<ByteBuffer, String> internalFilename = new IdentityHashMap<>();
     /** The files to add. */
     // BuildData
     private ArrayList<ByteBuffer> filesToAdd = new ArrayList<>();
