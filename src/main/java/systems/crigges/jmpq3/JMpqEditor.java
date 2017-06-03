@@ -135,7 +135,7 @@ public class JMpqEditor implements AutoCloseable {
 
             readAttributesFile();
         } catch (IOException e) {
-            throw new JMpqException(e);
+            throw new JMpqException(mpqArchive.toAbsolutePath().toString() + ": " + e.getMessage());
         }
     }
 
@@ -698,6 +698,7 @@ public class JMpqEditor implements AutoCloseable {
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, recompress);
             currentPos += newBlock.getCompressedSize();
+            Log.info("Added file " + internalFilename.get(newFile));
         }
         Log.info("Added new files");
         if (buildListfile) {

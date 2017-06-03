@@ -265,7 +265,7 @@ public class MpqFile {
             } catch (ArrayIndexOutOfBoundsException e) {
                 compSector = null;
             }
-            if (compSector != null && compSector.length < temp.length) {
+            if (compSector != null && compSector.length+1 < temp.length) {
                 if (b.hasFlag(ENCRYPTED)) {
                     int bKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
                     if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
