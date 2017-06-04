@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/inwc3/JMPQ3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ3) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master)
+# JMPQ3
 ## What?
 JMPQ3 is a small java library for accessing and modifying MoPaQ (.mpq,.w3m,.w3x) Archives.
 
@@ -7,25 +8,23 @@ MoPaQ is Blizzard's old, proprietary archive format for storing gamedata (replac
 You can find more info and an excellent editor here http://www.zezula.net/en/mpq/main.html
 
 ## Get it
-It is recommended to use the jitpack dependency.
-For that just add jitpack as maven repository and add the jmpq dependency.
+It is recommended to use jitpack with a dependency manager like gradle.
 
+See https://jitpack.io/#inwc3/JMPQ3/
+
+Gradle Example:
 ```gradle
 dependencies {
     compile 'com.github.inwc3:JMPQ3:1.4.0'
 }
 allprojects {
     repositories {
-		maven { url 'https://jitpack.io' }
+	maven { url 'https://jitpack.io' }
     }
 }
 ```
-See https://jitpack.io/#inwc3/JMPQ3/
-
-But you can still download the jar directly if you prefer
+You can still download the jar directly if you prefer
 https://github.com/inwc3/JMPQ3/releases
-
-Maven artifacts will hopefully be back soon.
 
 ## How to use
 Quick API Overview:
