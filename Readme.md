@@ -8,6 +8,8 @@ MoPaQ is Blizzard's old, proprietary archive format for storing gamedata (replac
 You can find more info and an excellent editor here http://www.zezula.net/en/mpq/main.html
 
 ## Get it
+*currently only warcraft 3 maps and mpqs are fully supported. Mpqs from other games (WoW, starcraft) might cause problems.*
+
 It is recommended to use jitpack with a dependency manager like gradle.
 
 See https://jitpack.io/#inwc3/JMPQ3/
