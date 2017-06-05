@@ -22,7 +22,7 @@ import java.nio.ByteOrder;
  */
 public class MPQEncryption {
     /**
-     * Size of a encryption block.
+     * Size of an encryption block.
      */
     private static final int BLOCK_SIZE = 4;
 
