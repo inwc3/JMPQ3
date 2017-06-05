@@ -4,7 +4,6 @@ import com.esotericsoftware.minlog.Log;
 import systems.crigges.jmpq3.BlockTable.Block;
 
 import java.io.*;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -253,13 +252,19 @@ public class JMpqEditor implements AutoCloseable {
      * Makes the archive readonly.
      */
     private void loadDefaultListFile() throws IOException {
-        URL resource = getClass().getClassLoader().getResource("DefaultListfile.txt");
+        InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
         if (resource != null) {
-            Path defaultListfile = Paths.get("listfile");
-            try (InputStream is = resource.openStream()) {
-                Files.copy(is, defaultListfile);
+            File tempFile = File.createTempFile("jmpq", "lf", tempDir);
+            tempFile.deleteOnExit();
+            try (FileOutputStream out = new FileOutputStream(tempFile)) {
+                //copy stream
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = resource.read(buffer)) != -1) {
+                    out.write(buffer, 0, bytesRead);
+                }
             }
-            listFile = new Listfile(Files.readAllBytes(defaultListfile));
+            listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
             canWrite = false;
         }
     }
