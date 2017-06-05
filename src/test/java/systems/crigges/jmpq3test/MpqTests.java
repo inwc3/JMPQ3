@@ -53,7 +53,10 @@ public class MpqTests {
         for (File mpq : mpqs) {
             Log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+            long length = mpq.length();
             mpqEditor.close(true, true, true);
+            long newlength = mpq.length();
+            System.out.println("Size win: " + (length - newlength));
         }
     }
 
@@ -115,6 +118,33 @@ public class MpqTests {
             for (int i = 0; i < mpqEditors.length; i++) {
                 mpqEditors[i].close();
             }
+        }
+    }
+
+    @Test
+    public void testIncompressibleFile() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            insertAndVerify(mpq, "incompressible.w3u");
+        }
+    }
+
+    private void insertAndVerify(File mpq, String filename) throws IOException {
+        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+        try {
+            File file = getFile(filename);
+            byte[] bytes = Files.readAllBytes(file.toPath());
+            mpqEditor.insertFile(filename, getFile(filename), false);
+            mpqEditor.close();
+            mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+            Assert.assertTrue(mpqEditor.hasFile(filename));
+            byte[] bytes2 = mpqEditor.extractFileAsBytes(filename);
+            Assert.assertEquals(bytes, bytes2);
+            mpqEditor.deleteFile(filename);
+            mpqEditor.close();
+            mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
+            Assert.assertFalse(mpqEditor.hasFile(filename));
+        } catch (NonWritableChannelException ignored) {
         }
     }
 

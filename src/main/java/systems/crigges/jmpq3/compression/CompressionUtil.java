@@ -22,9 +22,7 @@ public class CompressionUtil {
     private static final byte FLAG_ADPCM2C = -0x80;
 
     public static byte[] compress(byte[] temp, boolean recompress) {
-        byte[] zopfliA = zopfli.deflate(temp);
-        byte[] jzlib = JzLibHelper.deflate(temp);
-        return recompress ? zopfliA : jzlib;
+        return recompress ? zopfli.deflate(temp) : JzLibHelper.deflate(temp);
     }
 
     public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
