@@ -3,10 +3,7 @@ package systems.crigges.jmpq3;
 import com.esotericsoftware.minlog.Log;
 import systems.crigges.jmpq3.BlockTable.Block;
 
-import java.io.EOFException;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -258,12 +255,10 @@ public class JMpqEditor implements AutoCloseable {
     private void loadDefaultListFile() throws IOException {
         URL resource = getClass().getClassLoader().getResource("DefaultListfile.txt");
         if (resource != null) {
-            String filePath = resource.getFile();
-            if(filePath.startsWith("file:\\")) {
-                Log.info("Invalid path detected");
-                filePath = filePath.substring(6);
+            Path defaultListfile = Paths.get("listfile");
+            try (InputStream is = resource.openStream()) {
+                Files.copy(is, defaultListfile);
             }
-            Path defaultListfile = new File(filePath).toPath();
             listFile = new Listfile(Files.readAllBytes(defaultListfile));
             canWrite = false;
         }
