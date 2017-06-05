@@ -258,7 +258,12 @@ public class JMpqEditor implements AutoCloseable {
     private void loadDefaultListFile() throws IOException {
         URL resource = getClass().getClassLoader().getResource("DefaultListfile.txt");
         if (resource != null) {
-            Path defaultListfile = new File(resource.getFile()).toPath();
+            String filePath = resource.getFile();
+            if(filePath.startsWith("file:\\")) {
+                Log.info("Invalid path detected");
+                filePath = filePath.substring(6);
+            }
+            Path defaultListfile = new File(filePath).toPath();
             listFile = new Listfile(Files.readAllBytes(defaultListfile));
             canWrite = false;
         }
