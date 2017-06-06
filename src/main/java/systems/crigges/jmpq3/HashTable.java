@@ -103,9 +103,12 @@ public class HashTable {
                 break;
             } else if (entry.blockTableIndex == ENTRY_DELETED) {
                 continue;
-            } else if (entry.key == file.key
-                    && (bestEntryIndex == -1 || entry.locale == file.locale || entry.locale != file.locale && entry.locale == DEFAULT_LOCALE)) {
-                bestEntryIndex = index;
+            } else if (entry.key == file.key) {
+                if (entry.locale == file.locale) {
+                    return index;
+                } else if (bestEntryIndex == -1 || entry.locale == DEFAULT_LOCALE) {
+                    bestEntryIndex = index;
+                }
             }
         }
 
