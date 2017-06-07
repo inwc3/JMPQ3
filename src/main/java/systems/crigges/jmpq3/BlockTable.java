@@ -41,10 +41,10 @@ public class BlockTable {
     public static void writeNewBlocktable(ArrayList<Block> blocks, int size, MappedByteBuffer buf) {
         ByteBuffer temp = ByteBuffer.allocate(size * 16);
         temp.order(ByteOrder.LITTLE_ENDIAN);
-        temp.position(0);
         for (Block b : blocks) {
             b.writeToBuffer(temp);
         }
+        temp.flip();
         if (new MPQEncryption(-326913117, false).processFinal(temp, buf))
             throw new BufferOverflowException(); 
     }

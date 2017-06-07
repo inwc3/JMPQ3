@@ -67,7 +67,7 @@ public class HashTable {
 
     public void readFromBuffer(ByteBuffer src) {
         for (int i = 0; i < buckets.length; i++) {
-            Bucket entry = buckets[i];
+            final Bucket entry = buckets[i];
             entry.readFromBuffer(src);
 
             // count active mappings
@@ -329,7 +329,7 @@ public class HashTable {
             final MPQHashGenerator key2Gen = MPQHashGenerator.getTableKey2Generator();
             key2Gen.process(name);
             final int key2 = key2Gen.getHash();
-            key = (key2 << 32) | Integer.toUnsignedLong(key1);
+            key = ((long)key2 << 32) | Integer.toUnsignedLong(key1);
 
             this.locale = locale;
         }

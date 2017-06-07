@@ -44,7 +44,7 @@ final class CryptographicLUT {
             for (int table = 0; table < TABLE_NUMBER; table++) {
                 final short seed1 = (short) (seed = updateSeed(seed));
                 final short seed2 = (short) (seed = updateSeed(seed));
-                CRYPTOGRAPHIC_TABLES[table][value] = seed1 << 16 | Short.toUnsignedInt(seed2);
+                CRYPTOGRAPHIC_TABLES[table][value] = (int) seed1 << 16 | Short.toUnsignedInt(seed2);
             }
         }
     }
