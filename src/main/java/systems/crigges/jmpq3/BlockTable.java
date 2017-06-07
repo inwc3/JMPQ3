@@ -3,11 +3,14 @@ package systems.crigges.jmpq3;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+
+import systems.crigges.jmpq3.security.MPQEncryption;
 
 import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
@@ -18,7 +21,10 @@ public class BlockTable {
 
     public BlockTable(ByteBuffer buf) throws IOException {
         this.size = (buf.capacity() / 16);
-        byte[] decrypted = MpqCrypto.decryptBlock(buf, this.size * 16, -326913117);
+        
+        final ByteBuffer decryptedBuffer = ByteBuffer.allocate(buf.capacity());
+        new MPQEncryption(-326913117, true).processFinal(buf, decryptedBuffer);
+        byte[] decrypted = decryptedBuffer.array();
 
         File block = File.createTempFile("block", "jmpq", JMpqEditor.tempDir);
         block.deleteOnExit();
@@ -39,9 +45,8 @@ public class BlockTable {
         for (Block b : blocks) {
             b.writeToBuffer(temp);
         }
-        byte[] arr = temp.array();
-        arr = MpqCrypto.encryptMpqBlock(arr, arr.length, -326913117);
-        buf.put(arr);
+        if (new MPQEncryption(-326913117, false).processFinal(temp, buf))
+            throw new BufferOverflowException(); 
     }
 
     public Block getBlockAtPos(int pos) throws JMpqException {

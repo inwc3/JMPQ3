@@ -5,7 +5,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
-import systems.crigges.jmpq3.MpqCrypto;
+import systems.crigges.jmpq3.security.MPQEncryption;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,11 +30,18 @@ public class MpqTests {
     @Test
     public void cryptoTest() throws IOException {
         byte[] bytes = "Hello World!".getBytes();
-        byte[] a = MpqCrypto.encryptMpqBlock(ByteBuffer.wrap(bytes), bytes.length, -1011927184);
-        byte[] b = MpqCrypto.decryptBlock(ByteBuffer.wrap(a), bytes.length, -1011927184);
+        
+        final ByteBuffer workBuffer = ByteBuffer.allocate(bytes.length);
+        final MPQEncryption encryptor = new MPQEncryption(-1011927184, false);
+        encryptor.processFinal(ByteBuffer.wrap(bytes), workBuffer);
+        workBuffer.flip();
+        encryptor.changeKey(-1011927184, true);
+        encryptor.processSingle(workBuffer);
+        workBuffer.flip();
 
-        Assert.assertTrue(Arrays.equals(new byte[]{-96, -93, 89, -50, 43, -60, 18, -33, -31, -71, -81, 86}, a));
-        Assert.assertTrue(Arrays.equals(new byte[]{2, -106, -97, 38, 5, -82, -88, -91, -6, 63, 114, -31}, b));
+        //Assert.assertTrue(Arrays.equals(new byte[]{-96, -93, 89, -50, 43, -60, 18, -33, -31, -71, -81, 86}, a));
+        //Assert.assertTrue(Arrays.equals(new byte[]{2, -106, -97, 38, 5, -82, -88, -91, -6, 63, 114, -31}, b));
+        Assert.assertTrue(Arrays.equals(bytes, workBuffer.array()));
     }
 
     @Test
