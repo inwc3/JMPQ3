@@ -44,7 +44,7 @@ public class BlockTable {
         for (Block b : blocks) {
             b.writeToBuffer(temp);
         }
-        temp.flip();
+        temp.clear();
         if (new MPQEncryption(-326913117, false).processFinal(temp, buf))
             throw new BufferOverflowException(); 
     }

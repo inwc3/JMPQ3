@@ -804,16 +804,12 @@ public class JMpqEditor implements AutoCloseable {
         encrypt.processSingle(hashTableBuffer);
         hashTableBuffer.flip();
         
-        // write out hashtable
+        // write out hash table
         writeChannel.position(currentPos);
         writeFully(hashTableBuffer, writeChannel);
         currentPos = writeChannel.position();
 
-        MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newHashSize * 16);
-        hashtableWriter.order(ByteOrder.LITTLE_ENDIAN);
-        //HashTable.writeNewHashTable(newHashSize, newFiles, hashtableWriter);
-        currentPos += newHashSize * 16;
-
+        // write out block table
         MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16);
         blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
         BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
