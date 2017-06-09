@@ -128,6 +128,20 @@ public class HashTable {
     }
 
     /**
+     * Check if the specified file path has a mapping in this hash table.
+     * <p>
+     * A file path has a mapping if it has been mapped for at least 1 locale.
+     * 
+     * @param file
+     *            file path.
+     * @return true if the hash table has a mapping for the file, otherwise
+     *         false.
+     */
+    public boolean hasFile(String file) {
+        return getFileEntryIndex(new FileIdentifier(file, DEFAULT_LOCALE)) != -1;
+    }
+
+    /**
      * Get the block table index for the specified file.
      * 
      * @param name
@@ -329,7 +343,7 @@ public class HashTable {
             final MPQHashGenerator key2Gen = MPQHashGenerator.getTableKey2Generator();
             key2Gen.process(name);
             final int key2 = key2Gen.getHash();
-            key = ((long)key2 << 32) | Integer.toUnsignedLong(key1);
+            key = ((long) key2 << 32) | Integer.toUnsignedLong(key1);
 
             this.locale = locale;
         }
