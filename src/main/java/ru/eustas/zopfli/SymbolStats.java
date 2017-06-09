@@ -114,35 +114,30 @@ final class SymbolStats {
     }
 
     final void alloy(final SymbolStats ligand) {
-        int[] ligandLitLens = ligand.litLens;
         for (int i = 0; i < 288; i++) {
-            litLens[i] += ligandLitLens[i] / 2;
+            litLens[i] += ligand.litLens[i] / 2;
         }
         litLens[256] = 1;
 
-        int[] ligandDists = ligand.dists;
         for (int i = 0; i < 32; i++) {
-            dists[i] += ligandDists[i] / 2;
+            dists[i] += ligand.dists[i] / 2;
         }
     }
 
     final int randomizeFreqs(int z) {
         int[] data = litLens;
         int n = data.length;
-        for (int i = 0; i < n; i++) {
-            z = 0x7FFFFFFF & (1103515245 * z + 12345);
-            if ((z >>> 4) % 3 == 0) {
-                z = 0x7FFFFFFF & (1103515245 * z + 12345);
-                int p = z % n;
-                if (data[i] < data[p]) {
-                    data[i] = data[p];
-                }
-            }
-        }
+        z = getZ(z, data, n);
         data[256] = 1;
 
         data = dists;
         n = data.length;
+        z = getZ(z, data, n);
+
+        return z;
+    }
+
+    private int getZ(int z, int[] data, int n) {
         for (int i = 0; i < n; i++) {
             z = 0x7FFFFFFF & (1103515245 * z + 12345);
             if ((z >>> 4) % 3 == 0) {
@@ -153,7 +148,6 @@ final class SymbolStats {
                 }
             }
         }
-
         return z;
     }
 

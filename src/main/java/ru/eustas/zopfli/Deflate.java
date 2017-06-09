@@ -20,7 +20,7 @@ package ru.eustas.zopfli;
 
 class Deflate {
 
-    static enum BlockType {
+    enum BlockType {
         DYNAMIC,
         FIXED
     }
@@ -49,7 +49,7 @@ class Deflate {
         }
     }
 
-    public static void greedy(Cookie cookie, LongestMatchCache lmc, byte[] input, int from, int to, LzStore store) {
+    static void greedy(Cookie cookie, LongestMatchCache lmc, byte[] input, int from, int to, LzStore store) {
         Hash h = cookie.h;
         h.init(input, Math.max(from - 0x8000, 0), from, to);
         int prevLength = 0;

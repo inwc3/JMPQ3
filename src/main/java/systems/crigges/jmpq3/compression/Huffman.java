@@ -1,20 +1,19 @@
 package systems.crigges.jmpq3.compression;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-public class Huffman {
+class Huffman {
     private static class Node {
-        public Node parent;
-        public final Node[] child = new Node[2];
-        public Node next;
-        public Node prev;
-        public int value;
-        public int probability;
+        Node parent;
+        final Node[] child = new Node[2];
+        Node next;
+        Node prev;
+        int value;
+        int probability;
 
-        public void treeSwap(Node with) {
+        void treeSwap(Node with) {
             Node temp;
 
             if (parent == with.parent) {
@@ -33,14 +32,14 @@ public class Huffman {
             with.parent = temp;
         }
 
-        public void insertAfter(Node where) {
+        void insertAfter(Node where) {
             prev = where;
             next = where.next;
             where.next = this;
             next.prev = this;
         }
 
-        public void listSwap(Node with) {
+        void listSwap(Node with) {
             if (next == with) {
                 next = with.next;
                 with.next = this;
@@ -74,11 +73,11 @@ public class Huffman {
             }
         }
 
-        public void newList() {
+        void newList() {
             prev = next = this;
         }
 
-        public Node removeFromList() {
+        Node removeFromList() {
             if (this == next) return null;
 
             prev.next = next;
@@ -87,7 +86,7 @@ public class Huffman {
             return next;
         }
 
-        public void joinList(Node list) {
+        void joinList(Node list) {
             Node tail = prev;
 
             prev = list.prev;
@@ -98,13 +97,10 @@ public class Huffman {
         }
     }
 
-    private boolean adjustProbability;
-
     private Node nodes = null;
-    private TreeMap<Integer, Node> sorted2 = new TreeMap<Integer, Node>();
+    private TreeMap<Integer, Node> sorted2 = new TreeMap<>();
 
     private Node root = null;
-    private Node[] valueToNode = new Node[0x102];
 
     private int bitBuffer;
     private byte bitNumber;
@@ -144,7 +140,6 @@ public class Huffman {
         else nodes.joinList(root);
         this.root = null;
         sorted2.clear();
-        Arrays.fill(valueToNode, null);
     }
 
     private void insertNode(Node node) {
@@ -156,7 +151,6 @@ public class Huffman {
             current = test2.getValue();
             node.insertAfter(current);
         } else {
-            current = root;
             if (root != null) {
                 node.insertAfter(root.prev);
             } else {
@@ -176,7 +170,6 @@ public class Huffman {
         node.child[0] = null;
         node.child[1] = null;
 
-        valueToNode[value] = node;
         insertNode(node);
 
         // create branch node
@@ -251,7 +244,6 @@ public class Huffman {
             node.child[1] = null;
 
             insertNode(node);
-            valueToNode[i] = node;
         }
 
         // generate tree
@@ -276,12 +268,12 @@ public class Huffman {
         root.parent = null;
     }
 
-    public void Decompress(ByteBuffer in, ByteBuffer out) {
+    void Decompress(ByteBuffer in, ByteBuffer out) {
         setSource(in);
         byte type = (byte) getBits(8);
         buildTree(type);
 
-        adjustProbability = type == 0;
+        boolean adjustProbability = type == 0;
 
         for (; ; ) {
             Node current = root;
