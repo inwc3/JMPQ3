@@ -58,7 +58,7 @@ public class MpqTests {
         final String fp2 = listFile.nextLine();
         
         // small test hash table
-        final HashTable ht = new HashTable(4);
+        final HashTable ht = new HashTable(8);
         final short defaultLocale = HashTable.DEFAULT_LOCALE;
         final short germanLocale = 0x407;
         final short frenchLocale = 0x40c;
