@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Scanner;
 
 public class Listfile {
-    private HashSet<String> files = new HashSet();
+    private HashSet<String> files = new HashSet<String>();
 
     public Listfile(byte[] file) {
         String list = new String(file);

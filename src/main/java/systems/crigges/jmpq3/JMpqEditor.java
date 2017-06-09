@@ -2,6 +2,8 @@ package systems.crigges.jmpq3;
 
 import com.esotericsoftware.minlog.Log;
 import systems.crigges.jmpq3.BlockTable.Block;
+import systems.crigges.jmpq3.security.MPQEncryption;
+import systems.crigges.jmpq3.security.MPQHashGenerator;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -11,6 +13,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.*;
 import java.util.*;
 
@@ -33,6 +36,26 @@ import static systems.crigges.jmpq3.MpqFile.*;
 public class JMpqEditor implements AutoCloseable {
     private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
     private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    
+    /**
+     * Encryption key for hash table data.
+     */
+    private static final int KEY_HASH_TABLE;
+    
+    /**
+     * Encryption key for block table data.
+     */
+    private static final int KEY_BLOCK_TABLE;
+    
+    static {
+        final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
+        hasher.process("(hash table)");
+        KEY_HASH_TABLE = hasher.getHash();
+        hasher.reset();
+        hasher.process("(block table)");
+        KEY_BLOCK_TABLE = hasher.getHash();
+    }
+    
     public static File tempDir;
     private AttributesFile attributes;
     /** MPQ format version 0 forced compatibility is being used. */
@@ -201,11 +224,20 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     private void readHashTable() throws IOException {
-        ByteBuffer hashBuffer = ByteBuffer.allocate(hashSize * 16).order(ByteOrder.LITTLE_ENDIAN);
+        // read hash table
+        ByteBuffer hashBuffer = ByteBuffer.allocate(hashSize * 16);
         fc.position(headerOffset + hashPos);
         readFully(hashBuffer, fc);
         hashBuffer.rewind();
-        hashTable = new HashTable(hashBuffer);
+        
+        // decrypt hash table
+        final MPQEncryption decrypt = new MPQEncryption(KEY_HASH_TABLE, true);
+        decrypt.processSingle(hashBuffer);
+        hashBuffer.rewind();
+        
+        // create hash table
+        hashTable = new HashTable(hashSize);
+        hashTable.readFromBuffer(hashBuffer);
     }
 
     private void readHeaderSize() throws IOException {
@@ -753,12 +785,31 @@ public class JMpqEditor implements AutoCloseable {
 
         newHashPos = currentPos - headerOffset;
         newBlockPos = newHashPos + newHashSize * 16;
+        
+        // generate new hash table
+        final int hashSize = newHashSize;
+        HashTable hashTable = new HashTable(hashSize);
+        int blockIndex = 0;
+        for (String file : newFiles) {
+            hashTable.setFileBlockIndex(file, HashTable.DEFAULT_LOCALE, blockIndex++);
+        }
+        
+        // prepare hashtable for writing
+        final ByteBuffer hashTableBuffer = ByteBuffer.allocate(hashSize * 16);
+        hashTable.writeToBuffer(hashTableBuffer);
+        hashTableBuffer.flip();
+        
+        // encrypt hash table
+        final MPQEncryption encrypt = new MPQEncryption(KEY_HASH_TABLE, false);
+        encrypt.processSingle(hashTableBuffer);
+        hashTableBuffer.flip();
+        
+        // write out hash table
+        writeChannel.position(currentPos);
+        writeFully(hashTableBuffer, writeChannel);
+        currentPos = writeChannel.position();
 
-        MappedByteBuffer hashtableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newHashSize * 16);
-        hashtableWriter.order(ByteOrder.LITTLE_ENDIAN);
-        HashTable.writeNewHashTable(newHashSize, newFiles, hashtableWriter);
-        currentPos += newHashSize * 16;
-
+        // write out block table
         MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16);
         blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
         BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
@@ -814,6 +865,23 @@ public class JMpqEditor implements AutoCloseable {
         while (buffer.hasRemaining()) {
             if (src.read(buffer) < 1)
                 throw new EOFException("Cannot read enough bytes.");
+        }
+    }
+    
+    /**
+     * Utility method to write out a buffer to the given channel.
+     *
+     * @param buffer
+     *            buffer to write out.
+     * @param dest
+     *            channel to write to.
+     * @throws IOException
+     *             if an exception occurs when writing.
+     */
+    private static void writeFully(ByteBuffer buffer, WritableByteChannel dest) throws IOException {
+        while (buffer.hasRemaining()) {
+            if (dest.write(buffer) < 1)
+                throw new EOFException("Cannot write enough bytes.");
         }
     }
 

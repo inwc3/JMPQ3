@@ -3,8 +3,11 @@ package systems.crigges.jmpq3;
 
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.compression.CompressionUtil;
+import systems.crigges.jmpq3.security.MPQEncryption;
+import systems.crigges.jmpq3.security.MPQHashGenerator;
 
 import java.io.*;
+import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -43,7 +46,9 @@ public class MpqFile {
         String pathlessName = name.substring(sepIndex + 1);
         if (b.hasFlag(ENCRYPTED)) {
             isEncrypted = true;
-            baseKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
+            final MPQHashGenerator keyGen = MPQHashGenerator.getFileKeyGenerator();
+            keyGen.process(pathlessName);
+            baseKey = keyGen.getHash();
             if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
                 baseKey = ((baseKey + b.getFilePos()) ^ b.getNormalSize());
             }
@@ -83,7 +88,7 @@ public class MpqFile {
                 buf.position(0);
                 byte[] arr = getSectorAsByteArray(buf, compressedSize);
                 if (isEncrypted) {
-                    arr = MpqCrypto.decryptBlock(arr, baseKey);
+                    new MPQEncryption(baseKey, true).processSingle(ByteBuffer.wrap(arr));
                 }
                 arr = decompressSector(arr, block.getCompressedSize(), block.getNormalSize());
                 writer.write(arr);
@@ -100,7 +105,7 @@ public class MpqFile {
             byte[] sot = new byte[sectorCount * 4];
             buf.get(sot);
             if (isEncrypted) {
-                sot = MpqCrypto.decryptBlock(sot, baseKey - 1);
+                new MPQEncryption(baseKey - 1, true).processSingle(ByteBuffer.wrap(sot));
             }
             sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
             int start = sotBuffer.getInt();
@@ -110,7 +115,7 @@ public class MpqFile {
                 buf.position(0 + start);
                 byte[] arr = getSectorAsByteArray(buf, end - start);
                 if (isEncrypted) {
-                    arr = MpqCrypto.decryptBlock(arr, baseKey + i);
+                    new MPQEncryption(baseKey + i, true).processSingle(ByteBuffer.wrap(arr));
                 }
                 if (block.getNormalSize() - finalSize <= sectorSize) {
                     arr = decompressSector(arr, end - start, block.getNormalSize() - finalSize);
@@ -138,7 +143,7 @@ public class MpqFile {
         buf.position(0);
         byte[] arr = getSectorAsByteArray(buf, compressedSize);
         if (isEncrypted) {
-            arr = MpqCrypto.decryptBlock(arr, baseKey);
+            new MPQEncryption(baseKey, true).processSingle(ByteBuffer.wrap(arr));
         }
         writer.write(arr);
         writer.flush();
@@ -162,7 +167,7 @@ public class MpqFile {
             buf.position(0);
             byte[] arr = getSectorAsByteArray(buf, block.hasFlag(COMPRESSED) ? compressedSize : normalSize);
             if (block.hasFlag(ENCRYPTED)) {
-                arr = MpqCrypto.decryptBlock(arr, baseKey);
+                new MPQEncryption(baseKey, true).processSingle(ByteBuffer.wrap(arr));
             }
             writeBuffer.put(arr);
 
@@ -184,7 +189,7 @@ public class MpqFile {
             byte[] sot = new byte[sectorCount * 4];
             buf.get(sot);
             if (isEncrypted) {
-                sot = MpqCrypto.decryptBlock(sot, baseKey - 1);
+                new MPQEncryption(baseKey - 1, true).processSingle(ByteBuffer.wrap(sot));
             }
             writeBuffer.put(sot);
             ByteBuffer sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
@@ -194,7 +199,7 @@ public class MpqFile {
                 buf.position(0 + start);
                 byte[] arr = getSectorAsByteArray(buf, end - start);
                 if (isEncrypted) {
-                    arr = MpqCrypto.decryptBlock(arr, baseKey + i);
+                    new MPQEncryption(baseKey + i, true).processSingle(ByteBuffer.wrap(arr));
                 }
                 writeBuffer.put(arr);
 
@@ -267,12 +272,16 @@ public class MpqFile {
             }
             if (compSector != null && compSector.length+1 < temp.length) {
                 if (b.hasFlag(ENCRYPTED)) {
-                    int bKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
+                    final MPQHashGenerator keyGen = MPQHashGenerator.getFileKeyGenerator();
+                    keyGen.process(pathlessName);
+                    int bKey = keyGen.getHash();
                     if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
                         bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
                     }
-                    byte[] encryptedSector = MpqCrypto.encryptMpqBlock(DebugHelper.appendData((byte) 2, compSector), compSector.length + 1, bKey + (i));
-                    buf.put(encryptedSector);
+                    
+                    if (new MPQEncryption(bKey + i, false).processFinal(
+                            ByteBuffer.wrap(DebugHelper.appendData((byte) 2, compSector), 0, compSector.length + 1), buf))
+                        throw new BufferOverflowException(); 
                 } else {
                     // deflate compression indicator
                     buf.put((byte) 2);
@@ -281,12 +290,14 @@ public class MpqFile {
                 sotPos += compSector.length + 1;
             } else {
                 if (b.hasFlag(ENCRYPTED)) {
-                    int bKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
+                    final MPQHashGenerator keyGen = MPQHashGenerator.getFileKeyGenerator();
+                    keyGen.process(pathlessName);
+                    int bKey = keyGen.getHash();
                     if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
                         bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
                     }
-                    byte[] encryptedSector = MpqCrypto.encryptMpqBlock(temp, temp.length, bKey + (i));
-                    buf.put(encryptedSector);
+                    if (new MPQEncryption(bKey + i, false).processFinal(ByteBuffer.wrap(temp), buf))
+                        throw new BufferOverflowException(); 
                 } else {
                     buf.put(temp);
                 }
@@ -299,12 +310,14 @@ public class MpqFile {
         sot.position(0);
         buf.order(ByteOrder.LITTLE_ENDIAN);
         if (b.hasFlag(ENCRYPTED)) {
-            int bKey = MpqCrypto.hash(pathlessName, MpqCrypto.MPQ_HASH_FILE_KEY);
+            final MPQHashGenerator keyGen = MPQHashGenerator.getFileKeyGenerator();
+            keyGen.process(pathlessName);
+            int bKey = keyGen.getHash();
             if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
                 bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
             }
-            byte[] encryptedSector = MpqCrypto.encryptMpqBlock(sot, sot.array().length, bKey - 1);
-            buf.put(encryptedSector);
+            if (new MPQEncryption(bKey - 1, false).processFinal(sot, buf))
+                throw new BufferOverflowException(); 
         } else {
             buf.put(sot);
         }
