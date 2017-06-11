@@ -23,7 +23,7 @@ class LongestMatchCache {
     private final static int CACHE_LENGTH = 8;
 
     public final char[] length;
-    public final char[] dist;
+    final char[] dist;
     private final char[] subLenPos;
     private final byte[] subLenLen;
 

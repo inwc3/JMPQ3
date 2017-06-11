@@ -20,8 +20,8 @@ package ru.eustas.zopfli;
 
 public class Buffer {
 
-    byte[] data;
-    int size;
+    private byte[] data;
+    private int size;
     private int bp;
 
     Buffer() {
@@ -36,7 +36,7 @@ public class Buffer {
         return size;
     }
 
-    void append(byte value) {
+    private void append(byte value) {
         if (size == data.length) {
             byte[] copy = new byte[size * 2];
             System.arraycopy(data, 0, copy, 0, size);

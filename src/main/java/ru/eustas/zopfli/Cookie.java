@@ -34,7 +34,7 @@ class Cookie {
     final static byte[] byteZeroes = new byte[65536];
     final static int[] intMOnes = new int[65536];
     final static char[] charOnes = new char[65536];
-    final static long[] costMax = new long[65536];
+    private final static long[] costMax = new long[65536];
 
     static {
         for (int i = 0; i < 64; ++i) {
@@ -47,7 +47,7 @@ class Cookie {
         expand(costMax);
     }
 
-    static void expand(Object array) {
+    private static void expand(Object array) {
         for (int i = 64; i < 65536; i = i + i) {
             System.arraycopy(array, 0, array, i, i);
         }
@@ -126,18 +126,6 @@ class Cookie {
 
     final void resetPool() {
         nextNode = 0;
-    }
-
-    static void fill0(int[] array, int length) {
-        int i = 0;
-        while (i < length) {
-            int j = i + 65536;
-            if (j > length) {
-                j = length;
-            }
-            System.arraycopy(intZeroes, 0, array, i, j - i);
-            i = j;
-        }
     }
 
     static void fill0(char[] array, int length) {
