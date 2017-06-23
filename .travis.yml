@@ -20,6 +20,7 @@ cache:
 script:
   - ./gradlew check
   - ./gradlew build
+  - ./gradlew dist
 
 deploy:
   skip_cleanup: true

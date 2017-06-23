@@ -5,22 +5,26 @@ plugins {
     id "maven-publish"
     id "jacoco"
     id "com.github.kt3k.coveralls" version "2.5.0"
+    id "java"
 }
 
-apply plugin: 'java'
 
 group 'systems.crigges'
-version '1.5.2'
+version '1.5.3'
 
 repositories {
     jcenter()
 	mavenCentral()
 }
 
-jar.archiveName = "${jar.baseName}.${jar.extension}"
-jar {
-    from {configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+task dist(type: Jar) {
+    from files(sourceSets.main.output.classesDir)
+    from files(sourceSets.main.output.resourcesDir)
+    from { configurations.compile.collect { zipTree(it) } }
 }
+dist.dependsOn classes
+
+dist.archiveName = "${jar.baseName}.${jar.extension}"
 
 dependencies {
 	compile 'com.jcraft:jzlib:1.1.3'
