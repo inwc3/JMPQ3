@@ -92,7 +92,7 @@ public class JMpqEditor implements AutoCloseable {
     // BuildData
     private ArrayList<ByteBuffer> filesToAdd = new ArrayList<>();
     /** The keep header offset. */
-    private boolean keepHeaderOffset = false;
+    private boolean keepHeaderOffset = true;
     /** The new header size. */
     private int newHeaderSize;
     /** The new archive size. */
