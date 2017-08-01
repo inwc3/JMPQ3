@@ -36,17 +36,17 @@ import static systems.crigges.jmpq3.MpqFile.*;
 public class JMpqEditor implements AutoCloseable {
     private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
     private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    
+
     /**
      * Encryption key for hash table data.
      */
     private static final int KEY_HASH_TABLE;
-    
+
     /**
      * Encryption key for block table data.
      */
     private static final int KEY_BLOCK_TABLE;
-    
+
     static {
         final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
         hasher.process("(hash table)");
@@ -55,7 +55,7 @@ public class JMpqEditor implements AutoCloseable {
         hasher.process("(block table)");
         KEY_BLOCK_TABLE = hasher.getHash();
     }
-    
+
     public static File tempDir;
     private AttributesFile attributes;
     /** MPQ format version 0 forced compatibility is being used. */
@@ -92,7 +92,7 @@ public class JMpqEditor implements AutoCloseable {
     // BuildData
     private ArrayList<ByteBuffer> filesToAdd = new ArrayList<>();
     /** The keep header offset. */
-    private boolean keepHeaderOffset = true;
+    private boolean keepHeaderOffset = false;
     /** The new header size. */
     private int newHeaderSize;
     /** The new archive size. */
@@ -109,6 +109,7 @@ public class JMpqEditor implements AutoCloseable {
     private int newHashSize;
     /** The new block size. */
     private int newBlockSize;
+
     /** If write operations are supported on the archive. */
     private boolean canWrite;
 
@@ -229,12 +230,12 @@ public class JMpqEditor implements AutoCloseable {
         fc.position(headerOffset + hashPos);
         readFully(hashBuffer, fc);
         hashBuffer.rewind();
-        
+
         // decrypt hash table
         final MPQEncryption decrypt = new MPQEncryption(KEY_HASH_TABLE, true);
         decrypt.processSingle(hashBuffer);
         hashBuffer.rewind();
-        
+
         // create hash table
         hashTable = new HashTable(hashSize);
         hashTable.readFromBuffer(hashBuffer);
@@ -284,6 +285,7 @@ public class JMpqEditor implements AutoCloseable {
      * Makes the archive readonly.
      */
     private void loadDefaultListFile() throws IOException {
+        Log.info("The mpq doesn't come with a listfile so it cannot be rebuild");
         InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
         if (resource != null) {
             File tempFile = File.createTempFile("jmpq", "lf", tempDir);
@@ -609,7 +611,7 @@ public class JMpqEditor implements AutoCloseable {
      * Inserts the specified file into the mpq once you close the editor.
      *
      * @param name       of the file inside the mpq
-     * @param file          the file
+     * @param file       the file
      * @param backupFile if true the editors creates a copy of the file to add, so
      *                   further changes won't affect the resulting mpq
      * @throws JMpqException if file is not found or access errors occur
@@ -651,6 +653,7 @@ public class JMpqEditor implements AutoCloseable {
         // only rebuild if allowed
         if (!canWrite) {
             fc.close();
+            Log.info("closed readonly mpq.");
             return;
         }
 
@@ -705,7 +708,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         for (String existingName : existingFiles) {
-            if(recompress && ! existingName.endsWith("wav")) {
+            if (recompress && !existingName.endsWith("wav")) {
                 ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
                 internalFilename.put(extracted, existingName);
                 filesToAdd.add(extracted);
@@ -785,7 +788,7 @@ public class JMpqEditor implements AutoCloseable {
 
         newHashPos = currentPos - headerOffset;
         newBlockPos = newHashPos + newHashSize * 16;
-        
+
         // generate new hash table
         final int hashSize = newHashSize;
         HashTable hashTable = new HashTable(hashSize);
@@ -793,17 +796,17 @@ public class JMpqEditor implements AutoCloseable {
         for (String file : newFiles) {
             hashTable.setFileBlockIndex(file, HashTable.DEFAULT_LOCALE, blockIndex++);
         }
-        
+
         // prepare hashtable for writing
         final ByteBuffer hashTableBuffer = ByteBuffer.allocate(hashSize * 16);
         hashTable.writeToBuffer(hashTableBuffer);
         hashTableBuffer.flip();
-        
+
         // encrypt hash table
         final MPQEncryption encrypt = new MPQEncryption(KEY_HASH_TABLE, false);
         encrypt.processSingle(hashTableBuffer);
         hashTableBuffer.flip();
-        
+
         // write out hash table
         writeChannel.position(currentPos);
         writeFully(hashTableBuffer, writeChannel);
@@ -867,16 +870,13 @@ public class JMpqEditor implements AutoCloseable {
                 throw new EOFException("Cannot read enough bytes.");
         }
     }
-    
+
     /**
      * Utility method to write out a buffer to the given channel.
      *
-     * @param buffer
-     *            buffer to write out.
-     * @param dest
-     *            channel to write to.
-     * @throws IOException
-     *             if an exception occurs when writing.
+     * @param buffer buffer to write out.
+     * @param dest   channel to write to.
+     * @throws IOException if an exception occurs when writing.
      */
     private static void writeFully(ByteBuffer buffer, WritableByteChannel dest) throws IOException {
         while (buffer.hasRemaining()) {
@@ -885,15 +885,22 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
+    /**
+     * @return Whether the map can be modified or not
+     */
+    public boolean isCanWrite() {
+        return canWrite;
+    }
+
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see java.lang.Object#toString()
      */
+
     @Override
     public String toString() {
         return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
                 + ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
     }
-
 }
