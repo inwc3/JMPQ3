@@ -17,7 +17,7 @@ See https://jitpack.io/#inwc3/JMPQ3/
 Gradle Example:
 ```gradle
 dependencies {
-    compile 'com.github.inwc3:JMPQ3:1.5.3'
+    compile 'com.github.inwc3:JMPQ3:1.5.5'
 }
 allprojects {
     repositories {
@@ -33,14 +33,19 @@ Quick API Overview:
 
 Jmpq provides the OpenOptions `READ_ONLY` which should be selfexplanatory and `FORCE_V0` which forces the mpq to be opened like warcraft3 would open it, ignoring optional data from later specifications for compatability.
 ```java
-    JMpqEditor e = new JMpqEditor(new File("my.mpq"), MPQOpenOption.FORCE_V0); //Opens a new editor
-    e.hasFile("filename") //Checks if the file exists
-    e.deleteFile("filename"); //Deletes a specific file out of the mpq
-    e.extractFile("filename", new File("target location")); //Extracts a specific file out of the mpq to the target location			
-    e.insertFile("filename", new File("file to add"), true); //Inserts a specific into the mpq from the target location	
-    e.extractAllFiles(new File("target folder")); //Extracts all files inside the mpq to the target folder. If a proper listfile exists, names will be used accordingly
-    e.getFileNames(); //Get the listfile as java HashSet<String>
-    e.close(); //Rebuilds the mpq and applies all changes that were made. In readonly mode it only closes the filechannel.
+// Automatically rebuilds mpq after use if not in readonly mode
+try (JMpqEditor e = new JMpqEditor(new File("my.mpq"), MPQOpenOption.FORCE_V0)){
+        e.hasFile("filename"); //Checks if the file exists
+        e.extractFile("filename", new File("target location")); //Extracts a specific file out of the mpq to the target location
+        if (e.isCanWrite()) {
+            e.deleteFile("filename"); //Deletes a specific file out of the mpq
+            e.insertFile("filename", new File("file to add"), true); //Inserts a specific into the mpq from the target location
+            e.extractAllFiles(new File("target folder")); //Extracts all files inside the mpq to the target folder. If a proper listfile exists,
+            e.getFileNames(); //Get the listfile as java HashSet<String>
+        }
+    }
+
+}
 ```
 
 ### Known issues:
