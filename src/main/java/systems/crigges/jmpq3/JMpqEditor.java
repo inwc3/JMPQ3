@@ -892,6 +892,14 @@ public class JMpqEditor implements AutoCloseable {
         return canWrite;
     }
 
+    /**
+     * Whether or not to keep the data before the actual mpq in the file
+     * @param keepHeaderOffset
+     */
+    public void setKeepHeaderOffset(boolean keepHeaderOffset) {
+        this.keepHeaderOffset = keepHeaderOffset;
+    }
+
     /*
      * (non-Javadoc)
      *
