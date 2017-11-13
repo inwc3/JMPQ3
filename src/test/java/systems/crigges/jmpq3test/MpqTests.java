@@ -3,7 +3,6 @@ package systems.crigges.jmpq3test;
 import com.esotericsoftware.minlog.Log;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
 import systems.crigges.jmpq3.HashTable;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
@@ -13,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -234,5 +234,21 @@ public class MpqTests {
             mpqEditor.close();
         } catch (NonWritableChannelException ignored) {
         }
+    }
+
+    @Test
+    public void testRemoveHeaderoffset() throws IOException {
+        File[] mpqs = getMpqs();
+        File mpq = mpqs[2];
+        Log.info(mpq.getName());
+        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+        mpqEditor.setKeepHeaderOffset(false);
+        mpqEditor.close();
+
+        ByteBuffer bbuf = ByteBuffer.wrap(Files.readAllBytes(mpq.toPath())).order(ByteOrder.LITTLE_ENDIAN);
+        Assert.assertEquals(bbuf.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
+
+        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+        Assert.assertTrue(mpqEditor.isCanWrite());
     }
 }

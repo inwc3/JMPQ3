@@ -1,5 +1,7 @@
 package systems.crigges.jmpq3;
 
+import systems.crigges.jmpq3.security.MPQEncryption;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -9,8 +11,6 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-
-import systems.crigges.jmpq3.security.MPQEncryption;
 
 import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
@@ -136,8 +136,8 @@ public class BlockTable {
         }
 
         public String toString() {
-            return "Block [filePos=" + this.filePos + ", compressedSize=" + this.compressedSize + ", normalSize=" + this.normalSize + ", flags=" + this.flags
-                    + "]";
+            return "Block [filePos=" + this.filePos + ", compressedSize=" + this.compressedSize + ", normalSize=" + this.normalSize + ", flags=" +
+                    printFlags().trim() + "]";
         }
 
         public String printFlags() {

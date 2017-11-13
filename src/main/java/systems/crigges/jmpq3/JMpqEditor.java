@@ -34,8 +34,8 @@ import static systems.crigges.jmpq3.MpqFile.*;
  * For platform independence the implementation is pure Java.
  */
 public class JMpqEditor implements AutoCloseable {
-    private static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    private static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    public static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    public static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
     /**
      * Encryption key for hash table data.
@@ -667,13 +667,11 @@ public class JMpqEditor implements AutoCloseable {
         temp.deleteOnExit();
         FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
 
-        if (keepHeaderOffset) {
-            ByteBuffer headerReader = ByteBuffer.allocate((int) (headerOffset + 4)).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(0);
-            readFully(headerReader, fc);
-            headerReader.rewind();
-            writeChannel.write(headerReader);
-        }
+        ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
+        fc.position((keepHeaderOffset ? 0 : headerOffset));
+        readFully(headerReader, fc);
+        headerReader.rewind();
+        writeChannel.write(headerReader);
 
         newFormatVersion = formatVersion;
         switch (newFormatVersion) {
@@ -701,7 +699,7 @@ public class JMpqEditor implements AutoCloseable {
         if (attributes != null) {
             attributes.setNames(existingFiles);
         }
-        long currentPos = headerOffset + headerSize;
+        long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
 
         for (ByteBuffer file : filesToAdd) {
             existingFiles.remove(internalFilename.get(file));
@@ -722,7 +720,7 @@ public class JMpqEditor implements AutoCloseable {
                 buf.rewind();
                 MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
                 MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-                Block newBlock = new Block(currentPos - headerOffset, 0, 0, b.getFlags());
+                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
                 newBlocks.add(newBlock);
                 f.writeFileAndBlock(newBlock, fileWriter);
                 currentPos += b.getCompressedSize();
@@ -734,7 +732,7 @@ public class JMpqEditor implements AutoCloseable {
             newFiles.add(internalFilename.get(newFile));
             newFileMap.put(internalFilename.get(newFile), newFile);
             MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2);
-            Block newBlock = new Block(currentPos - headerOffset, 0, 0, 0);
+            Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, recompress);
             currentPos += newBlock.getCompressedSize();
@@ -746,7 +744,7 @@ public class JMpqEditor implements AutoCloseable {
             newFiles.add("(listfile)");
             byte[] listfileArr = listFile.asByteArray();
             MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2);
-            Block newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+            Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", recompress);
             currentPos += newBlock.getCompressedSize();
@@ -786,7 +784,7 @@ public class JMpqEditor implements AutoCloseable {
         // currentPos += newBlock.getCompressedSize();
         // }
 
-        newHashPos = currentPos - headerOffset;
+        newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
         newBlockPos = newHashPos + newHashSize * 16;
 
         // generate new hash table
@@ -818,9 +816,9 @@ public class JMpqEditor implements AutoCloseable {
         BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
         currentPos += newBlockSize * 16;
 
-        newArchiveSize = currentPos + 1 - headerOffset;
+        newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
 
-        MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, headerOffset + 4, headerSize + 4);
+        MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, (keepHeaderOffset ? headerOffset : 0) + 4, headerSize + 4);
         headerWriter.order(ByteOrder.LITTLE_ENDIAN);
         writeHeader(headerWriter);
 
@@ -894,6 +892,7 @@ public class JMpqEditor implements AutoCloseable {
 
     /**
      * Whether or not to keep the data before the actual mpq in the file
+     *
      * @param keepHeaderOffset
      */
     public void setKeepHeaderOffset(boolean keepHeaderOffset) {
