@@ -237,7 +237,7 @@ public class MpqTests {
         }
     }
 
-    @Test
+    @Test(enabled = false)
     public void testRemoveHeaderoffset() throws IOException {
         File[] mpqs = getMpqs();
         File mpq = null;
@@ -260,5 +260,6 @@ public class MpqTests {
 
         mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         Assert.assertTrue(mpqEditor.isCanWrite());
+        mpqEditor.close();
     }
 }
