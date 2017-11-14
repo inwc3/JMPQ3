@@ -18,6 +18,7 @@ cache:
     - $HOME/.gradle/caches/modules-2/files-2.1
     
 script:
+  - ./gradlew clean
   - ./gradlew check
   - ./gradlew build
   - ./gradlew dist

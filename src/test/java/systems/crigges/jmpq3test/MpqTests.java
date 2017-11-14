@@ -9,6 +9,7 @@ import systems.crigges.jmpq3.MPQOpenOption;
 import systems.crigges.jmpq3.security.MPQEncryption;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -252,9 +253,10 @@ public class MpqTests {
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         mpqEditor.setKeepHeaderOffset(false);
         mpqEditor.close();
-
-        ByteBuffer bbuf = ByteBuffer.wrap(Files.readAllBytes(mpq.toPath())).order(ByteOrder.LITTLE_ENDIAN);
-        Assert.assertEquals(bbuf.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
+        byte[] bytes = new byte[4];
+        new FileInputStream(mpq).read(bytes);
+        ByteBuffer order = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        Assert.assertEquals(order.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
 
         mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         Assert.assertTrue(mpqEditor.isCanWrite());
