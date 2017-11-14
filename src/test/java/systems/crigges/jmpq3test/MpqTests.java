@@ -239,7 +239,15 @@ public class MpqTests {
     @Test
     public void testRemoveHeaderoffset() throws IOException {
         File[] mpqs = getMpqs();
-        File mpq = mpqs[2];
+        File mpq = null;
+        for (File mpq1 : mpqs) {
+            if (mpq1.getName().startsWith("normal")) {
+                mpq = mpq1;
+                break;
+            }
+        }
+        Assert.assertNotNull(mpq);
+
         Log.info(mpq.getName());
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         mpqEditor.setKeepHeaderOffset(false);
