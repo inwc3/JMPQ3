@@ -599,12 +599,30 @@ public class JMpqEditor implements AutoCloseable {
      * @param name of the file inside the mpq
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void deleteFile(String name) throws JMpqException {
+    public void deleteFile(String name) {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
 
         listFile.removeFile(name);
+    }
+
+    /**
+     * Inserts the specified byte array into the mpq once you close the editor.
+     *
+     * @param name  of the file inside the mpq
+     * @param input the input byte array
+     * @throws JMpqException if file is not found or access errors occur
+     */
+    public void insertByteArray(String name, byte[] input) throws NonWritableChannelException {
+        if (!canWrite) {
+            throw new NonWritableChannelException();
+        }
+
+        listFile.addFile(name);
+        ByteBuffer data = ByteBuffer.wrap(input);
+        filesToAdd.add(data);
+        internalFilename.put(data, name);
     }
 
     /**
@@ -616,7 +634,7 @@ public class JMpqEditor implements AutoCloseable {
      *                   further changes won't affect the resulting mpq
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File file, boolean backupFile) throws JMpqException {
+    public void insertFile(String name, File file, boolean backupFile) throws IOException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
