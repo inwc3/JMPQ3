@@ -42,7 +42,11 @@ public class CompressionUtil {
                 throw new JMpqException("Unsupported compression bzip2");
             }
             if (((compressionType & FLAG_IMPLODE) != 0)) {
-                throw new JMpqException("Unsupported compression pkware");
+                byte[] output = new byte[uncompressedSize];
+                Exploder.pkexplode(sector, output);
+                out.put(output);
+                out.position(0);
+                flip = !flip;
             }
             if (((compressionType & FLAG_SPARSE) != 0)) {
                 throw new JMpqException("Unsupported compression sparse");

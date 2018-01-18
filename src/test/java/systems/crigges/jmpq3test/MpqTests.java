@@ -140,7 +140,7 @@ public class MpqTests {
             if (mpqEditor.hasFile("war3map.j")) {
                 String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
                 String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
-                Assert.assertTrue(extractedFile.equalsIgnoreCase(existingFile));
+                Assert.assertEquals(existingFile, extractedFile);
             }
             mpqEditor.close();
         }
