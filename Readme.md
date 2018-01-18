@@ -50,6 +50,6 @@ try (JMpqEditor e = new JMpqEditor(new File("my.mpq"), MPQOpenOption.FORCE_V0)){
 
 ### Known issues:
 * To work around https://bugs.openjdk.java.net/browse/JDK-4724038 jmpq creates tempfiles for every object in the mpq
-* Unsupported decompression algorithms: sparse, pkware and bzip2
-* Only supported compression is zlib
+* Unsupported decompression algorithms: sparse and bzip2
+* Only supported compression is zlib/zopfli
 * JMPQ doesn't build a valid (attributes) file for now. (which seems to be fine for warcraft3)
