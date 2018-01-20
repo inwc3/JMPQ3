@@ -25,7 +25,7 @@ import java.util.Scanner;
 public class MpqTests {
 
     private static File[] getMpqs() {
-        return new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile()).listFiles((dir, name) -> name.endsWith(".w3x"));
+        return new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile()).listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith(".mpq"));
     }
 
     private static File getFile(String name) {

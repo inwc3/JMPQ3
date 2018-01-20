@@ -20,6 +20,7 @@ public class CompressionUtil {
     private static final byte FLAG_SPARSE = 0x20;
     private static final byte FLAG_ADPCM1C = 0x40;
     private static final byte FLAG_ADPCM2C = -0x80;
+    private static final byte FLAG_LMZA = 0x12;
 
     public static byte[] compress(byte[] temp, boolean recompress) {
         if (recompress && zopfli == null) {
@@ -38,25 +39,33 @@ public class CompressionUtil {
             in.position(1);
 
             boolean flip = false;
-            if (((compressionType & FLAG_BZIP2) != 0)) {
-                throw new JMpqException("Unsupported compression bzip2");
-            }
-            if (((compressionType & FLAG_IMPLODE) != 0)) {
+            boolean isLMZACompressed = (compressionType & FLAG_LMZA) != 0;
+            boolean isBzip2Compressed = (compressionType & FLAG_BZIP2) != 0;
+            boolean isImploded = (compressionType & FLAG_IMPLODE) != 0;
+            boolean isSparseCompressed = (compressionType & FLAG_SPARSE) != 0;
+            boolean isDeflated = (compressionType & FLAG_DEFLATE) != 0;
+            boolean isHuffmanCompressed = (compressionType & FLAG_HUFFMAN) != 0;
+
+            if (isLMZACompressed) {
+                throw new JMpqException("Unsupported compression Bzip2");
+            } else if (isBzip2Compressed) {
+                throw new JMpqException("Unsupported compression Bzip2");
+            } else if (isImploded) {
                 byte[] output = new byte[uncompressedSize];
                 Exploder.pkexplode(sector, output);
                 out.put(output);
                 out.position(0);
                 flip = !flip;
             }
-            if (((compressionType & FLAG_SPARSE) != 0)) {
+            if (isSparseCompressed) {
                 throw new JMpqException("Unsupported compression sparse");
             }
-            if (((compressionType & FLAG_DEFLATE) != 0)) {
+            if (isDeflated) {
                 out.put(JzLibHelper.inflate(sector, 1, uncompressedSize));
                 out.position(0);
                 flip = !flip;
             }
-            if (((compressionType & FLAG_HUFFMAN) != 0)) {
+            if (isHuffmanCompressed) {
                 if (huffman == null) {
                     huffman = new Huffman();
                 }
