@@ -39,15 +39,19 @@ public class CompressionUtil {
             in.position(1);
 
             boolean flip = false;
-            boolean isLMZACompressed = (compressionType & FLAG_LMZA) != 0;
+            boolean isLZMACompressed = (compressionType & FLAG_LMZA) != 0;
             boolean isBzip2Compressed = (compressionType & FLAG_BZIP2) != 0;
             boolean isImploded = (compressionType & FLAG_IMPLODE) != 0;
             boolean isSparseCompressed = (compressionType & FLAG_SPARSE) != 0;
             boolean isDeflated = (compressionType & FLAG_DEFLATE) != 0;
             boolean isHuffmanCompressed = (compressionType & FLAG_HUFFMAN) != 0;
 
-            if (isLMZACompressed) {
-                throw new JMpqException("Unsupported compression Bzip2");
+            if (isDeflated) {
+                out.put(JzLibHelper.inflate(sector, 1, uncompressedSize));
+                out.position(0);
+                flip = !flip;
+            } else if (isLZMACompressed) {
+                throw new JMpqException("Unsupported compression LZMA");
             } else if (isBzip2Compressed) {
                 throw new JMpqException("Unsupported compression Bzip2");
             } else if (isImploded) {
@@ -60,11 +64,7 @@ public class CompressionUtil {
             if (isSparseCompressed) {
                 throw new JMpqException("Unsupported compression sparse");
             }
-            if (isDeflated) {
-                out.put(JzLibHelper.inflate(sector, 1, uncompressedSize));
-                out.position(0);
-                flip = !flip;
-            }
+
             if (isHuffmanCompressed) {
                 if (huffman == null) {
                     huffman = new Huffman();
