@@ -103,8 +103,10 @@ public class MpqTests {
         for (File mpq : mpqs) {
             log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-            mpqEditor.deleteFile("(listfile)");
-            mpqEditor.close(false, false, false);
+            if (mpqEditor.isCanWrite()) {
+                mpqEditor.deleteFile("(listfile)");
+                mpqEditor.close(false, false, false);
+            }
         }
     }
 
@@ -114,10 +116,12 @@ public class MpqTests {
         for (File mpq : mpqs) {
             log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-            long length = mpq.length();
-            mpqEditor.close(true, true, true);
-            long newlength = mpq.length();
-            System.out.println("Size win: " + (length - newlength));
+            if (mpqEditor.isCanWrite()) {
+                long length = mpq.length();
+                mpqEditor.close(true, true, true);
+                long newlength = mpq.length();
+                System.out.println("Size win: " + (length - newlength));
+            }
         }
     }
 
