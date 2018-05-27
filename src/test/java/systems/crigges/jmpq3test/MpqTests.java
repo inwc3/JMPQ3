@@ -1,6 +1,7 @@
 package systems.crigges.jmpq3test;
 
-import com.esotericsoftware.minlog.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import systems.crigges.jmpq3.HashTable;
@@ -23,9 +24,11 @@ import java.util.Scanner;
  * Created by Frotty on 06.03.2017.
  */
 public class MpqTests {
+    private Logger log = LoggerFactory.getLogger(this.getClass().getName());
 
     private static File[] getMpqs() {
-        return new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile()).listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith(".mpq"));
+        return new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile()).listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" +
+                ".mpq"));
     }
 
     private static File getFile(String name) {
@@ -98,9 +101,10 @@ public class MpqTests {
     public void testRebuild() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            Log.info(mpq.getName());
+            log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-            mpqEditor.close();
+            mpqEditor.deleteFile("(listfile)");
+            mpqEditor.close(false, false, false);
         }
     }
 
@@ -108,7 +112,7 @@ public class MpqTests {
     public void testRecompressBuild() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            Log.info(mpq.getName());
+            log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
             long length = mpq.length();
             mpqEditor.close(true, true, true);
@@ -133,7 +137,7 @@ public class MpqTests {
     public void testExtractScriptFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            Log.info("test extract script: " + mpq.getName());
+            log.info("test extract script: " + mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
             File temp = File.createTempFile("war3mapj", "extracted", JMpqEditor.tempDir);
             temp.deleteOnExit();
@@ -177,11 +181,11 @@ public class MpqTests {
             JMpqEditor mpqEditors[] = new JMpqEditor[]{new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
                     new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
                     new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)};
-            for (int i = 0; i < mpqEditors.length; i++) {
-                mpqEditors[i].extractAllFiles(JMpqEditor.tempDir);
+            for (JMpqEditor mpqEditor1 : mpqEditors) {
+                mpqEditor1.extractAllFiles(JMpqEditor.tempDir);
             }
-            for (int i = 0; i < mpqEditors.length; i++) {
-                mpqEditors[i].close();
+            for (JMpqEditor mpqEditor : mpqEditors) {
+                mpqEditor.close();
             }
         }
     }
@@ -278,7 +282,7 @@ public class MpqTests {
         }
         Assert.assertNotNull(mpq);
 
-        Log.info(mpq.getName());
+        log.info(mpq.getName());
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         mpqEditor.setKeepHeaderOffset(false);
         mpqEditor.close();

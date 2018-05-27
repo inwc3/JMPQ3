@@ -1,6 +1,7 @@
 package systems.crigges.jmpq3;
 
-import com.esotericsoftware.minlog.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.zip.CRC32;
 
 public class AttributesFile {
+    private Logger log = LoggerFactory.getLogger(this.getClass().getName());
     private byte[] file;
 
     private int[] crc32;
@@ -42,7 +44,7 @@ public class AttributesFile {
         for (int i = 0; i < fileCount; i++) {
             timestamps[i] = buffer.getLong();
         }
-        Log.info("parsed attributes");
+        log.info("parsed attributes");
     }
 
     public void setEntry(int i, int crc, long timestamp) {

@@ -1,6 +1,7 @@
 package systems.crigges.jmpq3;
 
-import com.esotericsoftware.minlog.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.security.MPQEncryption;
 import systems.crigges.jmpq3.security.MPQHashGenerator;
@@ -34,6 +35,7 @@ import static systems.crigges.jmpq3.MpqFile.*;
  * For platform independence the implementation is pure Java.
  */
 public class JMpqEditor implements AutoCloseable {
+    private Logger log = LoggerFactory.getLogger(this.getClass().getName());
     public static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
     public static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
@@ -285,7 +287,7 @@ public class JMpqEditor implements AutoCloseable {
      * Makes the archive readonly.
      */
     private void loadDefaultListFile() throws IOException {
-        Log.info("The mpq doesn't come with a listfile so it cannot be rebuild");
+        log.info("The mpq doesn't come with a listfile so it cannot be rebuild");
         InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
         if (resource != null) {
             File tempFile = File.createTempFile("jmpq", "lf", tempDir);
@@ -447,7 +449,7 @@ public class JMpqEditor implements AutoCloseable {
         }
         if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
-                Log.info("extracting: " + s);
+                log.info("extracting: " + s);
                 File temp = new File(dest.getAbsolutePath() + "\\" + s);
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
@@ -671,12 +673,12 @@ public class JMpqEditor implements AutoCloseable {
         // only rebuild if allowed
         if (!canWrite) {
             fc.close();
-            Log.info("closed readonly mpq.");
+            log.info("closed readonly mpq.");
             return;
         }
 
         long t = System.nanoTime();
-        Log.info("Building mpq");
+        log.info("Building mpq");
         if (listFile == null) {
             fc.close();
             return;
@@ -713,7 +715,7 @@ public class JMpqEditor implements AutoCloseable {
 
         sortListfileEntries(existingFiles);
 
-        Log.info("Sorted blocks");
+        log.info("Sorted blocks");
         if (attributes != null) {
             attributes.setNames(existingFiles);
         }
@@ -744,7 +746,7 @@ public class JMpqEditor implements AutoCloseable {
                 currentPos += b.getCompressedSize();
             }
         }
-        Log.info("Added existing files");
+        log.info("Added existing files");
         HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
         for (ByteBuffer newFile : filesToAdd) {
             newFiles.add(internalFilename.get(newFile));
@@ -754,9 +756,9 @@ public class JMpqEditor implements AutoCloseable {
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, recompress);
             currentPos += newBlock.getCompressedSize();
-            Log.info("Added file " + internalFilename.get(newFile));
+            log.info("Added file " + internalFilename.get(newFile));
         }
-        Log.info("Added new files");
+        log.info("Added new files");
         if (buildListfile) {
             // Add listfile
             newFiles.add("(listfile)");
@@ -766,7 +768,7 @@ public class JMpqEditor implements AutoCloseable {
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", recompress);
             currentPos += newBlock.getCompressedSize();
-            Log.info("Added listfile");
+            log.info("Added listfile");
         }
         // if (attributes != null) {
         // newFiles.add("(attributes)");
@@ -851,7 +853,7 @@ public class JMpqEditor implements AutoCloseable {
         writeChannel.close();
 
         t = System.nanoTime() - t;
-        Log.info("Rebuild complete. Took: " + (t / 1000000) + "ms");
+        log.info("Rebuild complete. Took: " + (t / 1000000) + "ms");
     }
 
     private void sortListfileEntries(ArrayList<String> remainingFiles) {
