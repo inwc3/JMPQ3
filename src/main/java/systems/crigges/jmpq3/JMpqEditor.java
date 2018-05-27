@@ -671,7 +671,7 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void close(boolean buildListfile, boolean buildAttributes, boolean recompress) throws IOException {
         // only rebuild if allowed
-        if (!canWrite) {
+        if (!canWrite || ! fc.isOpen()) {
             fc.close();
             log.info("closed readonly mpq.");
             return;

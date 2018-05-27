@@ -3,6 +3,7 @@ package systems.crigges.jmpq3test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import systems.crigges.jmpq3.HashTable;
 import systems.crigges.jmpq3.JMpqEditor;
@@ -15,8 +16,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.NonWritableChannelException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -24,11 +26,30 @@ import java.util.Scanner;
  * Created by Frotty on 06.03.2017.
  */
 public class MpqTests {
+    private static File[] files;
     private Logger log = LoggerFactory.getLogger(this.getClass().getName());
 
-    private static File[] getMpqs() {
-        return new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile()).listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" +
-                ".mpq"));
+    private static File[] getMpqs() throws IOException {
+        File[] files = new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile())
+                .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq"));
+        if (files != null) {
+            for (int i = 0; i < files.length; i++) {
+                Path target = files[i].toPath().resolveSibling("file_" + i + ".mpq");
+                files[i] = Files.copy(files[i].toPath(), target,
+                        StandardCopyOption.REPLACE_EXISTING).toFile();
+            }
+        }
+        MpqTests.files = files;
+        return files;
+    }
+
+    @AfterMethod
+    public static void clearFiles() throws IOException {
+        if (files != null) {
+            for (File file : files) {
+                Files.deleteIfExists(file.toPath());
+            }
+        }
     }
 
     private static File getFile(String name) {
@@ -105,8 +126,8 @@ public class MpqTests {
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
             if (mpqEditor.isCanWrite()) {
                 mpqEditor.deleteFile("(listfile)");
-                mpqEditor.close(false, false, false);
             }
+            mpqEditor.close(false, false, false);
         }
     }
 
@@ -116,12 +137,10 @@ public class MpqTests {
         for (File mpq : mpqs) {
             log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-            if (mpqEditor.isCanWrite()) {
-                long length = mpq.length();
-                mpqEditor.close(true, true, true);
-                long newlength = mpq.length();
-                System.out.println("Size win: " + (length - newlength));
-            }
+            long length = mpq.length();
+            mpqEditor.close(true, true, true);
+            long newlength = mpq.length();
+            System.out.println("Size win: " + (length - newlength));
         }
     }
 
@@ -203,55 +222,64 @@ public class MpqTests {
     }
 
     private void insertByteArrayAndVerify(File mpq, String filename) throws IOException {
-        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        try {
-            File file = getFile(filename);
-            String hashBefore = TestHelper.md5(mpq);
-            byte[] bytes = Files.readAllBytes(file.toPath());
-            mpqEditor.insertByteArray(filename, Files.readAllBytes(getFile(filename).toPath()));
-            mpqEditor.close();
+        String hashBefore;
+        byte[] bytes;
 
-            mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes);
-            Assert.assertFalse(mpqEditor.hasFile(filename));
-        } catch (NonWritableChannelException ignored) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            if (!mpqEditor.isCanWrite()) {
+                return;
+            }
+            File file = getFile(filename);
+            hashBefore = TestHelper.md5(mpq);
+            bytes = Files.readAllBytes(file.toPath());
+            mpqEditor.insertByteArray(filename, Files.readAllBytes(getFile(filename).toPath()));
         }
+
+        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
+            Assert.assertFalse(mpqEditor.hasFile(filename));
+        }
+
     }
 
     private JMpqEditor verifyMpq(File mpq, String filename, String hashBefore, byte[] bytes) throws IOException {
-        JMpqEditor mpqEditor;
         String hashAfter = TestHelper.md5(mpq);
         // If this fails, the mpq is not changed by the insert file command and something went wrong
         Assert.assertNotEquals(hashBefore, hashAfter);
 
-        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        Assert.assertTrue(mpqEditor.hasFile(filename));
-        byte[] bytes2 = mpqEditor.extractFileAsBytes(filename);
-        Assert.assertEquals(bytes, bytes2);
-        mpqEditor.deleteFile(filename);
-        mpqEditor.close();
-        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
-        return mpqEditor;
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(mpqEditor.hasFile(filename));
+            byte[] bytes2 = mpqEditor.extractFileAsBytes(filename);
+            Assert.assertEquals(bytes, bytes2);
+            mpqEditor.deleteFile(filename);
+        }
+
+        return new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
     }
 
     private void insertAndVerify(File mpq, String filename) throws IOException {
-        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        try {
+        String hashBefore;
+        byte[] bytes;
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            if (!mpqEditor.isCanWrite()) {
+                return;
+            }
             File file = getFile(filename);
-            String hashBefore = TestHelper.md5(mpq);
-            byte[] bytes = Files.readAllBytes(file.toPath());
+            hashBefore = TestHelper.md5(mpq);
+            bytes = Files.readAllBytes(file.toPath());
             mpqEditor.insertFile(filename, getFile(filename), false);
-            mpqEditor.close();
+        }
 
-            mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes);
+        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
-        } catch (NonWritableChannelException ignored) {
         }
     }
 
     private void insertAndDelete(File mpq, String filename) throws IOException {
-        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        Assert.assertFalse(mpqEditor.hasFile(filename));
-        try {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            if (!mpqEditor.isCanWrite()) {
+                return;
+            }
+            Assert.assertFalse(mpqEditor.hasFile(filename));
             String hashBefore = TestHelper.md5(mpq);
             mpqEditor.insertFile(filename, getFile(filename), true);
             mpqEditor.deleteFile(filename);
@@ -261,16 +289,16 @@ public class MpqTests {
             String hashAfter = TestHelper.md5(mpq);
             // If this fails, the mpq is not changed by the insert file command and something went wrong
             Assert.assertNotEquals(hashBefore, hashAfter);
+        }
 
-            mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             Assert.assertTrue(mpqEditor.hasFile(filename));
 
             mpqEditor.deleteFile(filename);
-            mpqEditor.close();
-            mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
+        }
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
-            mpqEditor.close();
-        } catch (NonWritableChannelException ignored) {
         }
     }
 
