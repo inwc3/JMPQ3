@@ -5,9 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
-import systems.crigges.jmpq3.HashTable;
-import systems.crigges.jmpq3.JMpqEditor;
-import systems.crigges.jmpq3.MPQOpenOption;
+import systems.crigges.jmpq3.*;
 import systems.crigges.jmpq3.security.MPQEncryption;
 
 import java.io.File;
@@ -116,6 +114,11 @@ public class MpqTests {
 
         // clean up
         listFile.close();
+    }
+
+    @Test
+    public void testException() {
+        Assert.expectThrows(JMpqException.class, () -> new BlockTable(ByteBuffer.wrap(new byte[0])).getBlockAtPos(-1));
     }
 
     @Test
