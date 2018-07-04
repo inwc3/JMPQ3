@@ -44,7 +44,7 @@ public class AttributesFile {
         for (int i = 0; i < fileCount; i++) {
             timestamps[i] = buffer.getLong();
         }
-        log.info("parsed attributes");
+        log.debug("parsed attributes");
     }
 
     public void setEntry(int i, int crc, long timestamp) {

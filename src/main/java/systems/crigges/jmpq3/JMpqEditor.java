@@ -287,7 +287,7 @@ public class JMpqEditor implements AutoCloseable {
      * Makes the archive readonly.
      */
     private void loadDefaultListFile() throws IOException {
-        log.info("The mpq doesn't come with a listfile so it cannot be rebuild");
+        log.warn("The mpq doesn't come with a listfile so it cannot be rebuild");
         InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
         if (resource != null) {
             File tempFile = File.createTempFile("jmpq", "lf", tempDir);
@@ -449,7 +449,7 @@ public class JMpqEditor implements AutoCloseable {
         }
         if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
-                log.info("extracting: " + s);
+                log.debug("extracting: " + s);
                 File temp = new File(dest.getAbsolutePath() + "\\" + s);
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
@@ -673,12 +673,12 @@ public class JMpqEditor implements AutoCloseable {
         // only rebuild if allowed
         if (!canWrite || ! fc.isOpen()) {
             fc.close();
-            log.info("closed readonly mpq.");
+            log.debug("closed readonly mpq.");
             return;
         }
 
         long t = System.nanoTime();
-        log.info("Building mpq");
+        log.debug("Building mpq");
         if (listFile == null) {
             fc.close();
             return;
@@ -715,7 +715,7 @@ public class JMpqEditor implements AutoCloseable {
 
         sortListfileEntries(existingFiles);
 
-        log.info("Sorted blocks");
+        log.debug("Sorted blocks");
         if (attributes != null) {
             attributes.setNames(existingFiles);
         }
@@ -746,7 +746,7 @@ public class JMpqEditor implements AutoCloseable {
                 currentPos += b.getCompressedSize();
             }
         }
-        log.info("Added existing files");
+        log.debug("Added existing files");
         HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
         for (ByteBuffer newFile : filesToAdd) {
             newFiles.add(internalFilename.get(newFile));
@@ -756,9 +756,9 @@ public class JMpqEditor implements AutoCloseable {
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, recompress);
             currentPos += newBlock.getCompressedSize();
-            log.info("Added file " + internalFilename.get(newFile));
+            log.debug("Added file " + internalFilename.get(newFile));
         }
-        log.info("Added new files");
+        log.debug("Added new files");
         if (buildListfile) {
             // Add listfile
             newFiles.add("(listfile)");
@@ -768,7 +768,7 @@ public class JMpqEditor implements AutoCloseable {
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", recompress);
             currentPos += newBlock.getCompressedSize();
-            log.info("Added listfile");
+            log.debug("Added listfile");
         }
         // if (attributes != null) {
         // newFiles.add("(attributes)");
@@ -853,7 +853,7 @@ public class JMpqEditor implements AutoCloseable {
         writeChannel.close();
 
         t = System.nanoTime() - t;
-        log.info("Rebuild complete. Took: " + (t / 1000000) + "ms");
+        log.debug("Rebuild complete. Took: " + (t / 1000000) + "ms");
     }
 
     private void sortListfileEntries(ArrayList<String> remainingFiles) {
