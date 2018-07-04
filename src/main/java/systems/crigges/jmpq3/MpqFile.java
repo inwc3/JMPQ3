@@ -267,8 +267,7 @@ public class MpqFile {
             byte[] compSector = null;
             try {
                 compSector = CompressionUtil.compress(temp, recompress);
-            } catch (ArrayIndexOutOfBoundsException e) {
-                compSector = null;
+            } catch (ArrayIndexOutOfBoundsException ignored) {
             }
             if (compSector != null && compSector.length+1 < temp.length) {
                 if (b.hasFlag(ENCRYPTED)) {
