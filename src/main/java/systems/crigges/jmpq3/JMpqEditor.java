@@ -72,6 +72,8 @@ public class JMpqEditor implements AutoCloseable {
     private long archiveSize;
     /** The format version. */
     private int formatVersion;
+    /** The sector size shift */
+    private int sectorSizeShift;
     /** The disc block size. */
     private int discBlockSize;
     /** The hash table file position. */
@@ -101,6 +103,8 @@ public class JMpqEditor implements AutoCloseable {
     private long newArchiveSize;
     /** The new format version. */
     private int newFormatVersion;
+    /** The new disc block size. */
+    private int newSectorSizeShift;
     /** The new disc block size. */
     private int newDiscBlockSize;
     /** The new hash pos. */
@@ -360,7 +364,9 @@ public class JMpqEditor implements AutoCloseable {
             // force version 0 interpretation
             formatVersion = 0;
         }
-        discBlockSize = 512 * (1 << buffer.getShort());
+
+        sectorSizeShift = buffer.getShort();
+        discBlockSize = 512 * (1 << sectorSizeShift);
         hashPos = buffer.getInt() & 0xFFFFFFFFL;
         blockPos = buffer.getInt() & 0xFFFFFFFFL;
         hashSize = buffer.getInt();
@@ -415,7 +421,7 @@ public class JMpqEditor implements AutoCloseable {
         buffer.putInt(newHeaderSize);
         buffer.putInt((int) newArchiveSize);
         buffer.putShort((short) newFormatVersion);
-        buffer.putShort((short) 3);
+        buffer.putShort((short) newSectorSizeShift);
         buffer.putInt((int) newHashPos);
         buffer.putInt((int) newBlockPos);
         buffer.putInt(newHashSize);
@@ -706,6 +712,7 @@ public class JMpqEditor implements AutoCloseable {
                 newHeaderSize = 208;
                 break;
         }
+        newSectorSizeShift = sectorSizeShift;
         newDiscBlockSize = discBlockSize;
         calcNewTableSize();
 
