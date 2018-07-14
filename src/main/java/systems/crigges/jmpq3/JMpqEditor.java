@@ -811,6 +811,8 @@ public class JMpqEditor implements AutoCloseable {
         // currentPos += newBlock.getCompressedSize();
         // }
 
+        newBlockSize = newBlocks.size();
+
         newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
         newBlockPos = newHashPos + newHashSize * 16;
 
