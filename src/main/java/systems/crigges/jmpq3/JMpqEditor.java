@@ -460,7 +460,11 @@ public class JMpqEditor implements AutoCloseable {
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
                     // Prevent exception due to nonexistent listfile entries
-                    extractFile(s, temp);
+                    try {
+                        extractFile(s, temp);
+                    } catch (JMpqException e) {
+                        log.warn("File possibly corrupted and could not be extracted: " + s);
+                    }
                 }
             }
             if (hasFile("(attributes)")) {
@@ -512,7 +516,7 @@ public class JMpqEditor implements AutoCloseable {
         try {
             MpqFile f = getMpqFile(name);
             f.extractToFile(dest);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new JMpqException(e);
         }
     }
