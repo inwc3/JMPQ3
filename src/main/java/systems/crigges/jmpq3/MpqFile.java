@@ -20,6 +20,7 @@ public class MpqFile {
     public static final int ADJUSTED_ENCRYPTED = 0x00020000;
     public static final int EXISTS = 0x80000000;
     public static final int DELETED = 0x02000000;
+    public static final int IMPLODED = 0x00000100;
 
     private ByteBuffer buf;
     private Block block;
@@ -83,6 +84,52 @@ public class MpqFile {
             writer.close();
             return;
         }
+        if (extractImplodedBlock(writer)) return;
+        if (extractSingleUnitBlock(writer)) return;
+        if (block.hasFlag(COMPRESSED)) {
+            extractCompressedBlock(writer);
+        } else {
+            check(writer);
+        }
+    }
+
+    private void extractCompressedBlock(OutputStream writer) throws IOException {
+        buf.position(0);
+        byte[] sot = new byte[sectorCount * 4];
+        buf.get(sot);
+        if (isEncrypted) {
+            new MPQEncryption(baseKey - 1, true).processSingle(ByteBuffer.wrap(sot));
+        }
+        ByteBuffer sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
+        int start = sotBuffer.getInt();
+        int end = sotBuffer.getInt();
+        int finalSize = 0;
+        for (int i = 0; i < sectorCount - 1; i++) {
+            buf.position(0 + start);
+            byte[] arr = getSectorAsByteArray(buf, end - start);
+            if (isEncrypted) {
+                new MPQEncryption(baseKey + i, true).processSingle(ByteBuffer.wrap(arr));
+            }
+            if (block.getNormalSize() - finalSize <= sectorSize) {
+                arr = decompressSector(arr, end - start, block.getNormalSize() - finalSize);
+            } else {
+                arr = decompressSector(arr, end - start, sectorSize);
+            }
+            writer.write(arr);
+
+            finalSize += sectorSize;
+            start = end;
+            try {
+                end = sotBuffer.getInt();
+            } catch (BufferUnderflowException e) {
+                break;
+            }
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private boolean extractSingleUnitBlock(OutputStream writer) throws IOException {
         if (block.hasFlag(SINGLE_UNIT)) {
             if (block.hasFlag(COMPRESSED)) {
                 buf.position(0);
@@ -97,17 +144,20 @@ public class MpqFile {
             } else {
                 check(writer);
             }
-            return;
+            return true;
         }
-        if (block.hasFlag(COMPRESSED)) {
-            ByteBuffer sotBuffer = null;
+        return false;
+    }
+
+    private boolean extractImplodedBlock(OutputStream writer) throws IOException {
+        if (block.hasFlag(IMPLODED)) {
             buf.position(0);
             byte[] sot = new byte[sectorCount * 4];
             buf.get(sot);
             if (isEncrypted) {
                 new MPQEncryption(baseKey - 1, true).processSingle(ByteBuffer.wrap(sot));
             }
-            sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
+            ByteBuffer sotBuffer = ByteBuffer.wrap(sot).order(ByteOrder.LITTLE_ENDIAN);
             int start = sotBuffer.getInt();
             int end = sotBuffer.getInt();
             int finalSize = 0;
@@ -118,9 +168,9 @@ public class MpqFile {
                     new MPQEncryption(baseKey + i, true).processSingle(ByteBuffer.wrap(arr));
                 }
                 if (block.getNormalSize() - finalSize <= sectorSize) {
-                    arr = decompressSector(arr, end - start, block.getNormalSize() - finalSize);
+                    arr = decompressImplodedSector(arr, end - start, block.getNormalSize() - finalSize);
                 } else {
-                    arr = decompressSector(arr, end - start, sectorSize);
+                    arr = decompressImplodedSector(arr, end - start, sectorSize);
                 }
                 writer.write(arr);
 
@@ -134,9 +184,9 @@ public class MpqFile {
             }
             writer.flush();
             writer.close();
-        } else {
-            check(writer);
+            return true;
         }
+        return false;
     }
 
     private void check(OutputStream writer) throws IOException {
@@ -346,6 +396,10 @@ public class MpqFile {
      */
     private byte[] decompressSector(byte[] sector, int normalSize, int uncompressedSize) throws JMpqException {
         return CompressionUtil.decompress(sector, normalSize, uncompressedSize);
+    }
+
+    private byte[] decompressImplodedSector(byte[] sector, int normalSize, int uncompressedSize) throws JMpqException {
+        return CompressionUtil.explode(sector, normalSize, uncompressedSize);
     }
 
     @Override

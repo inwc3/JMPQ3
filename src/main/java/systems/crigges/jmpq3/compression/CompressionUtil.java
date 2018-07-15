@@ -56,7 +56,7 @@ public class CompressionUtil {
                 throw new JMpqException("Unsupported compression Bzip2");
             } else if (isImploded) {
                 byte[] output = new byte[uncompressedSize];
-                Exploder.pkexplode(sector, output);
+                Exploder.pkexplode(sector, output, 1);
                 out.put(output);
                 out.position(0);
                 flip = !flip;
@@ -95,6 +95,20 @@ public class CompressionUtil {
                 return newOut.array();
             }
             return (flip ? out : in).array();
+        }
+    }
+
+    public static byte[] explode(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
+        if (compressedSize == uncompressedSize) {
+            return sector;
+        } else {
+            ByteBuffer out = ByteBuffer.wrap(new byte[uncompressedSize]);
+
+            byte[] output = new byte[uncompressedSize];
+            Exploder.pkexplode(sector, output, 0);
+            out.put(output);
+            out.position(0);
+            return out.array();
         }
     }
 }

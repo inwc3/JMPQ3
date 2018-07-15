@@ -150,7 +150,7 @@ public class Exploder {
                     0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08
             };
 
-    public static int pkexplode(byte[] pInBuffer, byte[] pOutBuffer) {
+    public static int pkexplode(byte[] pInBuffer, byte[] pOutBuffer, int inPos) {
         // Compressed data cannot be less than 4 bytes;
         // this is not possible in any case whatsoever
         if (pInBuffer.length < 4)
@@ -158,7 +158,7 @@ public class Exploder {
 
         int pOutPos = 0;
         // This is 1 because in an mpq-sector, the first byte is the compression type flag
-        int pInPos = 1;
+        int pInPos = inPos;
 
         // Get header from compressed data
         byte nLitSize = pInBuffer[pInPos++];
