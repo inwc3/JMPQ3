@@ -12,7 +12,6 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
@@ -343,11 +342,17 @@ public class MpqTests {
 
     @Test()
     public void newBlocksizeBufferOverflow() throws IOException {
-        File mpq = new File(MpqTests.class.getClassLoader().getResource("./mpqs/newBlocksizeBufferOverflow.w3x").getFile());
+        File mpq = new File(MpqTests.class.getClassLoader().getResource("newBlocksizeBufferOverflow/mpq/newBlocksizeBufferOverflow.w3x").getFile());
 
-        Files.copy(mpq.toPath(), mpq.toPath().resolveSibling("newBlocksizeBufferOverflow.mpq"), StandardCopyOption.REPLACE_EXISTING).toFile();
+        File targetMpq = mpq.toPath().resolveSibling("file1.mpq").toFile();
 
-        String resourceDir = "newBlocksizeBufferOverflowInsertions";
+        targetMpq.delete();
+
+        Files.copy(mpq.toPath(), targetMpq.toPath(), StandardCopyOption.REPLACE_EXISTING).toFile();
+
+        mpq = targetMpq;
+
+        String resourceDir = "newBlocksizeBufferOverflow/insertions";
 
         Set<File> files = getFiles(new File(MpqTests.class.getClassLoader().getResource("./" + resourceDir + "/").getFile()));
 
