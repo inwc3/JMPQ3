@@ -1,5 +1,6 @@
 package systems.crigges.jmpq3;
 
+import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
 import systems.crigges.jmpq3.security.MPQEncryption;
 
 import java.io.File;
@@ -11,12 +12,15 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
 
 public class BlockTable {
     private MappedByteBuffer blockMap;
+    private final Map<Integer, Integer> blockStartIndexes = new LinkedHashMap<>();
     private int size;
 
     public BlockTable(ByteBuffer buf) throws IOException {
@@ -35,6 +39,18 @@ public class BlockTable {
             blockStream.flush();
             this.blockMap = blockChannel.map(FileChannel.MapMode.READ_WRITE, 0L, blockChannel.size());
             this.blockMap.order(ByteOrder.LITTLE_ENDIAN);
+
+            this.blockMap.position(0);
+
+            int size = this.blockMap.remaining() / 16;
+
+            for (int i = 0; i < size; i++) {
+                this.blockMap.position(i * 16);
+
+                int pos = this.blockMap.getInt();
+
+                blockStartIndexes.put(i, pos);
+            }
         }
     }
 
@@ -53,7 +69,7 @@ public class BlockTable {
         if ((pos < 0) || (pos > this.size)) {
             throw new JMpqException("Invaild block position");
         }
-        this.blockMap.position(pos * 16);
+        this.blockMap.position(blockStartIndexes.get(pos));
         try {
             return new Block(this.blockMap);
         } catch (IOException e) {
@@ -136,7 +152,7 @@ public class BlockTable {
         }
 
         public String toString() {
-            return "Block [filePos=" + this.filePos + ", compressedSize=" + this.compressedSize + ", normalSize=" + this.normalSize + ", flags=" +
+            return "Block [filePos=" + String.format("%x", this.filePos) + ", compressedSize=" + this.compressedSize + ", normalSize=" + this.normalSize + ", flags=" +
                     printFlags().trim() + "]";
         }
 
