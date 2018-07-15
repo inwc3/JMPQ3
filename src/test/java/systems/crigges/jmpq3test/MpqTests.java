@@ -8,17 +8,16 @@ import org.testng.annotations.Test;
 import systems.crigges.jmpq3.*;
 import systems.crigges.jmpq3.security.MPQEncryption;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.Scanner;
+import java.util.Set;
 
 /**
  * Created by Frotty on 06.03.2017.
@@ -328,6 +327,44 @@ public class MpqTests {
 
         mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         Assert.assertTrue(mpqEditor.isCanWrite());
+        mpqEditor.close();
+    }
+
+    private Set<File> getFiles(File dir) {
+        Set<File> ret = new LinkedHashSet<>();
+
+        for (File file : dir.listFiles()) {
+            if (file.isDirectory()) ret.addAll(getFiles(file)); else ret.add(file);
+        }
+
+        return ret;
+    }
+
+    @Test()
+    public void newBlocksizeBufferOverflow() throws IOException {
+        File mpq = new File(MpqTests.class.getClassLoader().getResource("newBlocksizeBufferOverflow/mpq/newBlocksizeBufferOverflow.w3x").getFile());
+
+        File targetMpq = mpq.toPath().resolveSibling("file1.mpq").toFile();
+
+        targetMpq.delete();
+
+        Files.copy(mpq.toPath(), targetMpq.toPath(), StandardCopyOption.REPLACE_EXISTING).toFile();
+
+        mpq = targetMpq;
+
+        String resourceDir = "newBlocksizeBufferOverflow/insertions";
+
+        Set<File> files = getFiles(new File(MpqTests.class.getClassLoader().getResource("./" + resourceDir + "/").getFile()));
+
+        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+
+        for (File file : files) {
+            String inName = file.toString().substring(file.toString().lastIndexOf(resourceDir) + resourceDir.length() + File.separator.length());
+
+            mpqEditor.insertFile(inName, file, false);
+            mpqEditor.insertFile(inName, file, false);
+        }
+
         mpqEditor.close();
     }
 }
