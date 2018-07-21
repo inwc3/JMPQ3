@@ -143,6 +143,7 @@ public class MpqTests {
             log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
             long length = mpq.length();
+            options.useZopfli = !options.useZopfli;
             mpqEditor.close(true, true, options);
             long newlength = mpq.length();
             System.out.println("Size win: " + (length - newlength));

@@ -12,7 +12,7 @@ public class ZopfliHelper {
     private final Zopfli compressor;
 
     public ZopfliHelper() {
-        compressor = new Zopfli(50 * 1024 * 1024);
+        compressor = new Zopfli(8 * 1024 * 1024);
     }
 
     public byte[] deflate(byte[] bytes, int iterations) {
