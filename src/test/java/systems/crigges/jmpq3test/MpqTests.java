@@ -137,12 +137,13 @@ public class MpqTests {
     @Test
     public void testRecompressBuild() throws IOException {
         File[] mpqs = getMpqs();
+        RecompressOptions options = new RecompressOptions(true);
+        options.newSectorSizeShift = 10;
         for (File mpq : mpqs) {
             log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
             long length = mpq.length();
-            RecompressOptions options = new RecompressOptions(true);
-            options.newSectorSizeShift = 7;
+            options.useZopfli = !options.useZopfli;
             mpqEditor.close(true, true, options);
             long newlength = mpq.length();
             System.out.println("Size win: " + (length - newlength));

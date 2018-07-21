@@ -721,7 +721,7 @@ public class JMpqEditor implements AutoCloseable {
                 newHeaderSize = 208;
                 break;
         }
-        newSectorSizeShift = options.recompress ? options.newSectorSizeShift : sectorSizeShift;
+        newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
         newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
         calcNewTableSize();
 
