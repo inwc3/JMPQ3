@@ -29,7 +29,7 @@ public class Options {
     DEFLATE
   }
 
-  final int numIterations;
+  public int numIterations;
   final BlockSplitting blockSplitting;
   final OutputFormat outputType;
 

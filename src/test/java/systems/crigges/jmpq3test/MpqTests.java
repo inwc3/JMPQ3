@@ -6,6 +6,7 @@ import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import systems.crigges.jmpq3.*;
+import systems.crigges.jmpq3.compression.RecompressOptions;
 import systems.crigges.jmpq3.security.MPQEncryption;
 
 import java.io.*;
@@ -140,7 +141,9 @@ public class MpqTests {
             log.info(mpq.getName());
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
             long length = mpq.length();
-            mpqEditor.close(true, true, true);
+            RecompressOptions options = new RecompressOptions(true);
+            options.newSectorSizeShift = 7;
+            mpqEditor.close(true, true, options);
             long newlength = mpq.length();
             System.out.println("Size win: " + (length - newlength));
         }

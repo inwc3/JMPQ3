@@ -22,11 +22,11 @@ public class CompressionUtil {
     private static final byte FLAG_ADPCM2C = -0x80;
     private static final byte FLAG_LMZA = 0x12;
 
-    public static byte[] compress(byte[] temp, boolean recompress) {
-        if (recompress && zopfli == null) {
+    public static byte[] compress(byte[] temp, RecompressOptions recompress) {
+        if (recompress.recompress && zopfli == null) {
             zopfli = new ZopfliHelper();
         }
-        return recompress ? zopfli.deflate(temp) : JzLibHelper.deflate(temp);
+        return recompress.recompress ? zopfli.deflate(temp, recompress.iterations) : JzLibHelper.deflate(temp);
     }
 
     public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {

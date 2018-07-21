@@ -15,13 +15,13 @@ public class ZopfliHelper {
     public ZopfliHelper() {
         Options.OutputFormat outputType = Options.OutputFormat.DEFLATE;
         Options.BlockSplitting blockSplitting = Options.BlockSplitting.FIRST;
-        int numIterations = 15;
 
         compressor = new Zopfli(8 * 1024 * 1024);
-        options = new Options(outputType, blockSplitting, numIterations);
+        options = new Options(outputType, blockSplitting, 15);
     }
 
-    public byte[] deflate(byte[] bytes) {
+    public byte[] deflate(byte[] bytes, int iterations) {
+        options.numIterations = iterations;
         Buffer output = compressor.compress(options, bytes);
         byte[] outputBytes = new byte[output.getSize() + 2];
         System.arraycopy(output.getData(), 0, outputBytes, 2, output.getSize());
