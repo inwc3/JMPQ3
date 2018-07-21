@@ -686,7 +686,7 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options) throws IOException {
         // only rebuild if allowed
-        if (!canWrite || ! fc.isOpen()) {
+        if (!canWrite || !fc.isOpen()) {
             fc.close();
             log.debug("closed readonly mpq.");
             return;
@@ -722,7 +722,7 @@ public class JMpqEditor implements AutoCloseable {
                 break;
         }
         newSectorSizeShift = options.recompress ? options.newSectorSizeShift : sectorSizeShift;
-        newDiscBlockSize = options.recompress ? newSectorSizeShift * 512 : discBlockSize;
+        newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
         calcNewTableSize();
 
         ArrayList<Block> newBlocks = new ArrayList<>();
