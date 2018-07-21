@@ -10,17 +10,13 @@ import com.googlecode.pngtastic.core.processing.zopfli.Zopfli;
  */
 public class ZopfliHelper {
     private final Zopfli compressor;
-    private final Options options;
 
     public ZopfliHelper() {
-        Options.BlockSplitting blockSplitting = Options.BlockSplitting.FIRST;
-
         compressor = new Zopfli(50 * 1024 * 1024);
-        options = new Options(blockSplitting, 1);
     }
 
     public byte[] deflate(byte[] bytes, int iterations) {
-        Buffer output = compressor.compress(options, bytes);
+        Buffer output = compressor.compress(new Options(Options.BlockSplitting.FIRST, iterations), bytes);
         byte[] outputBytes = new byte[output.getSize()];
         System.arraycopy(output.getData(), 0, outputBytes, 0, output.getSize());
         return outputBytes;
