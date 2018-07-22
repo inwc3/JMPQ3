@@ -14,6 +14,7 @@ version '1.6.0'
 repositories {
     jcenter()
     mavenCentral()
+    maven { url 'https://jitpack.io' }
 }
 
 task dist(type: Jar) {
@@ -28,6 +29,7 @@ dist.archiveName = "${jar.baseName}.${jar.extension}"
 dependencies {
     compile 'com.jcraft:jzlib:1.1.3'
     compile group: 'org.apache.commons', name: 'commons-compress', version: '1.15'
+    compile 'com.github.depsypher:pngtastic:pngtastic-1.5'
     compile group: 'org.tukaani', name: 'xz', version: '1.8'
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
     compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'

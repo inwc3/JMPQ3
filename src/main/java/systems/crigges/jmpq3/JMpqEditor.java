@@ -3,6 +3,7 @@ package systems.crigges.jmpq3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import systems.crigges.jmpq3.BlockTable.Block;
+import systems.crigges.jmpq3.compression.RecompressOptions;
 import systems.crigges.jmpq3.security.MPQEncryption;
 import systems.crigges.jmpq3.security.MPQHashGenerator;
 
@@ -674,14 +675,18 @@ public class JMpqEditor implements AutoCloseable {
         close(true, true, false);
     }
 
+    public void close(boolean buildListfile, boolean buildAttributes, boolean recompress) throws IOException {
+        close(buildListfile, buildAttributes, new RecompressOptions(recompress));
+    }
+
     /**
      * @param buildListfile   whether or not to add a (listfile) to this mpq
      * @param buildAttributes whether or not to add a (attributes) file to this mpq
      * @throws IOException
      */
-    public void close(boolean buildListfile, boolean buildAttributes, boolean recompress) throws IOException {
+    public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options) throws IOException {
         // only rebuild if allowed
-        if (!canWrite || ! fc.isOpen()) {
+        if (!canWrite || !fc.isOpen()) {
             fc.close();
             log.debug("closed readonly mpq.");
             return;
@@ -716,8 +721,8 @@ public class JMpqEditor implements AutoCloseable {
                 newHeaderSize = 208;
                 break;
         }
-        newSectorSizeShift = sectorSizeShift;
-        newDiscBlockSize = discBlockSize;
+        newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
+        newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
         calcNewTableSize();
 
         ArrayList<Block> newBlocks = new ArrayList<>();
@@ -737,7 +742,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         for (String existingName : existingFiles) {
-            if (recompress && !existingName.endsWith("wav")) {
+            if (options.recompress && !existingName.endsWith("wav")) {
                 ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
                 internalFilename.put(extracted, existingName);
                 filesToAdd.add(extracted);
@@ -765,7 +770,7 @@ public class JMpqEditor implements AutoCloseable {
             MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
             newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, recompress);
+            MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
             currentPos += newBlock.getCompressedSize();
             log.debug("Added file " + internalFilename.get(newFile));
         }
@@ -777,7 +782,7 @@ public class JMpqEditor implements AutoCloseable {
             MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", recompress);
+            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
             currentPos += newBlock.getCompressedSize();
             log.debug("Added listfile");
         }

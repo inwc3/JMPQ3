@@ -3,6 +3,7 @@ package systems.crigges.jmpq3;
 
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.compression.CompressionUtil;
+import systems.crigges.jmpq3.compression.RecompressOptions;
 import systems.crigges.jmpq3.security.MPQEncryption;
 import systems.crigges.jmpq3.security.MPQHashGenerator;
 
@@ -276,20 +277,19 @@ public class MpqFile {
      * @param sectorSize the sector size
      * @param recompress
      */
-    public static void writeFileAndBlock(byte[] file, Block b, MappedByteBuffer buf, int sectorSize, boolean recompress) {
+    public static void writeFileAndBlock(byte[] file, Block b, MappedByteBuffer buf, int sectorSize, RecompressOptions recompress) {
         writeFileAndBlock(file, b, buf, sectorSize, "", recompress);
     }
 
     /**
      * Write file and block.
-     *
-     * @param fileArr    the file arr
+     *  @param fileArr    the file arr
      * @param b          the b
      * @param buf        the buf
      * @param sectorSize the sector size
      * @param recompress
      */
-    public static void writeFileAndBlock(byte[] fileArr, Block b, MappedByteBuffer buf, int sectorSize, String pathlessName, boolean recompress) {
+    public static void writeFileAndBlock(byte[] fileArr, Block b, MappedByteBuffer buf, int sectorSize, String pathlessName, RecompressOptions recompress) {
         ByteBuffer fileBuf = ByteBuffer.wrap(fileArr);
         fileBuf.position(0);
         b.setNormalSize(fileArr.length);
