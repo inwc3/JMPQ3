@@ -15,6 +15,9 @@ public class Listfile {
         sc.close();
     }
 
+    public Listfile() {
+    }
+
     public HashSet<String> getFiles() {
         return this.files;
     }

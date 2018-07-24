@@ -106,7 +106,7 @@ public class MpqFile {
         int end = sotBuffer.getInt();
         int finalSize = 0;
         for (int i = 0; i < sectorCount - 1; i++) {
-            buf.position(0 + start);
+            buf.position(start);
             byte[] arr = getSectorAsByteArray(buf, end - start);
             if (isEncrypted) {
                 new MPQEncryption(baseKey + i, true).processSingle(ByteBuffer.wrap(arr));

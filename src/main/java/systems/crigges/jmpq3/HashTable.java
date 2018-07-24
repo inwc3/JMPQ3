@@ -1,10 +1,10 @@
 package systems.crigges.jmpq3;
 
+import systems.crigges.jmpq3.security.MPQHashGenerator;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
-import systems.crigges.jmpq3.security.MPQHashGenerator;
 
 /**
  * MPQ hash table. Used to map file paths to block table indices.
@@ -384,7 +384,7 @@ public class HashTable {
         public void writeToBuffer(ByteBuffer dest) {
             dest.order(ByteOrder.LITTLE_ENDIAN);
             dest.putLong(key);
-            dest.putShort((short) locale);
+            dest.putShort(locale);
             dest.putShort((short) 0); // platform not used
             dest.putInt(blockTableIndex);
         }

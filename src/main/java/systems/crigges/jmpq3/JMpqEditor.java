@@ -7,7 +7,10 @@ import systems.crigges.jmpq3.compression.RecompressOptions;
 import systems.crigges.jmpq3.security.MPQEncryption;
 import systems.crigges.jmpq3.security.MPQHashGenerator;
 
-import java.io.*;
+import java.io.EOFException;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -90,7 +93,7 @@ public class JMpqEditor implements AutoCloseable {
     /** The block table. */
     private BlockTable blockTable;
     /** The list file. */
-    private Listfile listFile;
+    private Listfile listFile = new Listfile();
     /** The internal filename. */
     private IdentityHashMap<ByteBuffer, String> internalFilename = new IdentityHashMap<>();
     /** The files to add. */
@@ -208,7 +211,7 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
-    private void readListFile() throws IOException {
+    private void readListFile() {
         if (hasFile("(listfile)")) {
             try {
                 File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
@@ -216,10 +219,10 @@ public class JMpqEditor implements AutoCloseable {
                 extractFile("(listfile)", tempFile);
                 listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
             } catch (Exception e) {
-                loadDefaultListFile();
+                log.warn("Extracting the mpq's listfile failed. It cannot be rebuild.", e);
             }
         } else {
-            loadDefaultListFile();
+            log.warn("The mpq doesn't contain a listfile. It cannot be rebuild.");
         }
     }
 
@@ -273,10 +276,7 @@ public class JMpqEditor implements AutoCloseable {
 
             File[] files = JMpqEditor.tempDir.listFiles();
             for (File f : files) {
-                // Delete existing tempfiles that are older than 1 day
-                if ((System.currentTimeMillis() - f.lastModified()) > 1000 * 60 * 60 * 24) {
-                    f.delete();
-                }
+                f.delete();
             }
         } catch (IOException e) {
             try {
@@ -287,28 +287,28 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
-    /**
-     * Loads a default listfile for mpqs that have none
-     * Makes the archive readonly.
-     */
-    private void loadDefaultListFile() throws IOException {
-        log.warn("The mpq doesn't come with a listfile so it cannot be rebuild");
-        InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
-        if (resource != null) {
-            File tempFile = File.createTempFile("jmpq", "lf", tempDir);
-            tempFile.deleteOnExit();
-            try (FileOutputStream out = new FileOutputStream(tempFile)) {
-                //copy stream
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = resource.read(buffer)) != -1) {
-                    out.write(buffer, 0, bytesRead);
-                }
-            }
-            listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
-            canWrite = false;
-        }
-    }
+//    /**
+//     * Loads a default listfile for mpqs that have none
+//     * Makes the archive readonly.
+//     */
+//    private void loadDefaultListFile() throws IOException {
+//        log.warn("The mpq doesn't come with a listfile so it cannot be rebuild");
+//        InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
+//        if (resource != null) {
+//            File tempFile = File.createTempFile("jmpq", "lf", tempDir);
+//            tempFile.deleteOnExit();
+//            try (FileOutputStream out = new FileOutputStream(tempFile)) {
+//                //copy stream
+//                byte[] buffer = new byte[1024];
+//                int bytesRead;
+//                while ((bytesRead = resource.read(buffer)) != -1) {
+//                    out.write(buffer, 0, bytesRead);
+//                }
+//            }
+//            listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+//            canWrite = false;
+//        }
+//    }
 
 
     /**
@@ -775,7 +775,7 @@ public class JMpqEditor implements AutoCloseable {
             log.debug("Added file " + internalFilename.get(newFile));
         }
         log.debug("Added new files");
-        if (buildListfile) {
+        if (buildListfile && !listFile.getFiles().isEmpty()) {
             // Add listfile
             newFiles.add("(listfile)");
             byte[] listfileArr = listFile.asByteArray();
