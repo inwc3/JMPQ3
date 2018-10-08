@@ -223,6 +223,7 @@ public class JMpqEditor implements AutoCloseable {
             }
         } else {
             log.warn("The mpq doesn't contain a listfile. It cannot be rebuild.");
+            canWrite = false;
         }
     }
 
