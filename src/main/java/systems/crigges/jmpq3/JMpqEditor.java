@@ -218,7 +218,7 @@ public class JMpqEditor implements AutoCloseable {
                 tempFile.deleteOnExit();
                 extractFile("(listfile)", tempFile);
                 listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
-                canWrite = listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size();
+                canWrite = listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - 2;
                 if(! canWrite) {
                     log.warn("mpq's listfile is incomplete, switching to readonly.");
                 }
