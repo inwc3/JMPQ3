@@ -9,7 +9,7 @@ plugins {
 }
 
 group 'systems.crigges'
-version '1.7.3'
+version '1.7.5'
 
 repositories {
     jcenter()
