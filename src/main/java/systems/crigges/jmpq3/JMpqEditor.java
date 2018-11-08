@@ -141,7 +141,7 @@ public class JMpqEditor implements AutoCloseable {
         // process open options
         canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
         legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
-
+        log.debug(mpqArchive.toString());
         try {
             setupTempDir();
 
@@ -218,18 +218,17 @@ public class JMpqEditor implements AutoCloseable {
                 tempFile.deleteOnExit();
                 extractFile("(listfile)", tempFile);
                 listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+                int hiddenFiles = (hasFile("(attributes)") ? 2 : 1) + (hasFile("(signature)") ? 1 : 0);
                 if (canWrite) {
-                    if (listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - 2) {
-                        for (String fileName : listFile.getFiles()) {
-                            if (!hasFile(fileName)) {
-                                canWrite = false;
-                                log.warn("mpq's listfile is incomplete, switching to readonly.");
-                                return;
-                            }
+                    if (listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
+                        log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
+                    }
+                    for (String fileName : listFile.getFiles()) {
+                        if (!hasFile(fileName)) {
+                            canWrite = false;
+                            log.warn("mpq's listfile is incomplete: " + fileName + " exists in listfile but not in archive.");
+                            return;
                         }
-                    } else {
-                        log.warn("mpq's listfile is incomplete, switching to readonly.");
-                        canWrite = false;
                     }
                 }
             } catch (Exception e) {
