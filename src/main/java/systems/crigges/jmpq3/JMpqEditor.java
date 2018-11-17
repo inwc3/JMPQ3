@@ -471,7 +471,7 @@ public class JMpqEditor implements AutoCloseable {
         if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
                 log.debug("extracting: " + s);
-                File temp = new File(dest.getAbsolutePath() + "\\" + s);
+                File temp = new File(dest.getAbsolutePath() + dest.separator + s);
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
                     // Prevent exception due to nonexistent listfile entries
@@ -483,10 +483,10 @@ public class JMpqEditor implements AutoCloseable {
                 }
             }
             if (hasFile("(attributes)")) {
-                File temp = new File(dest.getAbsolutePath() + "\\" + "(attributes)");
+                File temp = new File(dest.getAbsolutePath() + dest.separator + "(attributes)");
                 extractFile("(attributes)", temp);
             }
-            File temp = new File(dest.getAbsolutePath() + "\\" + "(listfile)");
+            File temp = new File(dest.getAbsolutePath() + dest.separator + "(listfile)");
             extractFile("(listfile)", temp);
         } else {
             ArrayList<Block> blocks = blockTable.getAllVaildBlocks();
@@ -501,7 +501,7 @@ public class JMpqEditor implements AutoCloseable {
                     readFully(buf, fc);
                     buf.rewind();
                     MpqFile f = new MpqFile(buf, b, discBlockSize, "");
-                    f.extractToFile(new File(dest.getAbsolutePath() + "\\" + i));
+                    f.extractToFile(new File(dest.getAbsolutePath() + dest.separator + i));
                     i++;
                 }
             } catch (IOException e) {
