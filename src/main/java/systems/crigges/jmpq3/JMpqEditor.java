@@ -470,8 +470,8 @@ public class JMpqEditor implements AutoCloseable {
         }
         if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
-                log.debug("extracting: " + s);
-                File temp = new File(dest.getAbsolutePath() + dest.separator + s);
+                log.debug("extracting: " + (dest.separatorChar == '\\' ? s : s.replace("\\", dest.separator)));
+                File temp = new File(dest.getAbsolutePath() + dest.separator + (dest.separatorChar == '\\' ? s : s.replace("\\", dest.separator)));
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
                     // Prevent exception due to nonexistent listfile entries
