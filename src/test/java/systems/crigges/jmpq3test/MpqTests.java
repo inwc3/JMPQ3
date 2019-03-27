@@ -28,7 +28,7 @@ public class MpqTests {
     private static File[] files;
     private Logger log = LoggerFactory.getLogger(this.getClass().getName());
 
-    private static File[] getMpqs() throws IOException {                
+    private static File[] getMpqs() throws IOException {
         File[] files = new File(Thread.currentThread().getContextClassLoader().getResource("mpqs/").getFile())
                 .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq"));
         if (files != null) {
@@ -350,7 +350,7 @@ public class MpqTests {
     }
 
     @Test()
-    public void newBlocksizeBufferOverflow() throws IOException {        
+    public void newBlocksizeBufferOverflow() throws IOException {
         File mpq = new File(MpqTests.class.getResource("/newBlocksizeBufferOverflow/mpq/newBlocksizeBufferOverflow.w3x").getFile());
 
         File targetMpq = mpq.toPath().resolveSibling("file1.mpq").toFile();
