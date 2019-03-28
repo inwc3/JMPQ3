@@ -6,6 +6,7 @@ plugins {
     id "jacoco"
     id 'com.github.kt3k.coveralls' version '2.8.2'
     id "java"
+    id "org.javamodularity.moduleplugin" version "1.4.1"
 }
 
 group 'systems.crigges'
@@ -18,7 +19,7 @@ repositories {
 }
 
 task dist(type: Jar) {
-    from files(sourceSets.main.output.classesDir)
+    from files(sourceSets.main.output.classesDirs)
     from files(sourceSets.main.output.resourcesDir)
     from { configurations.compile.collect { zipTree(it) } }
 }
