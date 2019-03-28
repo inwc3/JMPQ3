@@ -232,7 +232,7 @@ public class MpqTests {
         String hashBefore;
         byte[] bytes;
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
@@ -242,7 +242,7 @@ public class MpqTests {
             mpqEditor.insertByteArray(filename, Files.readAllBytes(getFile(filename).toPath()));
         }
 
-        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
+        try ( JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
 
@@ -253,7 +253,7 @@ public class MpqTests {
         // If this fails, the mpq is not changed by the insert file command and something went wrong
         Assert.assertNotEquals(hashBefore, hashAfter);
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             Assert.assertTrue(mpqEditor.hasFile(filename));
             byte[] bytes2 = mpqEditor.extractFileAsBytes(filename);
             Assert.assertEquals(bytes, bytes2);
@@ -266,7 +266,7 @@ public class MpqTests {
     private void insertAndVerify(File mpq, String filename) throws IOException {
         String hashBefore;
         byte[] bytes;
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
@@ -276,13 +276,13 @@ public class MpqTests {
             mpqEditor.insertFile(filename, getFile(filename), false);
         }
 
-        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
+        try ( JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
     }
 
     private void insertAndDelete(File mpq, String filename) throws IOException {
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
@@ -298,13 +298,13 @@ public class MpqTests {
             Assert.assertNotEquals(hashBefore, hashAfter);
         }
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             Assert.assertTrue(mpqEditor.hasFile(filename));
 
             mpqEditor.deleteFile(filename);
         }
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
     }
