@@ -28,7 +28,7 @@ public class MpqTests {
     private Logger log = LoggerFactory.getLogger(this.getClass().getName());
 
     private static File[] getMpqs() throws IOException {
-        File[] files = new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile())
+        File[] files = new File(MpqTests.class.getClassLoader().getResource("mpqs/").getFile())
                 .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq"));
         if (files != null) {
             for (int i = 0; i < files.length; i++) {
@@ -346,7 +346,7 @@ public class MpqTests {
 
     @Test()
     public void newBlocksizeBufferOverflow() throws IOException {
-        File mpq = new File(MpqTests.class.getClassLoader().getResource("newBlocksizeBufferOverflow/mpq/newBlocksizeBufferOverflow.w3x").getFile());
+        File mpq = new File(MpqTests.class.getResource("/newBlocksizeBufferOverflow/mpq/newBlocksizeBufferOverflow.w3x").getFile());
 
         File targetMpq = mpq.toPath().resolveSibling("file1.mpq").toFile();
 
@@ -358,7 +358,7 @@ public class MpqTests {
 
         String resourceDir = "newBlocksizeBufferOverflow/insertions";
 
-        Set<File> files = getFiles(new File(MpqTests.class.getClassLoader().getResource("./" + resourceDir + "/").getFile()));
+        Set<File> files = getFiles(new File(MpqTests.class.getClassLoader().getResource(resourceDir + "/").getFile()));
 
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
 
