@@ -24,12 +24,11 @@ import java.util.Set;
  * Created by Frotty on 06.03.2017.
  */
 public class MpqTests {
-
     private static File[] files;
     private Logger log = LoggerFactory.getLogger(this.getClass().getName());
 
-    private static File[] getMpqs() throws IOException {                
-        File[] files = new File(Thread.currentThread().getContextClassLoader().getResource("mpqs/").getFile())
+    private static File[] getMpqs() throws IOException {
+        File[] files = new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile())
                 .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq"));
         if (files != null) {
             for (int i = 0; i < files.length; i++) {
@@ -209,8 +208,8 @@ public class MpqTests {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             JMpqEditor mpqEditors[] = new JMpqEditor[]{new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
-                new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
-                new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)};
+                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
+                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)};
             for (JMpqEditor mpqEditor1 : mpqEditors) {
                 mpqEditor1.extractAllFiles(JMpqEditor.tempDir);
             }
@@ -232,7 +231,7 @@ public class MpqTests {
         String hashBefore;
         byte[] bytes;
 
-        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
@@ -242,7 +241,7 @@ public class MpqTests {
             mpqEditor.insertByteArray(filename, Files.readAllBytes(getFile(filename).toPath()));
         }
 
-        try ( JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
+        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
 
@@ -253,7 +252,7 @@ public class MpqTests {
         // If this fails, the mpq is not changed by the insert file command and something went wrong
         Assert.assertNotEquals(hashBefore, hashAfter);
 
-        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             Assert.assertTrue(mpqEditor.hasFile(filename));
             byte[] bytes2 = mpqEditor.extractFileAsBytes(filename);
             Assert.assertEquals(bytes, bytes2);
@@ -266,7 +265,7 @@ public class MpqTests {
     private void insertAndVerify(File mpq, String filename) throws IOException {
         String hashBefore;
         byte[] bytes;
-        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
@@ -276,13 +275,13 @@ public class MpqTests {
             mpqEditor.insertFile(filename, getFile(filename), false);
         }
 
-        try ( JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
+        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
     }
 
     private void insertAndDelete(File mpq, String filename) throws IOException {
-        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
@@ -298,13 +297,13 @@ public class MpqTests {
             Assert.assertNotEquals(hashBefore, hashAfter);
         }
 
-        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             Assert.assertTrue(mpqEditor.hasFile(filename));
 
             mpqEditor.deleteFile(filename);
         }
 
-        try ( JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
     }
@@ -339,19 +338,15 @@ public class MpqTests {
         Set<File> ret = new LinkedHashSet<>();
 
         for (File file : dir.listFiles()) {
-            if (file.isDirectory()) {
-                ret.addAll(getFiles(file));
-            } else {
-                ret.add(file);
-            }
+            if (file.isDirectory()) ret.addAll(getFiles(file)); else ret.add(file);
         }
 
         return ret;
     }
 
     @Test()
-    public void newBlocksizeBufferOverflow() throws IOException {        
-        File mpq = new File(MpqTests.class.getResource("/newBlocksizeBufferOverflow/mpq/newBlocksizeBufferOverflow.w3x").getFile());
+    public void newBlocksizeBufferOverflow() throws IOException {
+        File mpq = new File(MpqTests.class.getClassLoader().getResource("newBlocksizeBufferOverflow/mpq/newBlocksizeBufferOverflow.w3x").getFile());
 
         File targetMpq = mpq.toPath().resolveSibling("file1.mpq").toFile();
 
@@ -363,7 +358,7 @@ public class MpqTests {
 
         String resourceDir = "newBlocksizeBufferOverflow/insertions";
 
-        Set<File> files = getFiles(new File(MpqTests.class.getClassLoader().getResource(resourceDir + "/").getFile()));
+        Set<File> files = getFiles(new File(MpqTests.class.getClassLoader().getResource("./" + resourceDir + "/").getFile()));
 
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
 
