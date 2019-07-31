@@ -95,10 +95,8 @@ public class JMpqEditor implements AutoCloseable {
     /** The list file. */
     private Listfile listFile = new Listfile();
     /** The internal filename. */
-    private IdentityHashMap<ByteBuffer, String> internalFilename = new IdentityHashMap<>();
+    private IdentityHashMap<String, ByteBuffer> filenameToData = new IdentityHashMap<>();
     /** The files to add. */
-    // BuildData
-    private ArrayList<ByteBuffer> filesToAdd = new ArrayList<>();
     /** The keep header offset. */
     private boolean keepHeaderOffset = true;
     /** The new header size. */
@@ -631,7 +629,10 @@ public class JMpqEditor implements AutoCloseable {
             throw new NonWritableChannelException();
         }
 
-        listFile.removeFile(name);
+        String normalizedName = normalizeName(name);
+
+        listFile.removeFile(normalizedName);
+        filenameToData.remove(normalizedName);
     }
 
     /**
@@ -654,8 +655,7 @@ public class JMpqEditor implements AutoCloseable {
 
         listFile.addFile(normalizedName);
         ByteBuffer data = ByteBuffer.wrap(input);
-        filesToAdd.add(data);
-        internalFilename.put(data, normalizedName);
+        filenameToData.put(normalizedName, data);
     }
 
     /**
@@ -686,12 +686,10 @@ public class JMpqEditor implements AutoCloseable {
                 temp.deleteOnExit();
                 Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(temp.toPath()));
-                filesToAdd.add(data);
-                internalFilename.put(data, normalizedName);
+                filenameToData.put(normalizedName, data);
             } else {
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
-                filesToAdd.add(data);
-                internalFilename.put(data, normalizedName);
+                filenameToData.put(normalizedName, data);
             }
         } catch (IOException e) {
             throw new JMpqException(e);
@@ -764,15 +762,14 @@ public class JMpqEditor implements AutoCloseable {
         }
         long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
 
-        for (ByteBuffer file : filesToAdd) {
-            existingFiles.remove(internalFilename.get(file));
+        for (String fileName : filenameToData.keySet()) {
+            existingFiles.remove(fileName);
         }
 
         for (String existingName : existingFiles) {
             if (options.recompress && !existingName.endsWith("wav")) {
                 ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
-                internalFilename.put(extracted, existingName);
-                filesToAdd.add(extracted);
+                filenameToData.put(existingName, extracted);
             } else {
                 newFiles.add(existingName);
                 int pos = hashTable.getBlockIndexOfFile(existingName);
@@ -791,15 +788,16 @@ public class JMpqEditor implements AutoCloseable {
         }
         log.debug("Added existing files");
         HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
-        for (ByteBuffer newFile : filesToAdd) {
-            newFiles.add(internalFilename.get(newFile));
-            newFileMap.put(internalFilename.get(newFile), newFile);
+        for (String newFileName : filenameToData.keySet()) {
+            ByteBuffer newFile = filenameToData.get(newFileName);
+            newFiles.add(newFileName);
+            newFileMap.put(newFileName, newFile);
             MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
             currentPos += newBlock.getCompressedSize();
-            log.debug("Added file " + internalFilename.get(newFile));
+            log.debug("Added file " + newFileName);
         }
         log.debug("Added new files");
         if (buildListfile && !listFile.getFiles().isEmpty()) {
