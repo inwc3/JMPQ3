@@ -366,7 +366,6 @@ public class MpqTests {
             String inName = file.toString().substring(file.toString().lastIndexOf(resourceDir) + resourceDir.length() + File.separator.length());
 
             mpqEditor.insertFile(inName, file, false);
-            mpqEditor.insertFile(inName, file, false);
         }
 
         mpqEditor.close();
