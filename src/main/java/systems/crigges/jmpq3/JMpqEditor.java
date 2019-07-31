@@ -641,15 +641,21 @@ public class JMpqEditor implements AutoCloseable {
      * @param input the input byte array
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertByteArray(String name, byte[] input) throws NonWritableChannelException {
+    public void insertByteArray(String name, byte[] input) throws NonWritableChannelException, IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
 
-        listFile.addFile(name);
+        String normalizedName = normalizeName(name);
+
+        if (listFile.getFiles().contains(normalizedName)) {
+            throw new IllegalArgumentException("mpq already contains file with name: " + normalizedName);
+        }
+
+        listFile.addFile(normalizedName);
         ByteBuffer data = ByteBuffer.wrap(input);
         filesToAdd.add(data);
-        internalFilename.put(data, name);
+        internalFilename.put(data, normalizedName);
     }
 
     /**
@@ -661,24 +667,31 @@ public class JMpqEditor implements AutoCloseable {
      *                   further changes won't affect the resulting mpq
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File file, boolean backupFile) throws IOException {
+    public void insertFile(String name, File file, boolean backupFile) throws IOException, IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
 
-        try {
-            listFile.addFile(name);
+        String normalizedName = normalizeName(name);
+
+        if (listFile.getFiles().contains(normalizedName)) {
+            throw new IllegalArgumentException("mpq already contains file with name: " + normalizedName);
+        }
+
+
+      try {
+            listFile.addFile(normalizedName);
             if (backupFile) {
                 File temp = File.createTempFile("jmpq", "backup", JMpqEditor.tempDir);
                 temp.deleteOnExit();
                 Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(temp.toPath()));
                 filesToAdd.add(data);
-                internalFilename.put(data, name);
+                internalFilename.put(data, normalizedName);
             } else {
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
                 filesToAdd.add(data);
-                internalFilename.put(data, name);
+                internalFilename.put(data, normalizedName);
             }
         } catch (IOException e) {
             throw new JMpqException(e);
@@ -886,6 +899,10 @@ public class JMpqEditor implements AutoCloseable {
 
         t = System.nanoTime() - t;
         log.debug("Rebuild complete. Took: " + (t / 1000000) + "ms");
+    }
+
+    private String normalizeName(String fileName) {
+        return fileName.replaceAll("\\\\", "/").toLowerCase();
     }
 
     private void sortListfileEntries(ArrayList<String> remainingFiles) {
