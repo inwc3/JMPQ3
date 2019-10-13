@@ -223,11 +223,10 @@ public class JMpqEditor implements AutoCloseable {
                     }
                     for (String fileName : listFile.getFiles()) {
                         if (!hasFile(fileName)) {
-                            canWrite = false;
-                            log.warn("mpq's listfile is incomplete: " + fileName + " exists in listfile but not in archive.");
-                            return;
+                            log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
                         }
                     }
+                    listFile.getFiles().removeIf(file -> !hasFile(file));
                 }
             } catch (Exception e) {
                 log.warn("Extracting the mpq's listfile failed. It cannot be rebuild.", e);

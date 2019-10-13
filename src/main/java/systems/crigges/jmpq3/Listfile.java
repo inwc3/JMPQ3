@@ -1,5 +1,6 @@
 package systems.crigges.jmpq3;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Scanner;
 
@@ -7,7 +8,7 @@ public class Listfile {
     private HashSet<String> files = new HashSet<String>();
 
     public Listfile(byte[] file) {
-        String list = new String(file);
+        String list = new String(file, StandardCharsets.UTF_8);
         Scanner sc = new Scanner(list);
         while (sc.hasNextLine()) {
             addFile(sc.nextLine());
