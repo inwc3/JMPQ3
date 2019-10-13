@@ -305,7 +305,7 @@ public class MpqFile {
                 compSector = CompressionUtil.compress(temp, recompress);
             } catch (ArrayIndexOutOfBoundsException ignored) {
             }
-            compressedSize += compSector.length + 1;
+            compressedSize += (compSector != null ? compSector.length + 1 : temp.length) ;
         }
         isCompressible = compressedSize < fileArr.length;
         if (fileArr.length > 0 && isCompressible) {
