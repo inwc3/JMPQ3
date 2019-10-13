@@ -696,6 +696,10 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
+    public void closeReadOnly() throws IOException {
+        fc.close();
+    }
+
     public void close() throws IOException {
         close(true, true, false);
     }
