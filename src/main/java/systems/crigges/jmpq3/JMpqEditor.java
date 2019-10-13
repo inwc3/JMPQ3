@@ -665,7 +665,7 @@ public class JMpqEditor implements AutoCloseable {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
-
+        log.info("insert file: " + name);
         try {
             listFile.addFile(name);
             if (backupFile) {
@@ -756,7 +756,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         for (String existingName : existingFiles) {
-            if (options.recompress && !existingName.endsWith("wav")) {
+            if (options.recompress) {
                 ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
                 internalFilename.put(extracted, existingName);
                 filesToAdd.add(extracted);

@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 import systems.crigges.jmpq3.*;
 import systems.crigges.jmpq3.compression.RecompressOptions;
@@ -32,7 +33,7 @@ public class MpqTests {
                 .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq"));
         if (files != null) {
             for (int i = 0; i < files.length; i++) {
-                Path target = files[i].toPath().resolveSibling("file_" + i + ".mpq");
+                Path target = files[i].toPath().resolveSibling(files[i].getName() + "_copy");
                 files[i] = Files.copy(files[i].toPath(), target,
                         StandardCopyOption.REPLACE_EXISTING).toFile();
             }
@@ -135,6 +136,7 @@ public class MpqTests {
     }
 
     @Test
+    @Ignore
     public void testRecompressBuild() throws IOException {
         File[] mpqs = getMpqs();
         RecompressOptions options = new RecompressOptions(true);
@@ -223,6 +225,7 @@ public class MpqTests {
     public void testIncompressibleFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
+            log.info(mpq.getName());
             insertAndVerify(mpq, "incompressible.w3u");
         }
     }

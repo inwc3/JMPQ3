@@ -8,11 +8,7 @@ import systems.crigges.jmpq3.security.MPQEncryption;
 import systems.crigges.jmpq3.security.MPQHashGenerator;
 
 import java.io.*;
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
+import java.nio.*;
 
 public class MpqFile {
     public static final int COMPRESSED = 0x00000200;
@@ -223,13 +219,13 @@ public class MpqFile {
             writeBuffer.put(arr);
 
             if (block.hasFlag(SINGLE_UNIT)) {
-                if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
+                if (block.hasFlag(COMPRESSED)) {
                     newBlock.setFlags(EXISTS | SINGLE_UNIT | COMPRESSED);
                 } else {
                     newBlock.setFlags(EXISTS | SINGLE_UNIT);
                 }
             } else {
-                if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
+                if (block.hasFlag(COMPRESSED)) {
                     newBlock.setFlags(EXISTS | COMPRESSED);
                 } else {
                     newBlock.setFlags(EXISTS);
@@ -283,7 +279,8 @@ public class MpqFile {
 
     /**
      * Write file and block.
-     *  @param fileArr    the file arr
+     *
+     * @param fileArr    the file arr
      * @param b          the b
      * @param buf        the buf
      * @param sectorSize the sector size
@@ -293,22 +290,11 @@ public class MpqFile {
         ByteBuffer fileBuf = ByteBuffer.wrap(fileArr);
         fileBuf.position(0);
         b.setNormalSize(fileArr.length);
-        if (b.getFlags() == 0) {
-            if (fileArr.length > 0) {
-                b.setFlags(EXISTS | COMPRESSED);
-            } else {
-                b.setFlags(EXISTS);
-                return;
-            }
-        }
         int sectorCount = (int) (Math.ceil(((double) fileArr.length / (double) sectorSize)) + 1);
-        ByteBuffer sot = ByteBuffer.allocate(sectorCount * 4);
-        sot.order(ByteOrder.LITTLE_ENDIAN);
-        sot.position(0);
-        sot.putInt(sectorCount * 4);
-        buf.position(sectorCount * 4);
-        int sotPos = sectorCount * 4;
         byte[] temp = new byte[sectorSize];
+        int compressedSize = 0;
+        // verify compressibility
+        boolean isCompressible = true;
         for (int i = 0; i < sectorCount - 1; i++) {
             if (fileBuf.position() + sectorSize > fileArr.length) {
                 temp = new byte[fileArr.length - fileBuf.position()];
@@ -319,7 +305,38 @@ public class MpqFile {
                 compSector = CompressionUtil.compress(temp, recompress);
             } catch (ArrayIndexOutOfBoundsException ignored) {
             }
-            if (compSector != null && compSector.length+1 < temp.length) {
+            compressedSize += compSector.length + 1;
+        }
+        isCompressible = compressedSize < fileArr.length;
+        if (fileArr.length > 0 && isCompressible) {
+            b.setFlags(EXISTS | COMPRESSED);
+        } else {
+            b.setFlags(EXISTS);
+            b.setCompressedSize(b.getNormalSize());
+            buf.order(ByteOrder.LITTLE_ENDIAN);
+            buf.position(0);
+            buf.put(fileArr);
+            return;
+        }
+        fileBuf.position(0);
+        ByteBuffer sot = ByteBuffer.allocate(sectorCount * 4);
+        sot.order(ByteOrder.LITTLE_ENDIAN);
+        sot.position(0);
+        sot.putInt(sectorCount * 4);
+        buf.position(sectorCount * 4);
+        int sotPos = sectorCount * 4;
+
+        for (int i = 0; i < sectorCount - 1; i++) {
+            if (fileBuf.position() + sectorSize > fileArr.length) {
+                temp = new byte[fileArr.length - fileBuf.position()];
+            }
+            fileBuf.get(temp);
+            byte[] compSector = null;
+            try {
+                compSector = CompressionUtil.compress(temp, recompress);
+            } catch (ArrayIndexOutOfBoundsException ignored) {
+            }
+            if (compSector != null && compSector.length + 1 < temp.length) {
                 if (b.hasFlag(ENCRYPTED)) {
                     final MPQHashGenerator keyGen = MPQHashGenerator.getFileKeyGenerator();
                     keyGen.process(pathlessName);
@@ -327,10 +344,10 @@ public class MpqFile {
                     if (b.hasFlag(ADJUSTED_ENCRYPTED)) {
                         bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
                     }
-                    
+
                     if (new MPQEncryption(bKey + i, false).processFinal(
-                            ByteBuffer.wrap(DebugHelper.appendData((byte) 2, compSector), 0, compSector.length + 1), buf))
-                        throw new BufferOverflowException(); 
+                        ByteBuffer.wrap(DebugHelper.appendData((byte) 2, compSector), 0, compSector.length + 1), buf))
+                        throw new BufferOverflowException();
                 } else {
                     // deflate compression indicator
                     buf.put((byte) 2);
@@ -346,7 +363,7 @@ public class MpqFile {
                         bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
                     }
                     if (new MPQEncryption(bKey + i, false).processFinal(ByteBuffer.wrap(temp), buf))
-                        throw new BufferOverflowException(); 
+                        throw new BufferOverflowException();
                 } else {
                     buf.put(temp);
                 }
@@ -366,7 +383,7 @@ public class MpqFile {
                 bKey = ((bKey + b.getFilePos()) ^ b.getNormalSize());
             }
             if (new MPQEncryption(bKey - 1, false).processFinal(sot, buf))
-                throw new BufferOverflowException(); 
+                throw new BufferOverflowException();
         } else {
             buf.put(sot);
         }
@@ -405,6 +422,6 @@ public class MpqFile {
     @Override
     public String toString() {
         return "MpqFile [sectorSize=" + sectorSize + ", compressedSize=" + compressedSize + ", normalSize=" + normalSize + ", flags=" + flags + ", name=" + name
-                + "]";
+            + "]";
     }
 }
