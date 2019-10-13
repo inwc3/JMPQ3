@@ -200,7 +200,7 @@ public class MpqFile {
     /**
      * Write file and block.
      *
-     * @param newBlock    the new block
+     * @param newBlock        the new block
      * @param writeBuffer the write buffer
      */
     public void writeFileAndBlock(Block newBlock, MappedByteBuffer writeBuffer) throws JMpqException {
@@ -219,13 +219,13 @@ public class MpqFile {
             writeBuffer.put(arr);
 
             if (block.hasFlag(SINGLE_UNIT)) {
-                if (block.hasFlag(COMPRESSED)) {
+                if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
                     newBlock.setFlags(EXISTS | SINGLE_UNIT | COMPRESSED);
                 } else {
                     newBlock.setFlags(EXISTS | SINGLE_UNIT);
                 }
             } else {
-                if (block.hasFlag(COMPRESSED)) {
+                if ((block.getFlags() & COMPRESSED) == COMPRESSED) {
                     newBlock.setFlags(EXISTS | COMPRESSED);
                 } else {
                     newBlock.setFlags(EXISTS);
@@ -268,8 +268,8 @@ public class MpqFile {
     /**
      * Write file and block.
      *
-     * @param b          the b
-     * @param buf        the buf
+     * @param b                    the b
+     * @param buf                the buf
      * @param sectorSize the sector size
      * @param recompress
      */
@@ -280,9 +280,9 @@ public class MpqFile {
     /**
      * Write file and block.
      *
-     * @param fileArr    the file arr
-     * @param b          the b
-     * @param buf        the buf
+     * @param fileArr        the file arr
+     * @param b                    the b
+     * @param buf                the buf
      * @param sectorSize the sector size
      * @param recompress
      */
@@ -290,42 +290,22 @@ public class MpqFile {
         ByteBuffer fileBuf = ByteBuffer.wrap(fileArr);
         fileBuf.position(0);
         b.setNormalSize(fileArr.length);
+        if (b.getFlags() == 0) {
+            if (fileArr.length > 0) {
+                b.setFlags(EXISTS | COMPRESSED);
+            } else {
+                b.setFlags(EXISTS);
+                return;
+            }
+        }
         int sectorCount = (int) (Math.ceil(((double) fileArr.length / (double) sectorSize)) + 1);
-        byte[] temp = new byte[sectorSize];
-        int compressedSize = 0;
-        // verify compressibility
-        boolean isCompressible = true;
-        for (int i = 0; i < sectorCount - 1; i++) {
-            if (fileBuf.position() + sectorSize > fileArr.length) {
-                temp = new byte[fileArr.length - fileBuf.position()];
-            }
-            fileBuf.get(temp);
-            byte[] compSector = null;
-            try {
-                compSector = CompressionUtil.compress(temp, recompress);
-            } catch (ArrayIndexOutOfBoundsException ignored) {
-            }
-            compressedSize += (compSector != null ? compSector.length + 1 : temp.length) ;
-        }
-        isCompressible = compressedSize < fileArr.length;
-        if (fileArr.length > 0 && isCompressible) {
-            b.setFlags(EXISTS | COMPRESSED);
-        } else {
-            b.setFlags(EXISTS);
-            b.setCompressedSize(b.getNormalSize());
-            buf.order(ByteOrder.LITTLE_ENDIAN);
-            buf.position(0);
-            buf.put(fileArr);
-            return;
-        }
-        fileBuf.position(0);
         ByteBuffer sot = ByteBuffer.allocate(sectorCount * 4);
         sot.order(ByteOrder.LITTLE_ENDIAN);
         sot.position(0);
         sot.putInt(sectorCount * 4);
         buf.position(sectorCount * 4);
         int sotPos = sectorCount * 4;
-
+        byte[] temp = new byte[sectorSize];
         for (int i = 0; i < sectorCount - 1; i++) {
             if (fileBuf.position() + sectorSize > fileArr.length) {
                 temp = new byte[fileArr.length - fileBuf.position()];
@@ -392,7 +372,7 @@ public class MpqFile {
     /**
      * Gets the sector as byte array.
      *
-     * @param buf        the buf
+     * @param buf                the buf
      * @param sectorSize the sector size
      * @return the sector as byte array
      */
@@ -405,8 +385,8 @@ public class MpqFile {
     /**
      * Decompress sector.
      *
-     * @param sector           the sector
-     * @param normalSize       the normal size
+     * @param sector                     the sector
+     * @param normalSize             the normal size
      * @param uncompressedSize the uncomp size
      * @return the byte[]
      * @throws JMpqException the j mpq exception
