@@ -771,7 +771,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         for (String existingName : existingFiles) {
-            if (options.recompress) {
+            if (options.recompress && !existingName.endsWith(".wav")) {
                 ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
                 filenameToData.put(existingName, extracted);
             } else {
