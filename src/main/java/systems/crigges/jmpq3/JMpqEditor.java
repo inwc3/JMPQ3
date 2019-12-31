@@ -630,7 +630,7 @@ public class JMpqEditor implements AutoCloseable {
 
         String normalizedName = normalizeName(name);
 
-        listFile.removeFile(normalizedName);
+        listFile.getFiles().removeIf(normalizedName::equalsIgnoreCase);
         filenameToData.remove(normalizedName);
     }
 
@@ -648,7 +648,7 @@ public class JMpqEditor implements AutoCloseable {
 
         String normalizedName = normalizeName(name);
 
-        if (listFile.getFiles().contains(normalizedName)) {
+        if (listFile.getFiles().stream().anyMatch(normalizedName::equalsIgnoreCase)) {
             throw new IllegalArgumentException("mpq already contains file with name: " + normalizedName);
         }
 
@@ -674,7 +674,7 @@ public class JMpqEditor implements AutoCloseable {
         String normalizedName = normalizeName(name);
         log.info("insert file: " + normalizedName);
 
-        if (listFile.getFiles().contains(normalizedName)) {
+        if (listFile.getFiles().stream().anyMatch(normalizedName::equalsIgnoreCase)) {
             throw new IllegalArgumentException("mpq already contains file with name: " + normalizedName);
         }
 
@@ -904,7 +904,7 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     private String normalizeName(String fileName) {
-        return fileName.replaceAll("\\\\", "/").toLowerCase();
+        return fileName.replaceAll("\\\\", "/");
     }
 
     private void sortListfileEntries(ArrayList<String> remainingFiles) {
