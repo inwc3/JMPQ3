@@ -40,4 +40,14 @@ public class Listfile {
         }
         return temp.toString().getBytes();
     }
+
+    public String containsEntry(String fileName) {
+        String result = files.contains(fileName) ? fileName : "";
+        result = !result.equals("") ? (files.contains(fileName.toLowerCase()) ? fileName.toLowerCase() : "") : "";
+
+        String slashCopy = fileName.replaceAll("\\\\", "/");
+        result = !result.equals("") ? (files.contains(slashCopy) ? slashCopy : "") : "";
+        result = !result.equals("") ? (files.contains(slashCopy.toLowerCase()) ? slashCopy.toLowerCase() : "") : "";
+        return result;
+    }
 }

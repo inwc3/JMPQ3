@@ -628,10 +628,13 @@ public class JMpqEditor implements AutoCloseable {
             throw new NonWritableChannelException();
         }
 
-        String normalizedName = normalizeName(name);
+        String entry = listFile.containsEntry(name);
+        if (entry.isEmpty()) {
+            throw new IllegalArgumentException("Archive does not contain file with name: " + name);
+        }
 
-        listFile.getFiles().removeIf(normalizedName::equalsIgnoreCase);
-        filenameToData.remove(normalizedName);
+        listFile.getFiles().remove(entry);
+        filenameToData.remove(entry);
     }
 
     /**
@@ -646,15 +649,14 @@ public class JMpqEditor implements AutoCloseable {
             throw new NonWritableChannelException();
         }
 
-        String normalizedName = normalizeName(name);
-
-        if (listFile.getFiles().stream().anyMatch(normalizedName::equalsIgnoreCase)) {
-            throw new IllegalArgumentException("mpq already contains file with name: " + normalizedName);
+        String entry = listFile.containsEntry(name);
+        if (!entry.isEmpty()) {
+            throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
-        listFile.addFile(normalizedName);
+        listFile.addFile(name);
         ByteBuffer data = ByteBuffer.wrap(input);
-        filenameToData.put(normalizedName, data);
+        filenameToData.put(name, data);
     }
 
     /**
@@ -671,25 +673,25 @@ public class JMpqEditor implements AutoCloseable {
             throw new NonWritableChannelException();
         }
 
-        String normalizedName = normalizeName(name);
-        log.info("insert file: " + normalizedName);
+        log.info("insert file: " + name);
 
-        if (listFile.getFiles().stream().anyMatch(normalizedName::equalsIgnoreCase)) {
-            throw new IllegalArgumentException("mpq already contains file with name: " + normalizedName);
+        String entry = listFile.containsEntry(name);
+        if (!entry.isEmpty()) {
+            throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
 
       try {
-            listFile.addFile(normalizedName);
+            listFile.addFile(name);
             if (backupFile) {
                 File temp = File.createTempFile("jmpq", "backup", JMpqEditor.tempDir);
                 temp.deleteOnExit();
                 Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(temp.toPath()));
-                filenameToData.put(normalizedName, data);
+                filenameToData.put(name, data);
             } else {
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
-                filenameToData.put(normalizedName, data);
+                filenameToData.put(name, data);
             }
         } catch (IOException e) {
             throw new JMpqException(e);
@@ -901,10 +903,6 @@ public class JMpqEditor implements AutoCloseable {
 
         t = System.nanoTime() - t;
         log.debug("Rebuild complete. Took: " + (t / 1000000) + "ms");
-    }
-
-    private String normalizeName(String fileName) {
-        return fileName.replaceAll("\\\\", "/");
     }
 
     private void sortListfileEntries(ArrayList<String> remainingFiles) {
