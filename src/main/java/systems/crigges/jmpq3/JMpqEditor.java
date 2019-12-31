@@ -226,7 +226,7 @@ public class JMpqEditor implements AutoCloseable {
                             log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
                         }
                     }
-                    listFile.getFiles().removeIf(file -> !hasFile(file));
+                    listFile.getFileMap().entrySet().removeIf(file -> !hasFile(file.getValue()));
                 }
             } catch (Exception e) {
                 log.warn("Extracting the mpq's listfile failed. It cannot be rebuild.", e);
@@ -628,13 +628,12 @@ public class JMpqEditor implements AutoCloseable {
             throw new NonWritableChannelException();
         }
 
-        String entry = listFile.containsEntry(name);
-        if (entry.isEmpty()) {
+        if (listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive does not contain file with name: " + name);
         }
 
-        listFile.getFiles().remove(entry);
-        filenameToData.remove(entry);
+        listFile.removeFile(name);
+        filenameToData.remove(name);
     }
 
     /**
@@ -649,8 +648,7 @@ public class JMpqEditor implements AutoCloseable {
             throw new NonWritableChannelException();
         }
 
-        String entry = listFile.containsEntry(name);
-        if (!entry.isEmpty()) {
+        if (listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
@@ -675,8 +673,7 @@ public class JMpqEditor implements AutoCloseable {
 
         log.info("insert file: " + name);
 
-        String entry = listFile.containsEntry(name);
-        if (!entry.isEmpty()) {
+        if (listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 

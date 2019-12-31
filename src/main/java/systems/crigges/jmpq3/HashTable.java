@@ -335,18 +335,11 @@ public class HashTable {
             final MPQHashGenerator offsetGen = MPQHashGenerator.getTableOffsetGenerator();
             offsetGen.process(name);
             offset = offsetGen.getHash();
-
-            // generate file key
-            final MPQHashGenerator key1Gen = MPQHashGenerator.getTableKey1Generator();
-            key1Gen.process(name);
-            final int key1 = key1Gen.getHash();
-            final MPQHashGenerator key2Gen = MPQHashGenerator.getTableKey2Generator();
-            key2Gen.process(name);
-            final int key2 = key2Gen.getHash();
-            key = ((long) key2 << 32) | Integer.toUnsignedLong(key1);
+            key = calculateFileKey(name);
 
             this.locale = locale;
         }
+
     }
 
     /**
@@ -392,5 +385,16 @@ public class HashTable {
         public String toString() {
             return "Entry [key=" + key + ",\tlcLocale=" + this.locale + ",\tdwBlockIndex=" + this.blockTableIndex + "]";
         }
+    }
+
+    public static long calculateFileKey(String name) {
+        // generate file key
+        final MPQHashGenerator key1Gen = MPQHashGenerator.getTableKey1Generator();
+        key1Gen.process(name);
+        final int key1 = key1Gen.getHash();
+        final MPQHashGenerator key2Gen = MPQHashGenerator.getTableKey2Generator();
+        key2Gen.process(name);
+        final int key2 = key2Gen.getHash();
+        return ((long) key2 << 32) | Integer.toUnsignedLong(key1);
     }
 }

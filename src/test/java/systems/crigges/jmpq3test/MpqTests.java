@@ -23,6 +23,8 @@ import java.util.LinkedHashSet;
 import java.util.Scanner;
 import java.util.Set;
 
+import static systems.crigges.jmpq3.HashTable.calculateFileKey;
+
 /**
  * Created by Frotty on 06.03.2017.
  */
@@ -210,7 +212,7 @@ public class MpqTests {
     public void testMultipleInstances() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
-            JMpqEditor mpqEditors[] = new JMpqEditor[]{new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
+            JMpqEditor[] mpqEditors = new JMpqEditor[]{new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
                     new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
                     new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)};
             for (JMpqEditor mpqEditor1 : mpqEditors) {
@@ -228,6 +230,26 @@ public class MpqTests {
         for (File mpq : mpqs) {
             log.info(mpq.getName());
             insertAndVerify(mpq, "incompressible.w3u");
+        }
+    }
+
+    @Test
+    public void testDuplicatePaths() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+                if (!mpqEditor.isCanWrite()) {
+                    return;
+                }
+                mpqEditor.insertByteArray("Test", "bytesasdadasdad".getBytes());
+                Assert.expectThrows(IllegalArgumentException.class, () -> {
+                    mpqEditor.insertByteArray("Test", "bytesasdadasdad".getBytes());
+                });
+                Assert.expectThrows(IllegalArgumentException.class, () -> {
+                    mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes());
+                });
+
+            }
         }
     }
 
