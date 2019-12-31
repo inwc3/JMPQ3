@@ -628,12 +628,10 @@ public class JMpqEditor implements AutoCloseable {
             throw new NonWritableChannelException();
         }
 
-        if (!listFile.containsFile(name)) {
-            throw new IllegalArgumentException("Archive does not contain file with name: " + name);
+        if (listFile.containsFile(name)) {
+            listFile.removeFile(name);
+            filenameToData.remove(name);
         }
-
-        listFile.removeFile(name);
-        filenameToData.remove(name);
     }
 
     /**
