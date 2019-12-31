@@ -17,7 +17,7 @@ See https://jitpack.io/#inwc3/JMPQ3/
 Gradle Example:
 ```gradle
 dependencies {
-    compile 'com.github.inwc3:JMPQ3:1.7.10'
+    compile 'com.github.inwc3:JMPQ3:1.7.11'
 }
 allprojects {
     repositories {
