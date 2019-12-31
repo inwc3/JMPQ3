@@ -1,8 +1,8 @@
 package systems.crigges.jmpq3;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Scanner;
 
 import static systems.crigges.jmpq3.HashTable.calculateFileKey;
@@ -22,8 +22,8 @@ public class Listfile {
     public Listfile() {
     }
 
-    public HashSet<String> getFiles() {
-        return new HashSet<>(this.files.values());
+    public Collection<String> getFiles() {
+        return this.files.values();
     }
 
     public HashMap<Long, String> getFileMap() {
@@ -55,4 +55,5 @@ public class Listfile {
         }
         return temp.toString().getBytes();
     }
+
 }
