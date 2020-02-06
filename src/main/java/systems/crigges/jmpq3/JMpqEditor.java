@@ -381,7 +381,7 @@ public class JMpqEditor implements AutoCloseable {
         discBlockSize = 512 * (1 << sectorSizeShift);
         hashPos = buffer.getInt() & 0xFFFFFFFFL;
         blockPos = buffer.getInt() & 0xFFFFFFFFL;
-        hashSize = buffer.getInt();
+        hashSize = buffer.getInt() & 0x0FFFFFFF;
         blockSize = buffer.getInt();
 
         // version 1 extension
