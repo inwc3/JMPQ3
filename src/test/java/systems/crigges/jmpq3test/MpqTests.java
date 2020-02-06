@@ -18,10 +18,7 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 import static systems.crigges.jmpq3.HashTable.calculateFileKey;
 
@@ -34,7 +31,7 @@ public class MpqTests {
 
     private static File[] getMpqs() throws IOException {
         File[] files = new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile())
-                .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq"));
+                .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq") || name.endsWith(".scx"));
         if (files != null) {
             for (int i = 0; i < files.length; i++) {
                 Path target = files[i].toPath().resolveSibling(files[i].getName() + "_copy");
@@ -237,6 +234,9 @@ public class MpqTests {
     public void testDuplicatePaths() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
+            if (mpq.getName().equals("invalidHashSize.scx_copy")) {
+                continue;
+            }
             try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
                 if (!mpqEditor.isCanWrite()) {
                     return;
