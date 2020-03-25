@@ -627,7 +627,7 @@ public class JMpqEditor implements AutoCloseable {
 	 */
 	public MpqFile getMpqFileByBlock(BlockTable.Block block) throws IOException {
 		if ((block.getFlags() & MpqFile.ENCRYPTED) == MpqFile.ENCRYPTED){
-			throw new IOException("cant access block");
+			throw new IOException("cant access this block");
 		}
 		ByteBuffer buffer = ByteBuffer.allocate(block.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
 		fc.position(headerOffset + block.getFilePos());
@@ -648,19 +648,10 @@ public class JMpqEditor implements AutoCloseable {
 		List<MpqFile> mpqFiles = new ArrayList<>();
 		ArrayList<Block> list = blockTable.getAllVaildBlocks();
 		for (Block block : list){
-			if ((block.getFlags() & MpqFile.ENCRYPTED) == MpqFile.ENCRYPTED){
-				continue;
-			}
-			ByteBuffer buffer = ByteBuffer.allocate(block.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-			fc.position(headerOffset + block.getFilePos());
-			readFully(buffer, fc);
-			buffer.rewind();
-			
 			try{
-				mpqFiles.add(new MpqFile(buffer, block, discBlockSize, ""));
-			} catch (IOException ignore){
-				log.warn("a MpqFile read fail");
-			}
+				MpqFile mpqFile = getMpqFileByBlock(block);
+				mpqFiles.add(mpqFile);
+			} catch (IOException ignore){}
 		}
 		return mpqFiles;
 	}
