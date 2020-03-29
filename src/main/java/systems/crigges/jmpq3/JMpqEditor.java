@@ -626,7 +626,7 @@ public class JMpqEditor implements AutoCloseable {
      * @throws IOException Signals that an I/O exception has occurred.
      */
     public MpqFile getMpqFileByBlock(BlockTable.Block block) throws IOException {
-        if (block.hasFlag(MpqFile.ENCRYPTED)){
+        if (block.hasFlag(MpqFile.ENCRYPTED)) {
             throw new IOException("cant access this block");
         }
         ByteBuffer buffer = ByteBuffer.allocate(block.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
@@ -733,21 +733,20 @@ public class JMpqEditor implements AutoCloseable {
      * @param override   is override file
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException,
-                                                                                                IllegalArgumentException{
+    public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException,IllegalArgumentException{
         if (!canWrite){
             throw new NonWritableChannelException();
         }
 
         log.info("insert file: " + name);
 
-        if ((!override) && listFile.containsFile(name)){
+        if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
     
         try{
             listFile.addFile(name);
-            if (backupFile){
+            if (backupFile) {
                 File temp = File.createTempFile("jmpq", "backup", JMpqEditor.tempDir);
                 temp.deleteOnExit();
                 Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -757,7 +756,7 @@ public class JMpqEditor implements AutoCloseable {
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
                 filenameToData.put(name, data);
             }
-        } catch (IOException e){
+        } catch (IOException e) {
             throw new JMpqException(e);
         }
     }
