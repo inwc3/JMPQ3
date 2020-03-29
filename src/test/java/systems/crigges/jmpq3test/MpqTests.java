@@ -249,7 +249,7 @@ public class MpqTests {
                     mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes());
                 });
                 //test override
-	            mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes(),true);
+                mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes(),true);
             }
         }
     }
@@ -331,12 +331,12 @@ public class MpqTests {
         }
 
         try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
-	        if (!mpqEditor.isCanWrite()) {
-		        return;
-	        }
-	        //test override
-	        mpqEditor.insertFile(filename, getFile(filename), false,true);
-	        mpqEditor.insertFile(filename, getFile(filename), false,true);
+            if (!mpqEditor.isCanWrite()) {
+                return;
+            }
+            //test override
+            mpqEditor.insertFile(filename, getFile(filename), false,true);
+            mpqEditor.insertFile(filename, getFile(filename), false,true);
 
             mpqEditor.deleteFile(filename);
         }
@@ -408,27 +408,27 @@ public class MpqTests {
 
         mpqEditor.close();
     }
-	
-	@Test()
-	public void testForGetMpqFileByBlock() throws IOException {
-		File[] mpqs = getMpqs();
-		for (File mpq : mpqs) {
-			if (mpq.getName().equals("invalidHashSize.scx_copy")) {
-				continue;
-			}
-			try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
-				
-				Assert.assertTrue(mpqEditor.getMpqFilesByBlockTable().size()>0);
-				BlockTable blockTable = mpqEditor.getBlockTable();
-				Assert.assertNotNull(blockTable);
-				for (BlockTable.Block block : blockTable.getAllVaildBlocks())
-				{
-					if ((block.getFlags() & MpqFile.ENCRYPTED) == MpqFile.ENCRYPTED){
-						continue;
-					}
-					Assert.assertNotNull(mpqEditor.getMpqFileByBlock(block));
-				}
-			}
-		}
-	}
+    
+    @Test()
+    public void testForGetMpqFileByBlock() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            if (mpq.getName().equals("invalidHashSize.scx_copy")) {
+                continue;
+            }
+            try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+                
+                Assert.assertTrue(mpqEditor.getMpqFilesByBlockTable().size()>0);
+                BlockTable blockTable = mpqEditor.getBlockTable();
+                Assert.assertNotNull(blockTable);
+                for (BlockTable.Block block : blockTable.getAllVaildBlocks())
+                {
+                    if (block.hasFlag(MpqFile.ENCRYPTED)){
+                        continue;
+                    }
+                    Assert.assertNotNull(mpqEditor.getMpqFileByBlock(block));
+                }
+            }
+        }
+    }
 }
