@@ -672,7 +672,7 @@ public class JMpqEditor implements AutoCloseable {
             filenameToData.remove(name);
         }
     }
-    
+
     /**
      * Inserts the specified byte array into the mpq once you close the editor.
      *
@@ -687,11 +687,11 @@ public class JMpqEditor implements AutoCloseable {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
-        
+
         if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
-        
+
         listFile.addFile(name);
         ByteBuffer data = ByteBuffer.wrap(input);
         filenameToData.put(name, data);
@@ -738,9 +738,9 @@ public class JMpqEditor implements AutoCloseable {
         if (!canWrite){
             throw new NonWritableChannelException();
         }
-    
+
         log.info("insert file: " + name);
-    
+
         if ((!override) && listFile.containsFile(name)){
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
