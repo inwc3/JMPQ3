@@ -734,7 +734,7 @@ public class JMpqEditor implements AutoCloseable {
      * @throws JMpqException if file is not found or access errors occur
      */
     public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException,IllegalArgumentException{
-        if (!canWrite){
+        if (!canWrite) {
             throw new NonWritableChannelException();
         }
 
@@ -752,7 +752,7 @@ public class JMpqEditor implements AutoCloseable {
                 Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(temp.toPath()));
                 filenameToData.put(name, data);
-            } else{
+            } else {
                 ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
                 filenameToData.put(name, data);
             }
