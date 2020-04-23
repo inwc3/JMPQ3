@@ -706,7 +706,7 @@ public class JMpqEditor implements AutoCloseable {
      * @throws IllegalArgumentException    when the mpq has filename
      */
     public void insertByteArray(String name, byte[] input) throws NonWritableChannelException, IllegalArgumentException {
-        insertByteArray(name,input,false);
+        insertByteArray(name, input, false);
     }
     
     /**
@@ -720,7 +720,7 @@ public class JMpqEditor implements AutoCloseable {
      * @throws IllegalArgumentException the illegal argument exception
      */
     public void insertFile(String name, File file, boolean backupFile) throws IOException, IllegalArgumentException {
-        insertFile(name,file,backupFile,false);
+        insertFile(name, file, backupFile, false);
     }
 
     /**

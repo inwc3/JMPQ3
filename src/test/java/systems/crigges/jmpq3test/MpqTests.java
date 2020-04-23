@@ -249,7 +249,7 @@ public class MpqTests {
                     mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes());
                 });
                 //test override
-                mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes(),true);
+                mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes(), true);
             }
         }
     }
@@ -418,7 +418,7 @@ public class MpqTests {
             }
             try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
                 
-                Assert.assertTrue(mpqEditor.getMpqFilesByBlockTable().size()>0);
+                Assert.assertTrue(mpqEditor.getMpqFilesByBlockTable().size() > 0);
                 BlockTable blockTable = mpqEditor.getBlockTable();
                 Assert.assertNotNull(blockTable);
                 for (BlockTable.Block block : blockTable.getAllVaildBlocks())
