@@ -423,7 +423,7 @@ public class MpqTests {
                 Assert.assertNotNull(blockTable);
                 for (BlockTable.Block block : blockTable.getAllVaildBlocks())
                 {
-                    if (block.hasFlag(MpqFile.ENCRYPTED)){
+                    if (block.hasFlag(MpqFile.ENCRYPTED)) {
                         continue;
                     }
                     Assert.assertNotNull(mpqEditor.getMpqFileByBlock(block));

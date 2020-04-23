@@ -647,11 +647,11 @@ public class JMpqEditor implements AutoCloseable {
     public List<MpqFile> getMpqFilesByBlockTable() throws IOException {
         List<MpqFile> mpqFiles = new ArrayList<>();
         ArrayList<Block> list = blockTable.getAllVaildBlocks();
-        for (Block block : list){
+        for (Block block : list) {
             try{
                 MpqFile mpqFile = getMpqFileByBlock(block);
                 mpqFiles.add(mpqFile);
-            } catch (IOException ignore){}
+            } catch (IOException ignore) {}
         }
         return mpqFiles;
     }
@@ -1037,7 +1037,7 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @return the block table
      */
-    public BlockTable getBlockTable(){
+    public BlockTable getBlockTable() {
         return blockTable;
     }
     
