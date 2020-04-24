@@ -732,7 +732,7 @@ public class JMpqEditor implements AutoCloseable {
      * @param override   is override file
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException,IllegalArgumentException{
+    public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException, IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
