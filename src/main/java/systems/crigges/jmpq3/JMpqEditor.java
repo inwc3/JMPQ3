@@ -616,13 +616,12 @@ public class JMpqEditor implements AutoCloseable {
 
         return new MpqFile(buffer, b, discBlockSize, name);
     }
-    
+
     /**
      * Gets the mpq file.
      *
      * @param block a block
      * @return the mpq file
-     *
      * @throws IOException Signals that an I/O exception has occurred.
      */
     public MpqFile getMpqFileByBlock(BlockTable.Block block) throws IOException {
@@ -633,7 +632,7 @@ public class JMpqEditor implements AutoCloseable {
         fc.position(headerOffset + block.getFilePos());
         readFully(buffer, fc);
         buffer.rewind();
-        
+
         return new MpqFile(buffer, block, discBlockSize, "");
     }
     
@@ -641,17 +640,17 @@ public class JMpqEditor implements AutoCloseable {
      * Gets the mpq files.
      *
      * @return the mpq files
-     *
      * @throws IOException Signals that an I/O exception has occurred.
      */
     public List<MpqFile> getMpqFilesByBlockTable() throws IOException {
         List<MpqFile> mpqFiles = new ArrayList<>();
         ArrayList<Block> list = blockTable.getAllVaildBlocks();
         for (Block block : list) {
-            try{
+            try {
                 MpqFile mpqFile = getMpqFileByBlock(block);
                 mpqFiles.add(mpqFile);
-            } catch (IOException ignore) {}
+            } catch (IOException ignore) {
+            }
         }
         return mpqFiles;
     }
@@ -682,8 +681,8 @@ public class JMpqEditor implements AutoCloseable {
      * @throws NonWritableChannelException the non writable channel exception
      * @throws IllegalArgumentException    when the mpq has filename and not override
      */
-    public void insertByteArray(String name, byte[] input,boolean override) throws NonWritableChannelException,
-                                                                   IllegalArgumentException {
+    public void insertByteArray(String name, byte[] input, boolean override) throws NonWritableChannelException,
+            IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
@@ -696,7 +695,7 @@ public class JMpqEditor implements AutoCloseable {
         ByteBuffer data = ByteBuffer.wrap(input);
         filenameToData.put(name, data);
     }
-    
+
     /**
      * Inserts the specified byte array into the mpq once you close the editor.
      *
@@ -743,7 +742,7 @@ public class JMpqEditor implements AutoCloseable {
         if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
-    
+
         try{
             listFile.addFile(name);
             if (backupFile) {

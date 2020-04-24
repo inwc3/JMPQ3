@@ -335,8 +335,8 @@ public class MpqTests {
                 return;
             }
             //test override
-            mpqEditor.insertFile(filename, getFile(filename), false,true);
-            mpqEditor.insertFile(filename, getFile(filename), false,true);
+            mpqEditor.insertFile(filename, getFile(filename), false, true);
+            mpqEditor.insertFile(filename, getFile(filename), false, true);
 
             mpqEditor.deleteFile(filename);
         }
@@ -417,12 +417,12 @@ public class MpqTests {
                 continue;
             }
             try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
-                
+
                 Assert.assertTrue(mpqEditor.getMpqFilesByBlockTable().size() > 0);
                 BlockTable blockTable = mpqEditor.getBlockTable();
                 Assert.assertNotNull(blockTable);
-                for (BlockTable.Block block : blockTable.getAllVaildBlocks())
-                {
+
+                for (BlockTable.Block block : blockTable.getAllVaildBlocks()) {
                     if (block.hasFlag(MpqFile.ENCRYPTED)) {
                         continue;
                     }
