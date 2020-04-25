@@ -678,7 +678,6 @@ public class JMpqEditor implements AutoCloseable {
      * @param name     of the file inside the mpq
      * @param input    the input byte array
      * @param override whether to override an existing file with the same name
-     * @throws NonWritableChannelException the non writable channel exception
      * @throws IllegalArgumentException    when the mpq has filename and not override
      */
     public void insertByteArray(String name, byte[] input, boolean override) throws NonWritableChannelException,
@@ -701,7 +700,6 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @param name  of the file inside the mpq
      * @param input the input byte array
-     * @throws NonWritableChannelException the non writable channel exception
      * @throws IllegalArgumentException    when the mpq has filename
      */
     public void insertByteArray(String name, byte[] input) throws NonWritableChannelException, IllegalArgumentException {
