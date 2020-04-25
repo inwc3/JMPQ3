@@ -677,7 +677,7 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @param name     of the file inside the mpq
      * @param input    the input byte array
-     * @param override is override file
+     * @param override whether to override an existing file with the same name
      * @throws NonWritableChannelException the non writable channel exception
      * @throws IllegalArgumentException    when the mpq has filename and not override
      */
@@ -715,8 +715,6 @@ public class JMpqEditor implements AutoCloseable {
      * @param file       the file
      * @param backupFile if true the editors creates a copy of the file to add, so
      *                   further changes won't affect the resulting mpq
-     * @throws IOException              the io exception
-     * @throws IllegalArgumentException the illegal argument exception
      */
     public void insertFile(String name, File file, boolean backupFile) throws IOException, IllegalArgumentException {
         insertFile(name, file, backupFile, false);
@@ -729,7 +727,7 @@ public class JMpqEditor implements AutoCloseable {
      * @param file       the file
      * @param backupFile if true the editors creates a copy of the file to add, so
      *                   further changes won't affect the resulting mpq
-     * @param override   is override file
+     * @param override   whether to override an existing file with the same name
      * @throws JMpqException if file is not found or access errors occur
      */
     public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException, IllegalArgumentException {

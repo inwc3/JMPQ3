@@ -248,7 +248,6 @@ public class MpqTests {
                 Assert.expectThrows(IllegalArgumentException.class, () -> {
                     mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes());
                 });
-                //test override
                 mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes(), true);
             }
         }
@@ -334,7 +333,6 @@ public class MpqTests {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
-            //test override
             mpqEditor.insertFile(filename, getFile(filename), false, true);
             mpqEditor.insertFile(filename, getFile(filename), false, true);
 
