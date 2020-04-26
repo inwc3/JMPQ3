@@ -248,7 +248,7 @@ public class MpqTests {
                 Assert.expectThrows(IllegalArgumentException.class, () -> {
                     mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes());
                 });
-
+                mpqEditor.insertByteArray("teST", "bytesasdadasdad".getBytes(), true);
             }
         }
     }
@@ -329,6 +329,16 @@ public class MpqTests {
             mpqEditor.deleteFile(filename);
         }
 
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            if (!mpqEditor.isCanWrite()) {
+                return;
+            }
+            mpqEditor.insertFile(filename, getFile(filename), false, true);
+            mpqEditor.insertFile(filename, getFile(filename), false, true);
+
+            mpqEditor.deleteFile(filename);
+        }
+
         try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
@@ -395,5 +405,28 @@ public class MpqTests {
         }
 
         mpqEditor.close();
+    }
+    
+    @Test()
+    public void testForGetMpqFileByBlock() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            if (mpq.getName().equals("invalidHashSize.scx_copy")) {
+                continue;
+            }
+            try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+
+                Assert.assertTrue(mpqEditor.getMpqFilesByBlockTable().size() > 0);
+                BlockTable blockTable = mpqEditor.getBlockTable();
+                Assert.assertNotNull(blockTable);
+
+                for (BlockTable.Block block : blockTable.getAllVaildBlocks()) {
+                    if (block.hasFlag(MpqFile.ENCRYPTED)) {
+                        continue;
+                    }
+                    Assert.assertNotNull(mpqEditor.getMpqFileByBlock(block));
+                }
+            }
+        }
     }
 }

@@ -490,7 +490,7 @@ public class JMpqEditor implements AutoCloseable {
             try {
                 int i = 0;
                 for (Block b : blocks) {
-                    if ((b.getFlags() & MpqFile.ENCRYPTED) == MpqFile.ENCRYPTED) {
+                    if (b.hasFlag(MpqFile.ENCRYPTED)) {
                         continue;
                     }
                     ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
@@ -618,6 +618,44 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
+     * Gets the mpq file.
+     *
+     * @param block a block
+     * @return the mpq file
+     * @throws IOException Signals that an I/O exception has occurred.
+     */
+    public MpqFile getMpqFileByBlock(BlockTable.Block block) throws IOException {
+        if (block.hasFlag(MpqFile.ENCRYPTED)) {
+            throw new IOException("cant access this block");
+        }
+        ByteBuffer buffer = ByteBuffer.allocate(block.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+        fc.position(headerOffset + block.getFilePos());
+        readFully(buffer, fc);
+        buffer.rewind();
+
+        return new MpqFile(buffer, block, discBlockSize, "");
+    }
+    
+    /**
+     * Gets the mpq files.
+     *
+     * @return the mpq files
+     * @throws IOException Signals that an I/O exception has occurred.
+     */
+    public List<MpqFile> getMpqFilesByBlockTable() throws IOException {
+        List<MpqFile> mpqFiles = new ArrayList<>();
+        ArrayList<Block> list = blockTable.getAllVaildBlocks();
+        for (Block block : list) {
+            try {
+                MpqFile mpqFile = getMpqFileByBlock(block);
+                mpqFiles.add(mpqFile);
+            } catch (IOException ignore) {
+            }
+        }
+        return mpqFiles;
+    }
+
+    /**
      * Deletes the specified file out of the mpq once you rebuild the mpq.
      *
      * @param name of the file inside the mpq
@@ -637,16 +675,18 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Inserts the specified byte array into the mpq once you close the editor.
      *
-     * @param name  of the file inside the mpq
-     * @param input the input byte array
-     * @throws JMpqException if file is not found or access errors occur
+     * @param name     of the file inside the mpq
+     * @param input    the input byte array
+     * @param override whether to override an existing file with the same name
+     * @throws IllegalArgumentException    when the mpq has filename and not override
      */
-    public void insertByteArray(String name, byte[] input) throws NonWritableChannelException, IllegalArgumentException {
+    public void insertByteArray(String name, byte[] input, boolean override) throws NonWritableChannelException,
+            IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
 
-        if (listFile.containsFile(name)) {
+        if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
@@ -656,27 +696,50 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
+     * Inserts the specified byte array into the mpq once you close the editor.
+     *
+     * @param name  of the file inside the mpq
+     * @param input the input byte array
+     * @throws IllegalArgumentException    when the mpq has filename
+     */
+    public void insertByteArray(String name, byte[] input) throws NonWritableChannelException, IllegalArgumentException {
+        insertByteArray(name, input, false);
+    }
+    
+    /**
      * Inserts the specified file into the mpq once you close the editor.
      *
      * @param name       of the file inside the mpq
      * @param file       the file
      * @param backupFile if true the editors creates a copy of the file to add, so
      *                   further changes won't affect the resulting mpq
-     * @throws JMpqException if file is not found or access errors occur
      */
     public void insertFile(String name, File file, boolean backupFile) throws IOException, IllegalArgumentException {
+        insertFile(name, file, backupFile, false);
+    }
+
+    /**
+     * Inserts the specified file into the mpq once you close the editor.
+     *
+     * @param name       of the file inside the mpq
+     * @param file       the file
+     * @param backupFile if true the editors creates a copy of the file to add, so
+     *                   further changes won't affect the resulting mpq
+     * @param override   whether to override an existing file with the same name
+     * @throws JMpqException if file is not found or access errors occur
+     */
+    public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException, IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
 
         log.info("insert file: " + name);
 
-        if (listFile.containsFile(name)) {
+        if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
-
-      try {
+        try{
             listFile.addFile(name);
             if (backupFile) {
                 File temp = File.createTempFile("jmpq", "backup", JMpqEditor.tempDir);
@@ -962,13 +1025,22 @@ public class JMpqEditor implements AutoCloseable {
     public void setKeepHeaderOffset(boolean keepHeaderOffset) {
         this.keepHeaderOffset = keepHeaderOffset;
     }
-
-    /*
+    
+    
+    /**
+     * Get block table block table.
+     *
+     * @return the block table
+     */
+    public BlockTable getBlockTable() {
+        return blockTable;
+    }
+    
+    /**
      * (non-Javadoc)
      *
      * @see java.lang.Object#toString()
      */
-
     @Override
     public String toString() {
         return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
