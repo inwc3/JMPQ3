@@ -21,6 +21,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.*;
 import java.util.*;
+import java.util.function.Predicate;
 
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -227,11 +228,25 @@ public class JMpqEditor implements AutoCloseable {
             // Read and apply listfile
             listFile = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
             checkListfileEntries();
+            removeMissingFiles();
             // Operation succeeded and added a listfile so we can now write properly.
             canWrite = true;
         } catch (Exception ex) {
             log.warn("Could not apply external listfile: " + externalListfilePath.getAbsolutePath());
             canWrite = false;
+        }
+    }
+
+    /**
+     * Removes files from the listfile if they aren't
+     * actually in the map.
+     */
+    private void removeMissingFiles() {
+        Iterator<String> it = listFile.getFiles().iterator();
+        while(it.hasNext()) {
+            if(!hasFile(it.next())) {
+                it.remove();
+            }
         }
     }
 
