@@ -20,8 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
-import static systems.crigges.jmpq3.HashTable.calculateFileKey;
-
 /**
  * Created by Frotty on 06.03.2017.
  */
@@ -134,6 +132,22 @@ public class MpqTests {
             }
             mpqEditor.close(false, false, false);
         }
+    }
+
+    @Test
+    public void testExternalListfile() throws Exception {
+        File mpq = getFile("mpqs/normalMap.w3x");
+        File listFile = getFile("normalMap.w3x");
+        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+        if(mpqEditor.isCanWrite()) {
+            mpqEditor.deleteFile("(listfile)");
+        }
+        mpqEditor.setExternalListfile(listFile);
+        Assert.assertTrue(mpqEditor.getListfileEntries().contains("scripts\\war3map.j"));
+        Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.j"));
+        Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3u"));
+        Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
+        Assert.assertTrue(mpqEditor.getListfileEntries().contains("customFile.j"));
     }
 
     @Test

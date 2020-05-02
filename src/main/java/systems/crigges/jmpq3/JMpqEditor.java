@@ -220,7 +220,7 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @param externalListfilePath  Path to a file containing listfile entries
      */
-    public void addExternalListfile(File externalListfilePath) {
+    public void setExternalListfile(File externalListfilePath) {
         if(!externalListfilePath.exists()) {
             log.warn("External MPQ File: " + externalListfilePath.getAbsolutePath() +
                 " does not exist and will not be used");
@@ -283,16 +283,26 @@ public class JMpqEditor implements AutoCloseable {
     private void checkListfileEntries() throws JMpqException {
         int hiddenFiles = (hasFile("(attributes)") ? 2 : 1) + (hasFile("(signature)") ? 1 : 0);
         if (canWrite) {
-            if (listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
-                log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
-            }
-            for (String fileName : listFile.getFiles()) {
-                if (!hasFile(fileName)) {
-                    log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
-                }
-            }
-            listFile.getFileMap().entrySet().removeIf(file -> !hasFile(file.getValue()));
+            checkListfileCompleteness(hiddenFiles);
         }
+    }
+
+    /**
+     * Checks listfile for completeness against block table
+     *
+     * @param hiddenFiles  Num. hidden files
+     * @throws JMpqException    If retrieving valid blocks fails
+     */
+    private void checkListfileCompleteness(int hiddenFiles) throws JMpqException {
+        if (listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
+            log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
+        }
+        for (String fileName : listFile.getFiles()) {
+            if (!hasFile(fileName)) {
+                log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
+            }
+        }
+        listFile.getFileMap().entrySet().removeIf(file -> !hasFile(file.getValue()));
     }
 
     private void readBlockTable() throws IOException {
@@ -1103,5 +1113,14 @@ public class JMpqEditor implements AutoCloseable {
     public String toString() {
         return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
                 + ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
+    }
+
+    /**
+     * Returns an unmodifiable collection of all Listfile entries
+     *
+     * @return  Listfile entries
+     */
+    public Collection<String> getListfileEntries() {
+        return Collections.unmodifiableCollection(listFile.getFiles());
     }
 }
