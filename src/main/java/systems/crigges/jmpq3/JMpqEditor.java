@@ -120,6 +120,8 @@ public class JMpqEditor implements AutoCloseable {
 
     /** If write operations are supported on the archive. */
     private boolean canWrite;
+    /** If the archive was originally read-only */
+    private boolean openedAsReadOnly;
 
     /**
      * Creates a new MPQ editor for the MPQ file at the specified path.
@@ -138,6 +140,7 @@ public class JMpqEditor implements AutoCloseable {
     public JMpqEditor(Path mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
         // process open options
         canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
+        openedAsReadOnly = !canWrite;
         legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
         log.debug(mpqArchive.toString());
         try {
@@ -229,10 +232,11 @@ public class JMpqEditor implements AutoCloseable {
             checkListfileEntries();
             removeMissingFiles();
             // Operation succeeded and added a listfile so we can now write properly.
-            canWrite = true;
+            // (as long as it wasn't read-only to begin with)
+            canWrite = !openedAsReadOnly;
         } catch (Exception ex) {
             log.warn("Could not apply external listfile: " + externalListfilePath.getAbsolutePath());
-            canWrite = false;
+            // The value of canWrite is not changed intentionally
         }
     }
 
