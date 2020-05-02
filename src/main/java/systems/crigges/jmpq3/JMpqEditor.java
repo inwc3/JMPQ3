@@ -21,7 +21,6 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.*;
 import java.util.*;
-import java.util.function.Predicate;
 
 import static systems.crigges.jmpq3.MpqFile.*;
 
