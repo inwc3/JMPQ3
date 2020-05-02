@@ -143,11 +143,7 @@ public class MpqTests {
             mpqEditor.deleteFile("(listfile)");
         }
         mpqEditor.setExternalListfile(listFile);
-        Assert.assertTrue(mpqEditor.getListfileEntries().contains("scripts\\war3map.j"));
-        Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.j"));
-        Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3u"));
         Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
-        Assert.assertTrue(mpqEditor.getListfileEntries().contains("customFile.j"));
     }
 
     @Test
