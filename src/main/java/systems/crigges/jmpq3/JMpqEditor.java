@@ -224,12 +224,8 @@ public class JMpqEditor implements AutoCloseable {
             return;
         }
         try {
-            // Copy the user's file to our temp directory
-            File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
-            tempFile.deleteOnExit();
-            Files.copy(externalListfilePath.toPath(), tempFile.toPath());
             // Read and apply listfile
-            listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+            listFile = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
             checkListfileEntries();
             // Operation succeeded and added a listfile so we can now write properly.
             canWrite = true;
