@@ -209,6 +209,40 @@ public class JMpqEditor implements AutoCloseable {
         }
     }
 
+    /**
+     * For use when the MPQ is missing a (listfile)
+     * Adds this custom listfile into the MPQ and uses it
+     * for rebuilding purposes.
+     * If this is not a full listfile, the end result will be missing files.
+     *
+     * @param externalListfilePath  Path to a file containing listfile entries
+     */
+    public void addExternalListfile(File externalListfilePath) {
+        if(!externalListfilePath.exists()) {
+            log.warn("External MPQ File: " + externalListfilePath.getAbsolutePath() +
+                " does not exist and will not be used");
+            return;
+        }
+        try {
+            // Copy the user's file to our temp directory
+            File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
+            tempFile.deleteOnExit();
+            Files.copy(externalListfilePath.toPath(), tempFile.toPath());
+            // Read and apply listfile
+            listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+            checkListfileEntries();
+            // Operation succeeded and added a listfile so we can now write properly.
+            canWrite = true;
+        } catch (Exception ex) {
+            log.warn("Could not apply external listfile: " + externalListfilePath.getAbsolutePath());
+            canWrite = false;
+        }
+    }
+
+    /**
+     * Reads an internal Listfile name called (listfile)
+     * and applies that as the archive's listfile.
+     */
     private void readListFile() {
         if (hasFile("(listfile)")) {
             try {
@@ -216,24 +250,34 @@ public class JMpqEditor implements AutoCloseable {
                 tempFile.deleteOnExit();
                 extractFile("(listfile)", tempFile);
                 listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
-                int hiddenFiles = (hasFile("(attributes)") ? 2 : 1) + (hasFile("(signature)") ? 1 : 0);
-                if (canWrite) {
-                    if (listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
-                        log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
-                    }
-                    for (String fileName : listFile.getFiles()) {
-                        if (!hasFile(fileName)) {
-                            log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
-                        }
-                    }
-                    listFile.getFileMap().entrySet().removeIf(file -> !hasFile(file.getValue()));
-                }
+                checkListfileEntries();
             } catch (Exception e) {
                 log.warn("Extracting the mpq's listfile failed. It cannot be rebuild.", e);
             }
         } else {
             log.warn("The mpq doesn't contain a listfile. It cannot be rebuild.");
             canWrite = false;
+        }
+    }
+
+    /**
+     * Performs verification to see if we know all the blocks of this file.
+     * Prints warnings if we don't know all blocks.
+     *
+     * @throws JMpqException    If retrieving valid blocks fails
+     */
+    private void checkListfileEntries() throws JMpqException {
+        int hiddenFiles = (hasFile("(attributes)") ? 2 : 1) + (hasFile("(signature)") ? 1 : 0);
+        if (canWrite) {
+            if (listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
+                log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
+            }
+            for (String fileName : listFile.getFiles()) {
+                if (!hasFile(fileName)) {
+                    log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
+                }
+            }
+            listFile.getFileMap().entrySet().removeIf(file -> !hasFile(file.getValue()));
         }
     }
 
