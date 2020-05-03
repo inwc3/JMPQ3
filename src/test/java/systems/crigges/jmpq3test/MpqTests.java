@@ -137,7 +137,7 @@ public class MpqTests {
     @Test
     public void testExternalListfile() throws Exception {
         File mpq = getFile("mpqs/normalMap.w3x");
-        File listFile = getFile("normalMap.w3x");
+        File listFile = getFile("listfile.txt");
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
         if(mpqEditor.isCanWrite()) {
             mpqEditor.deleteFile("(listfile)");
