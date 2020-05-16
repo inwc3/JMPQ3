@@ -230,26 +230,12 @@ public class JMpqEditor implements AutoCloseable {
             // Read and apply listfile
             listFile = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
             checkListfileEntries();
-            removeMissingFiles();
             // Operation succeeded and added a listfile so we can now write properly.
             // (as long as it wasn't read-only to begin with)
             canWrite = !openedAsReadOnly;
         } catch (Exception ex) {
             log.warn("Could not apply external listfile: " + externalListfilePath.getAbsolutePath());
             // The value of canWrite is not changed intentionally
-        }
-    }
-
-    /**
-     * Removes files from the listfile if they aren't
-     * actually in the map.
-     */
-    private void removeMissingFiles() {
-        Iterator<String> it = listFile.getFiles().iterator();
-        while(it.hasNext()) {
-            if(!hasFile(it.next())) {
-                it.remove();
-            }
         }
     }
 
