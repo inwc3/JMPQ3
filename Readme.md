@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/inwc3/JMPQ3.svg?branch=master)](https://travis-ci.org/inwc3/JMPQ3) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master) [![codebeat badge](https://codebeat.co/badges/5ccfd060-8d57-4a51-9c6b-2688482f857e)](https://codebeat.co/projects/github-com-inwc3-jmpq3-master)
+[![CircleCI](https://circleci.com/gh/inwc3/JMPQ3.svg?style=svg)](https://circleci.com/gh/inwc3/JMPQ3) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master) [![codebeat badge](https://codebeat.co/badges/5ccfd060-8d57-4a51-9c6b-2688482f857e)](https://codebeat.co/projects/github-com-inwc3-jmpq3-master)
 # JMPQ3
 ## What?
 JMPQ3 is a small java library for accessing and modifying mpq (MoPaQ) archives. Common file endings are .mpq, .w3m, .w3x. 
