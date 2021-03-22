@@ -1,0 +1,6 @@
+scripts\war3map.j
+war3map.j
+war3map.w3u
+war3map.w3t
+war3map.w3a
+customFile.j
