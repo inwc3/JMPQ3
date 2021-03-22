@@ -120,8 +120,6 @@ public class JMpqEditor implements AutoCloseable {
 
     /** If write operations are supported on the archive. */
     private boolean canWrite;
-    /** If the archive was originally read-only */
-    private boolean openedAsReadOnly;
 
     /**
      * Creates a new MPQ editor for the MPQ file at the specified path.
@@ -140,7 +138,6 @@ public class JMpqEditor implements AutoCloseable {
     public JMpqEditor(Path mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
         // process open options
         canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
-        openedAsReadOnly = !canWrite;
         legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
         log.debug(mpqArchive.toString());
         try {
@@ -221,6 +218,10 @@ public class JMpqEditor implements AutoCloseable {
      * @param externalListfilePath  Path to a file containing listfile entries
      */
     public void setExternalListfile(File externalListfilePath) {
+        if(!canWrite) {
+            log.warn("The mpq was opened as readonly, setting an external listfile will have no effect.");
+            return;
+        }
         if(!externalListfilePath.exists()) {
             log.warn("External MPQ File: " + externalListfilePath.getAbsolutePath() +
                 " does not exist and will not be used");
@@ -232,7 +233,6 @@ public class JMpqEditor implements AutoCloseable {
             checkListfileEntries();
             // Operation succeeded and added a listfile so we can now write properly.
             // (as long as it wasn't read-only to begin with)
-            canWrite = !openedAsReadOnly;
         } catch (Exception ex) {
             log.warn("Could not apply external listfile: " + externalListfilePath.getAbsolutePath());
             // The value of canWrite is not changed intentionally
@@ -280,7 +280,7 @@ public class JMpqEditor implements AutoCloseable {
      * @throws JMpqException    If retrieving valid blocks fails
      */
     private void checkListfileCompleteness(int hiddenFiles) throws JMpqException {
-        if (listFile.getFiles().size() >= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
+        if (listFile.getFiles().size() <= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
             log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
         }
         for (String fileName : listFile.getFiles()) {
