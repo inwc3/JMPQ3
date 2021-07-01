@@ -26,7 +26,7 @@ public class CompressionUtil {
         if (recompress.recompress && recompress.useZopfli && zopfli == null) {
             zopfli = new ZopfliHelper();
         }
-        return recompress.useZopfli ? zopfli.deflate(temp, recompress.iterations) : JzLibHelper.deflate(temp);
+        return recompress.useZopfli ? zopfli.deflate(temp, recompress.iterations) : JzLibHelper.deflate(temp, recompress.recompress);
     }
 
     public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {

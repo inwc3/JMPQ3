@@ -23,8 +23,8 @@ public class JzLibHelper {
         return uncomp;
     }
 
-    public static byte[] deflate(byte[] bytes) {
-        tryCreateDeflater();
+    public static byte[] deflate(byte[] bytes, boolean strongDeflate) {
+        tryCreateDeflater(strongDeflate);
 
         byte[] comp = new byte[bytes.length];
         def.init(9);
@@ -46,10 +46,10 @@ public class JzLibHelper {
         return temp;
     }
 
-    private static void tryCreateDeflater() {
+    private static void tryCreateDeflater(boolean strongDeflate) {
         if (def == null) {
             try {
-                def = new Deflater(9);
+                def = new Deflater(strongDeflate ? 9 : 1);
             } catch (GZIPException e) {
                 throw new RuntimeException(e);
             }
