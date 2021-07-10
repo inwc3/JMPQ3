@@ -16,8 +16,8 @@ import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
 
 public class BlockTable {
-    private MappedByteBuffer blockMap;
-    private int size;
+    private final MappedByteBuffer blockMap;
+    private final int size;
 
     public BlockTable(ByteBuffer buf) throws IOException {
         this.size = (buf.capacity() / 16);
@@ -62,7 +62,7 @@ public class BlockTable {
     }
 
     public ArrayList<Block> getAllVaildBlocks() throws JMpqException {
-        ArrayList<Block> list = new ArrayList<Block>();
+        ArrayList<Block> list = new ArrayList<>();
         for (int i = 0; i < this.size; i++) {
             Block b = getBlockAtPos(i);
             if ((b.getFlags() & 0x80000000) == -2147483648) {

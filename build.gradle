@@ -12,7 +12,6 @@ group 'systems.crigges'
 version '1.8.1'
 
 repositories {
-    jcenter()
     mavenCentral()
     maven { url 'https://jitpack.io' }
 }
@@ -36,11 +35,10 @@ dependencies {
     testCompile 'org.testng:testng:6.13.1'
 }
 
-
-
 test {
     useTestNG()
 }
+
 jacocoTestReport {
     reports {
         xml.enabled true

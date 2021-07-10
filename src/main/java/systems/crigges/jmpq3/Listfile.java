@@ -8,7 +8,7 @@ import java.util.Scanner;
 import static systems.crigges.jmpq3.HashTable.calculateFileKey;
 
 public class Listfile {
-    private HashMap<Long, String> files = new HashMap<>();
+    private final HashMap<Long, String> files = new HashMap<>();
 
     public Listfile(byte[] file) {
         String list = new String(file, StandardCharsets.UTF_8);

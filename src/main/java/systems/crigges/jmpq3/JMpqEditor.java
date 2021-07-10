@@ -39,7 +39,7 @@ import static systems.crigges.jmpq3.MpqFile.*;
  * For platform independence the implementation is pure Java.
  */
 public class JMpqEditor implements AutoCloseable {
-    private Logger log = LoggerFactory.getLogger(this.getClass().getName());
+    private final Logger log = LoggerFactory.getLogger(this.getClass().getName());
     public static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
     public static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
 
@@ -67,7 +67,7 @@ public class JMpqEditor implements AutoCloseable {
     /** MPQ format version 0 forced compatibility is being used. */
     private final boolean legacyCompatibility;
     /** The fc. */
-    private FileChannel fc;
+    private final FileChannel fc;
     /** The header offset. */
     private long headerOffset = -1;
     /** The header size. */
@@ -95,7 +95,7 @@ public class JMpqEditor implements AutoCloseable {
     /** The list file. */
     private Listfile listFile = new Listfile();
     /** The internal filename. */
-    private IdentityHashMap<String, ByteBuffer> filenameToData = new IdentityHashMap<>();
+    private final IdentityHashMap<String, ByteBuffer> filenameToData = new IdentityHashMap<>();
     /** The files to add. */
     /** The keep header offset. */
     private boolean keepHeaderOffset = true;
@@ -163,7 +163,7 @@ public class JMpqEditor implements AutoCloseable {
 
             readAttributesFile();
         } catch (IOException e) {
-            throw new JMpqException(mpqArchive.toAbsolutePath().toString() + ": " + e.getMessage());
+            throw new JMpqException(mpqArchive.toAbsolutePath() + ": " + e.getMessage());
         }
     }
 
@@ -340,8 +340,10 @@ public class JMpqEditor implements AutoCloseable {
                 Files.createDirectory(path);
 
             File[] files = JMpqEditor.tempDir.listFiles();
-            for (File f : files) {
-                f.delete();
+            if (files != null) {
+                for (File f : files) {
+                    f.delete();
+                }
             }
         } catch (IOException e) {
             try {
@@ -409,7 +411,7 @@ public class JMpqEditor implements AutoCloseable {
 
                 // add header offset and align
                 filePos += (probe.getInt(0) & 0xFFFFFFFFL);
-                filePos &= ~(0x200 - 1);
+                filePos &= -0x200;
             }
         }
 
@@ -521,8 +523,9 @@ public class JMpqEditor implements AutoCloseable {
         }
         if (hasFile("(listfile)") && listFile != null) {
             for (String s : listFile.getFiles()) {
-                log.debug("extracting: " + (dest.separatorChar == '\\' ? s : s.replace("\\", dest.separator)));
-                File temp = new File(dest.getAbsolutePath() + dest.separator + (dest.separatorChar == '\\' ? s : s.replace("\\", dest.separator)));
+                String normalized = File.separatorChar == '\\' ? s : s.replace("\\", File.separator);
+                log.debug("extracting: " + normalized);
+                File temp = new File(dest.getAbsolutePath() + File.separator + normalized);
                 temp.getParentFile().mkdirs();
                 if (hasFile(s)) {
                     // Prevent exception due to nonexistent listfile entries
@@ -534,10 +537,10 @@ public class JMpqEditor implements AutoCloseable {
                 }
             }
             if (hasFile("(attributes)")) {
-                File temp = new File(dest.getAbsolutePath() + dest.separator + "(attributes)");
+                File temp = new File(dest.getAbsolutePath() + File.separator + "(attributes)");
                 extractFile("(attributes)", temp);
             }
-            File temp = new File(dest.getAbsolutePath() + dest.separator + "(listfile)");
+            File temp = new File(dest.getAbsolutePath() + File.separator + "(listfile)");
             extractFile("(listfile)", temp);
         } else {
             ArrayList<Block> blocks = blockTable.getAllVaildBlocks();
@@ -552,7 +555,7 @@ public class JMpqEditor implements AutoCloseable {
                     readFully(buf, fc);
                     buf.rewind();
                     MpqFile f = new MpqFile(buf, b, discBlockSize, "");
-                    f.extractToFile(new File(dest.getAbsolutePath() + dest.separator + i));
+                    f.extractToFile(new File(dest.getAbsolutePath() + File.separator + i));
                     i++;
                 }
             } catch (IOException e) {
@@ -853,16 +856,9 @@ public class JMpqEditor implements AutoCloseable {
 
         newFormatVersion = formatVersion;
         switch (newFormatVersion) {
-            case 0:
-                newHeaderSize = 32;
-                break;
-            case 1:
-                newHeaderSize = 44;
-                break;
-            case 2:
-            case 3:
-                newHeaderSize = 208;
-                break;
+            case 0 -> newHeaderSize = 32;
+            case 1 -> newHeaderSize = 44;
+            case 2, 3 -> newHeaderSize = 208;
         }
         newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
         newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
@@ -910,7 +906,7 @@ public class JMpqEditor implements AutoCloseable {
             ByteBuffer newFile = filenameToData.get(newFileName);
             newFiles.add(newFileName);
             newFileMap.put(newFileName, newFile);
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2);
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
@@ -922,7 +918,7 @@ public class JMpqEditor implements AutoCloseable {
             // Add listfile
             newFiles.add("(listfile)");
             byte[] listfileArr = listFile.asByteArray();
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2);
+            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
             MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
@@ -966,7 +962,7 @@ public class JMpqEditor implements AutoCloseable {
         newBlockSize = newBlocks.size();
 
         newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
-        newBlockPos = newHashPos + newHashSize * 16;
+        newBlockPos = newHashPos + newHashSize * 16L;
 
         // generate new hash table
         final int hashSize = newHashSize;
@@ -992,10 +988,10 @@ public class JMpqEditor implements AutoCloseable {
         currentPos = writeChannel.position();
 
         // write out block table
-        MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16);
+        MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
         blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
         BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
-        currentPos += newBlockSize * 16;
+        currentPos += newBlockSize * 16L;
 
         newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
 

@@ -98,7 +98,7 @@ class Huffman {
     }
 
     private Node nodes = null;
-    private TreeMap<Integer, Node> sorted2 = new TreeMap<>();
+    private final TreeMap<Integer, Node> sorted2 = new TreeMap<>();
 
     private Node root = null;
 

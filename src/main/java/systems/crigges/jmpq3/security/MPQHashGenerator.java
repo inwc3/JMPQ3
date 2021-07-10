@@ -25,7 +25,7 @@ public class MPQHashGenerator {
     /**
      * The cryptographic lookup table used to generate the hash.
      */
-    private CryptographicLUT lut;
+    private final CryptographicLUT lut;
 
     /**
      * Constructs a hash generator using the given cryptographic LUT.

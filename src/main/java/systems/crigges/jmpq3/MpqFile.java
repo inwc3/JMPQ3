@@ -19,18 +19,18 @@ public class MpqFile {
     public static final int DELETED = 0x02000000;
     public static final int IMPLODED = 0x00000100;
 
-    private ByteBuffer buf;
-    private Block block;
-    private String name;
+    private final ByteBuffer buf;
+    private final Block block;
+    private final String name;
     private boolean isEncrypted = false;
-    private int sectorSize;
-    private int compressedSize;
-    private int normalSize;
-    private int flags;
-    private int sectorCount;
+    private final int sectorSize;
+    private final int compressedSize;
+    private final int normalSize;
+    private final int flags;
+    private final int sectorCount;
     private int baseKey;
 
-    public MpqFile(ByteBuffer buf, Block b, int sectorSize, String name) throws IOException, JMpqException {
+    public MpqFile(ByteBuffer buf, Block b, int sectorSize, String name) throws IOException {
         this.buf = buf;
         this.block = b;
         this.sectorSize = sectorSize;
@@ -159,7 +159,7 @@ public class MpqFile {
             int end = sotBuffer.getInt();
             int finalSize = 0;
             for (int i = 0; i < sectorCount - 1; i++) {
-                buf.position(0 + start);
+                buf.position(start);
                 byte[] arr = getSectorAsByteArray(buf, end - start);
                 if (isEncrypted) {
                     new MPQEncryption(baseKey + i, true).processSingle(ByteBuffer.wrap(arr));
@@ -243,7 +243,7 @@ public class MpqFile {
             int start = sotBuffer.getInt();
             int end = sotBuffer.getInt();
             for (int i = 0; i < sectorCount - 1; i++) {
-                buf.position(0 + start);
+                buf.position(start);
                 byte[] arr = getSectorAsByteArray(buf, end - start);
                 if (isEncrypted) {
                     new MPQEncryption(baseKey + i, true).processSingle(ByteBuffer.wrap(arr));

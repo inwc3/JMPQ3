@@ -6,7 +6,7 @@ import java.nio.ByteOrder;
 public class ADPCM {
     private static final byte INITIAL_ADPCM_STEP_INDEX = 0x2C;
     
-    private static final byte CHANGE_TABLE[] =
+    private static final byte[] CHANGE_TABLE =
         {
                 -1, 0, -1, 4, -1, 2, -1, 6,
                 -1, 1, -1, 5, -1, 3, -1, 7,
@@ -14,7 +14,7 @@ public class ADPCM {
                 -1, 2, -1, 4, -1, 6, -1, 8
         };
 
-    private static final short STEP_TABLE[] =
+    private static final short[] STEP_TABLE =
         {
                 7,     8,     9,    10,     11,    12,    13,    14,
                16,    17,    19,    21,     23,    25,    28,    31,
@@ -66,29 +66,28 @@ public class ADPCM {
 
             if ((op & 0x80) != 0) {
                 switch (op & 0x7F) {
-                // write current value
-                case 0:
-                    if (chan.stepIndex != 0)
-                        chan.stepIndex -= 1;
-                    out.putShort(chan.sampleValue);
-                    
-                    current = (current + 1) % channeln;
-                    break;
-                // increment period
-                case 1:
-                    chan.stepIndex += 8;
-                    if (chan.stepIndex >= STEP_TABLE.length)
-                        chan.stepIndex = (byte) (STEP_TABLE.length - 1);
-                    break;
-                // skip channel (unused?)
-                case 2:
-                    current = (current + 1) % channeln;
-                    break;
-                // all other values (unused?)
-                default:
-                    chan.stepIndex -= 8;
-                    if (chan.stepIndex < 0)
-                        chan.stepIndex = 0;
+                    // write current value
+                    case 0 -> {
+                        if (chan.stepIndex != 0)
+                            chan.stepIndex -= 1;
+                        out.putShort(chan.sampleValue);
+                        current = (current + 1) % channeln;
+                    }
+                    // increment period
+                    case 1 -> {
+                        chan.stepIndex += 8;
+                        if (chan.stepIndex >= STEP_TABLE.length)
+                            chan.stepIndex = (byte) (STEP_TABLE.length - 1);
+                    }
+                    // skip channel (unused?)
+                    case 2 -> current = (current + 1) % channeln;
+
+                    // all other values (unused?)
+                    default -> {
+                        chan.stepIndex -= 8;
+                        if (chan.stepIndex < 0)
+                            chan.stepIndex = 0;
+                    }
                 }
             } else {
                 // adjust value

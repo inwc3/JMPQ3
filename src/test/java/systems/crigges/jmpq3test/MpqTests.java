@@ -25,7 +25,7 @@ import java.util.*;
  */
 public class MpqTests {
     private static File[] files;
-    private Logger log = LoggerFactory.getLogger(this.getClass().getName());
+    private final Logger log = LoggerFactory.getLogger(this.getClass().getName());
 
     private static File[] getMpqs() throws IOException {
         File[] files = new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile())
