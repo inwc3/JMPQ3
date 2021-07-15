@@ -16,26 +16,15 @@ import static java.nio.file.StandardOpenOption.*;
 import static systems.crigges.jmpq3.MpqFile.*;
 
 public class BlockTable {
-    private final MappedByteBuffer blockMap;
+    private final ByteBuffer blockMap;
     private final int size;
 
     public BlockTable(ByteBuffer buf) throws IOException {
         this.size = (buf.capacity() / 16);
-        
-        final ByteBuffer decryptedBuffer = ByteBuffer.allocate(buf.capacity());
-        new MPQEncryption(-326913117, true).processFinal(buf, decryptedBuffer);
-        byte[] decrypted = decryptedBuffer.array();
 
-        File block = File.createTempFile("block", "jmpq", JMpqEditor.tempDir);
-        block.deleteOnExit();
-
-        try (FileOutputStream blockStream = new FileOutputStream(block); FileChannel blockChannel = FileChannel.open(block.toPath(), CREATE, WRITE, READ)) {
-
-            blockStream.write(decrypted);
-            blockStream.flush();
-            this.blockMap = blockChannel.map(FileChannel.MapMode.READ_WRITE, 0L, blockChannel.size());
-            this.blockMap.order(ByteOrder.LITTLE_ENDIAN);
-        }
+        blockMap = ByteBuffer.allocate(buf.capacity());
+        new MPQEncryption(-326913117, true).processFinal(buf, blockMap);
+        this.blockMap.order(ByteOrder.LITTLE_ENDIAN);
     }
 
     public static void writeNewBlocktable(ArrayList<Block> blocks, int size, MappedByteBuffer buf) {
@@ -78,7 +67,7 @@ public class BlockTable {
         private int normalSize;
         private int flags;
 
-        public Block(MappedByteBuffer buf) throws IOException {
+        public Block(ByteBuffer buf) throws IOException {
             this.filePos = buf.getInt();
             this.compressedSize = buf.getInt();
             this.normalSize = buf.getInt();
