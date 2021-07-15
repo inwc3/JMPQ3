@@ -16,6 +16,10 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
+jacoco {
+    toolVersion = "0.45.0"
+}
+
 task dist(type: Jar) {
     from files(sourceSets.main.output.classesDirs)
     from files(sourceSets.main.output.resourcesDir)
@@ -27,12 +31,12 @@ dist.archiveName = "${jar.baseName}.${jar.extension}"
 
 dependencies {
     compile 'com.jcraft:jzlib:1.1.3'
-    compile group: 'org.apache.commons', name: 'commons-compress', version: '1.20'
+    compile group: 'org.apache.commons', name: 'commons-compress', version: '1.21'
     implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
-    compile group: 'org.tukaani', name: 'xz', version: '1.8'
-    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+    compile group: 'org.tukaani', name: 'xz', version: '1.9'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31'
     compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-    testCompile 'org.testng:testng:6.13.1'
+    testCompile 'org.testng:testng:7.4.0'
 }
 
 test {
