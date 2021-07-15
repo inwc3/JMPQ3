@@ -8,8 +8,11 @@ plugins {
 group 'systems.crigges'
 version '1.8.1'
 
-sourceCompatibility = 15
-targetCompatibility = 11
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(15))
+    }
+}
 
 repositories {
     mavenCentral()
@@ -23,7 +26,7 @@ jacoco {
 task dist(type: Jar) {
     from files(sourceSets.main.output.classesDirs)
     from files(sourceSets.main.output.resourcesDir)
-    from { configurations.compile.collect { zipTree(it) } }
+    from { configurations.runtimeClasspath.collect { zipTree(it) } }
 }
 dist.dependsOn classes
 
