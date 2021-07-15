@@ -17,7 +17,7 @@ repositories {
 }
 
 jacoco {
-    toolVersion = "0.45.0"
+    toolVersion = "0.8.7"
 }
 
 task dist(type: Jar) {
