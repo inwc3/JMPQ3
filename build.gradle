@@ -8,6 +8,9 @@ plugins {
 group 'systems.crigges'
 version '1.8.1'
 
+sourceCompatibility = 15
+targetCompatibility = 11
+
 repositories {
     mavenCentral()
     maven { url 'https://jitpack.io' }
