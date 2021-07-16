@@ -69,7 +69,7 @@ public class JMpqEditor implements AutoCloseable {
     /** The fc. */
     private final FileChannel fc;
     /** The header offset. */
-    private long headerOffset = -1;
+    private long headerOffset;
     /** The header size. */
     private int headerSize;
     /** The archive size. */
@@ -204,7 +204,7 @@ public class JMpqEditor implements AutoCloseable {
         if (hasFile("(attributes)")) {
             try {
                 attributes = new AttributesFile(extractFileAsBytes("(attributes)"));
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
     }
