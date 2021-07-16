@@ -246,10 +246,7 @@ public class JMpqEditor implements AutoCloseable {
     private void readListFile() {
         if (hasFile("(listfile)")) {
             try {
-                File tempFile = File.createTempFile("list", "file", JMpqEditor.tempDir);
-                tempFile.deleteOnExit();
-                extractFile("(listfile)", tempFile);
-                listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
+                listFile = new Listfile(extractFileAsBytes("(listfile)"));
                 checkListfileEntries();
             } catch (Exception e) {
                 log.warn("Extracting the mpq's listfile failed. It cannot be rebuild.", e);
@@ -768,11 +765,9 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @param name       of the file inside the mpq
      * @param file       the file
-     * @param backupFile if true the editors creates a copy of the file to add, so
-     *                   further changes won't affect the resulting mpq
      */
-    public void insertFile(String name, File file, boolean backupFile) throws IOException, IllegalArgumentException {
-        insertFile(name, file, backupFile, false);
+    public void insertFile(String name, File file) throws IOException, IllegalArgumentException {
+        insertFile(name, file, false);
     }
 
     /**
@@ -780,12 +775,10 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @param name       of the file inside the mpq
      * @param file       the file
-     * @param backupFile if true the editors creates a copy of the file to add, so
-     *                   further changes won't affect the resulting mpq
      * @param override   whether to override an existing file with the same name
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File file, boolean backupFile, boolean override) throws IOException, IllegalArgumentException {
+    public void insertFile(String name, File file, boolean override) throws IOException, IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
@@ -798,16 +791,8 @@ public class JMpqEditor implements AutoCloseable {
 
         try{
             listFile.addFile(name);
-            if (backupFile) {
-                File temp = File.createTempFile("jmpq", "backup", JMpqEditor.tempDir);
-                temp.deleteOnExit();
-                Files.copy(file.toPath(), temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(temp.toPath()));
-                filenameToData.put(name, data);
-            } else {
-                ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
-                filenameToData.put(name, data);
-            }
+            ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
+            filenameToData.put(name, data);
         } catch (IOException e) {
             throw new JMpqException(e);
         }

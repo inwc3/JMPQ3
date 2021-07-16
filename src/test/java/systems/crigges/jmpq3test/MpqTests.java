@@ -146,7 +146,7 @@ public class MpqTests {
         Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
     }
 
-    @Test
+    @Test(enabled = false)
     public void testRecompressBuild() throws IOException {
         File[] mpqs = getMpqs();
         RecompressOptions options = new RecompressOptions(true);
@@ -308,7 +308,7 @@ public class MpqTests {
             File file = getFile(filename);
             hashBefore = TestHelper.md5(mpq);
             bytes = Files.readAllBytes(file.toPath());
-            mpqEditor.insertFile(filename, getFile(filename), false);
+            mpqEditor.insertFile(filename, getFile(filename));
         }
 
         try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
@@ -323,9 +323,9 @@ public class MpqTests {
             }
             Assert.assertFalse(mpqEditor.hasFile(filename));
             String hashBefore = TestHelper.md5(mpq);
-            mpqEditor.insertFile(filename, getFile(filename), true);
+            mpqEditor.insertFile(filename, getFile(filename));
             mpqEditor.deleteFile(filename);
-            mpqEditor.insertFile(filename, getFile(filename), false);
+            mpqEditor.insertFile(filename, getFile(filename));
             mpqEditor.close();
 
             String hashAfter = TestHelper.md5(mpq);
@@ -343,8 +343,8 @@ public class MpqTests {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
-            mpqEditor.insertFile(filename, getFile(filename), false, true);
-            mpqEditor.insertFile(filename, getFile(filename), false, true);
+            mpqEditor.insertFile(filename, getFile(filename), true);
+            mpqEditor.insertFile(filename, getFile(filename), true);
 
             mpqEditor.deleteFile(filename);
         }
@@ -411,7 +411,7 @@ public class MpqTests {
         for (File file : files) {
             String inName = file.toString().substring(file.toString().lastIndexOf(resourceDir) + resourceDir.length() + File.separator.length());
 
-            mpqEditor.insertFile(inName, file, false);
+            mpqEditor.insertFile(inName, file);
         }
 
         mpqEditor.close();
