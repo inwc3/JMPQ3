@@ -63,3 +63,12 @@ artifacts {
     archives sourcesJar
 }
 
+project.afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+            }
+        }
+    }
+}
