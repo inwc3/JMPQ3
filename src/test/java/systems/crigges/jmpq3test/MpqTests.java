@@ -146,7 +146,7 @@ public class MpqTests {
         Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
     }
 
-    @Test(enabled = false)
+    @Test
     public void testRecompressBuild() throws IOException {
         File[] mpqs = getMpqs();
         RecompressOptions options = new RecompressOptions(true);
@@ -354,7 +354,7 @@ public class MpqTests {
         }
     }
 
-    @Test(enabled = false)
+    @Test
     public void testRemoveHeaderoffset() throws IOException {
         File[] mpqs = getMpqs();
         File mpq = null;
