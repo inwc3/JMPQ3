@@ -64,61 +64,115 @@ public class JMpqEditor implements AutoCloseable {
 
     public static File tempDir;
     private AttributesFile attributes;
-    /** MPQ format version 0 forced compatibility is being used. */
+    /**
+     * MPQ format version 0 forced compatibility is being used.
+     */
     private final boolean legacyCompatibility;
-    /** The fc. */
+    /**
+     * The fc.
+     */
     private final FileChannel fc;
-    /** The header offset. */
+    /**
+     * The header offset.
+     */
     private long headerOffset;
-    /** The header size. */
+    /**
+     * The header size.
+     */
     private int headerSize;
-    /** The archive size. */
+    /**
+     * The archive size.
+     */
     private long archiveSize;
-    /** The format version. */
+    /**
+     * The format version.
+     */
     private int formatVersion;
-    /** The sector size shift */
+    /**
+     * The sector size shift
+     */
     private int sectorSizeShift;
-    /** The disc block size. */
+    /**
+     * The disc block size.
+     */
     private int discBlockSize;
-    /** The hash table file position. */
+    /**
+     * The hash table file position.
+     */
     private long hashPos;
-    /** The block table file position. */
+    /**
+     * The block table file position.
+     */
     private long blockPos;
-    /** The hash size. */
+    /**
+     * The hash size.
+     */
     private int hashSize;
-    /** The block size. */
+    /**
+     * The block size.
+     */
     private int blockSize;
-    /** The hash table. */
+    /**
+     * The hash table.
+     */
     private HashTable hashTable;
-    /** The block table. */
+    /**
+     * The block table.
+     */
     private BlockTable blockTable;
-    /** The list file. */
+    /**
+     * The list file.
+     */
     private Listfile listFile = new Listfile();
-    /** The internal filename. */
+    /**
+     * The internal filename.
+     */
     private final IdentityHashMap<String, ByteBuffer> filenameToData = new IdentityHashMap<>();
     /** The files to add. */
-    /** The keep header offset. */
+    /**
+     * The keep header offset.
+     */
     private boolean keepHeaderOffset = true;
-    /** The new header size. */
+    /**
+     * The new header size.
+     */
     private int newHeaderSize;
-    /** The new archive size. */
+    /**
+     * The new archive size.
+     */
     private long newArchiveSize;
-    /** The new format version. */
+    /**
+     * The new format version.
+     */
     private int newFormatVersion;
-    /** The new disc block size. */
+    /**
+     * The new disc block size.
+     */
     private int newSectorSizeShift;
-    /** The new disc block size. */
+    /**
+     * The new disc block size.
+     */
     private int newDiscBlockSize;
-    /** The new hash pos. */
+    /**
+     * The new hash pos.
+     */
     private long newHashPos;
-    /** The new block pos. */
+    /**
+     * The new block pos.
+     */
     private long newBlockPos;
-    /** The new hash size. */
+    /**
+     * The new hash size.
+     */
     private int newHashSize;
-    /** The new block size. */
+    /**
+     * The new block size.
+     */
     private int newBlockSize;
 
-    /** If write operations are supported on the archive. */
+    /**
+     * If write operations are supported on the archive.
+     */
     private boolean canWrite;
 
     /**
@@ -144,7 +198,7 @@ public class JMpqEditor implements AutoCloseable {
             setupTempDir();
 
             final OpenOption[] fcOptions = canWrite ? new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE}
-                    : new OpenOption[]{StandardOpenOption.READ};
+                : new OpenOption[]{StandardOpenOption.READ};
             fc = FileChannel.open(mpqArchive, fcOptions);
 
             headerOffset = searchHeader();
@@ -215,14 +269,14 @@ public class JMpqEditor implements AutoCloseable {
      * for rebuilding purposes.
      * If this is not a full listfile, the end result will be missing files.
      *
-     * @param externalListfilePath  Path to a file containing listfile entries
+     * @param externalListfilePath Path to a file containing listfile entries
      */
     public void setExternalListfile(File externalListfilePath) {
-        if(!canWrite) {
+        if (!canWrite) {
             log.warn("The mpq was opened as readonly, setting an external listfile will have no effect.");
             return;
         }
-        if(!externalListfilePath.exists()) {
+        if (!externalListfilePath.exists()) {
             log.warn("External MPQ File: " + externalListfilePath.getAbsolutePath() +
                 " does not exist and will not be used");
             return;
@@ -261,7 +315,7 @@ public class JMpqEditor implements AutoCloseable {
      * Performs verification to see if we know all the blocks of this file.
      * Prints warnings if we don't know all blocks.
      *
-     * @throws JMpqException    If retrieving valid blocks fails
+     * @throws JMpqException If retrieving valid blocks fails
      */
     private void checkListfileEntries() throws JMpqException {
         int hiddenFiles = (hasFile("(attributes)") ? 2 : 1) + (hasFile("(signature)") ? 1 : 0);
@@ -273,8 +327,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Checks listfile for completeness against block table
      *
-     * @param hiddenFiles  Num. hidden files
-     * @throws JMpqException    If retrieving valid blocks fails
+     * @param hiddenFiles Num. hidden files
+     * @throws JMpqException If retrieving valid blocks fails
      */
     private void checkListfileCompleteness(int hiddenFiles) throws JMpqException {
         if (listFile.getFiles().size() <= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
@@ -689,7 +743,7 @@ public class JMpqEditor implements AutoCloseable {
 
         return new MpqFile(buffer, block, discBlockSize, "");
     }
-    
+
     /**
      * Gets the mpq files.
      *
@@ -732,10 +786,10 @@ public class JMpqEditor implements AutoCloseable {
      * @param name     of the file inside the mpq
      * @param input    the input byte array
      * @param override whether to override an existing file with the same name
-     * @throws IllegalArgumentException    when the mpq has filename and not override
+     * @throws IllegalArgumentException when the mpq has filename and not override
      */
     public void insertByteArray(String name, byte[] input, boolean override) throws NonWritableChannelException,
-            IllegalArgumentException {
+        IllegalArgumentException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
@@ -754,17 +808,17 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @param name  of the file inside the mpq
      * @param input the input byte array
-     * @throws IllegalArgumentException    when the mpq has filename
+     * @throws IllegalArgumentException when the mpq has filename
      */
     public void insertByteArray(String name, byte[] input) throws NonWritableChannelException, IllegalArgumentException {
         insertByteArray(name, input, false);
     }
-    
+
     /**
      * Inserts the specified file into the mpq once you close the editor.
      *
-     * @param name       of the file inside the mpq
-     * @param file       the file
+     * @param name of the file inside the mpq
+     * @param file the file
      */
     public void insertFile(String name, File file) throws IOException, IllegalArgumentException {
         insertFile(name, file, false);
@@ -773,9 +827,9 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * Inserts the specified file into the mpq once you close the editor.
      *
-     * @param name       of the file inside the mpq
-     * @param file       the file
-     * @param override   whether to override an existing file with the same name
+     * @param name     of the file inside the mpq
+     * @param file     the file
+     * @param override whether to override an existing file with the same name
      * @throws JMpqException if file is not found or access errors occur
      */
     public void insertFile(String name, File file, boolean override) throws IOException, IllegalArgumentException {
@@ -789,7 +843,7 @@ public class JMpqEditor implements AutoCloseable {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
-        try{
+        try {
             listFile.addFile(name);
             ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
             filenameToData.put(name, data);
@@ -841,9 +895,16 @@ public class JMpqEditor implements AutoCloseable {
 
         newFormatVersion = formatVersion;
         switch (newFormatVersion) {
-            case 0 -> newHeaderSize = 32;
-            case 1 -> newHeaderSize = 44;
-            case 2, 3 -> newHeaderSize = 208;
+            case 0:
+                newHeaderSize = 32;
+                break;
+            case 1:
+                newHeaderSize = 44;
+                break;
+            case 2:
+            case 3:
+                newHeaderSize = 208;
+                break;
         }
         newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
         newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
@@ -1060,8 +1121,8 @@ public class JMpqEditor implements AutoCloseable {
     public void setKeepHeaderOffset(boolean keepHeaderOffset) {
         this.keepHeaderOffset = keepHeaderOffset;
     }
-    
-    
+
+
     /**
      * Get block table block table.
      *
@@ -1070,7 +1131,7 @@ public class JMpqEditor implements AutoCloseable {
     public BlockTable getBlockTable() {
         return blockTable;
     }
-    
+
     /**
      * (non-Javadoc)
      *
@@ -1079,13 +1140,13 @@ public class JMpqEditor implements AutoCloseable {
     @Override
     public String toString() {
         return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
-                + ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
+            + ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
     }
 
     /**
      * Returns an unmodifiable collection of all Listfile entries
      *
-     * @return  Listfile entries
+     * @return Listfile entries
      */
     public Collection<String> getListfileEntries() {
         return Collections.unmodifiableCollection(listFile.getFiles());
