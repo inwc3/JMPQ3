@@ -13,14 +13,14 @@ import java.util.HashMap;
 import java.util.zip.CRC32;
 
 public class AttributesFile {
-    private Logger log = LoggerFactory.getLogger(this.getClass().getName());
-    private byte[] file;
+    private final Logger log = LoggerFactory.getLogger(this.getClass().getName());
+    private final byte[] file;
 
-    private int[] crc32;
-    private long[] timestamps;
-    private HashMap<String, Integer> refMap = new HashMap<>();
+    private final int[] crc32;
+    private final long[] timestamps;
+    private final HashMap<String, Integer> refMap = new HashMap<>();
 
-    private CRC32 crcGen = new CRC32();
+    private final CRC32 crcGen = new CRC32();
 
     public AttributesFile(int entries) {
         this.file = new byte[8 + 12 * entries];
@@ -90,14 +90,14 @@ public class AttributesFile {
     }
 
     public int getEntry(String name) {
-            return refMap.containsKey(name) ? refMap.get(name) : -1;
+            return refMap.getOrDefault(name, -1);
     }
 
     private int getCrc32(File file) throws IOException {
         return getCrc32(Files.readAllBytes(file.toPath()));
     }
 
-    public int getCrc32(byte[] bytes) throws JMpqException {
+    public int getCrc32(byte[] bytes) {
         crcGen.reset();
         crcGen.update(bytes);
         return (int) crcGen.getValue();

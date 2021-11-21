@@ -15,5 +15,5 @@ public enum MPQOpenOption {
      * files to be opened. Behaviour is undefined if used on archive files that
      * are formated using version 1 or newer.
      */
-    FORCE_V0;
+    FORCE_V0
 }

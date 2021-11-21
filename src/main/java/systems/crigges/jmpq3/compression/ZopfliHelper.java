@@ -2,7 +2,6 @@ package systems.crigges.jmpq3.compression;
 
 
 import ru.eustas.zopfli.Options;
-import systems.crigges.jmpq3.DebugHelper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

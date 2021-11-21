@@ -38,7 +38,7 @@ public class HashTable {
     /**
      * Hash table bucket array.
      */
-    private Bucket[] buckets;
+    private final Bucket[] buckets;
 
     /**
      * The number of mappings in the hash table.
@@ -66,8 +66,7 @@ public class HashTable {
     }
 
     public void readFromBuffer(ByteBuffer src) {
-        for (int i = 0; i < buckets.length; i++) {
-            final Bucket entry = buckets[i];
+        for (final Bucket entry : buckets) {
             entry.readFromBuffer(src);
 
             // count active mappings
@@ -79,8 +78,8 @@ public class HashTable {
     }
 
     public void writeToBuffer(ByteBuffer dest) {
-        for (int i = 0; i < buckets.length; i++) {
-            buckets[i].writeToBuffer(dest);
+        for (Bucket bucket : buckets) {
+            bucket.writeToBuffer(dest);
         }
     }
 
@@ -226,10 +225,12 @@ public class HashTable {
         }
 
         // setup entry
-        newEntry.key = fid.key;
-        newEntry.locale = fid.locale;
-        newEntry.blockTableIndex = blockIndex;
-        mappingNumber++;
+        if (newEntry != null) {
+            newEntry.key = fid.key;
+            newEntry.locale = fid.locale;
+            newEntry.blockTableIndex = blockIndex;
+            mappingNumber++;
+        }
     }
 
     /**

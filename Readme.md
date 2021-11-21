@@ -1,5 +1,7 @@
 [![CircleCI](https://circleci.com/gh/inwc3/JMPQ3.svg?style=svg)](https://circleci.com/gh/inwc3/JMPQ3) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master) [![codebeat badge](https://codebeat.co/badges/5ccfd060-8d57-4a51-9c6b-2688482f857e)](https://codebeat.co/projects/github-com-inwc3-jmpq3-master)
 # JMPQ3
+**Note: Since Version `1.9.0` jmpq3 requires Java 11 or higher**
+
 ## What?
 JMPQ3 is a small java library for accessing and modifying mpq (MoPaQ) archives. Common file endings are .mpq, .w3m, .w3x. 
 
@@ -49,7 +51,6 @@ try (JMpqEditor e = new JMpqEditor(new File("my.mpq"), MPQOpenOption.FORCE_V0)){
 ```
 
 ### Known issues:
-* To work around https://bugs.openjdk.java.net/browse/JDK-4724038 jmpq creates tempfiles for every object in the mpq
 * Unsupported decompression algorithms: sparse and bzip2
 * Only supported compression is zlib/zopfli
 * JMPQ doesn't build a valid (attributes) file for now. (which seems to be fine for warcraft3)

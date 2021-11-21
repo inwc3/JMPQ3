@@ -45,11 +45,11 @@ public class Exploder {
     private static final int PK_LITERAL_SIZE_VARIABLE = 1; // Use variable size literal bytes, used for text
 
     private static long TRUNCATE_VALUE(long value, int bits)  {
-        return ((value) & ((1 << (bits)) - 1));
+        return ((value) & ((1L << (bits)) - 1));
     }
 
     // Bit sequences used to represent literal bytes
-    private static short[] ChCode =
+    private static final short[] ChCode =
             {
                     0x0490, 0x0FE0, 0x07E0, 0x0BE0, 0x03E0, 0x0DE0, 0x05E0, 0x09E0,
                     0x01E0, 0x00B8, 0x0062, 0x0EE0, 0x06E0, 0x0022, 0x0AE0, 0x02E0,
@@ -86,7 +86,7 @@ public class Exploder {
             };
 
     // Lengths of bit sequences used to represent literal bytes
-    private static byte[] ChBits =
+    private static final byte[] ChBits =
             {
                     0x0B, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x08, 0x07, 0x0C, 0x0C, 0x07, 0x0C, 0x0C,
                     0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C, 0x0D, 0x0C, 0x0C, 0x0C, 0x0C, 0x0C,
@@ -107,32 +107,32 @@ public class Exploder {
             };
 
     // Bit sequences used to represent the base values of the copy length
-    private static byte[] LenCode =
+    private static final byte[] LenCode =
             {
                     0x05, 0x03, 0x01, 0x06, 0x0A, 0x02, 0x0C, 0x14, 0x04, 0x18, 0x08, 0x30, 0x10, 0x20, 0x40, 0x00
             };
 
     // Lengths of bit sequences used to represent the base values of the copy length
-    private static byte[] LenBits =
+    private static final byte[] LenBits =
             {
                     0x03, 0x02, 0x03, 0x03, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x07, 0x07
             };
 
     // Base values used for the copy length
-    private static short[] LenBase =
+    private static final short[] LenBase =
             {
                     0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009,
                     0x000A, 0x000C, 0x0010, 0x0018, 0x0028, 0x0048, 0x0088, 0x0108
             };
 
     // Lengths of extra bits used to represent the copy length
-    private static byte[] ExLenBits =
+    private static final byte[] ExLenBits =
             {
                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
             };
 
     // Bit sequences used to represent the most significant 6 bits of the copy offset
-    private static byte[] OffsCode =
+    private static final byte[] OffsCode =
             {
                     0x03, 0x0D, 0x05, 0x19, 0x09, 0x11, 0x01, 0x3E, 0x1E, 0x2E, 0x0E, 0x36, 0x16, 0x26, 0x06, 0x3A,
                     0x1A, 0x2A, 0x0A, 0x32, 0x12, 0x22, 0x42, 0x02, 0x7C, 0x3C, 0x5C, 0x1C, 0x6C, 0x2C, 0x4C, 0x0C,
@@ -142,7 +142,7 @@ public class Exploder {
             };
 
     // Lengths of bit sequences used to represent the most significant 6 bits of the copy offset
-    private static byte[] OffsBits =
+    private static final byte[] OffsBits =
             {
                     0x02, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
                     0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
@@ -205,7 +205,7 @@ public class Exploder {
                     throw new IllegalArgumentException("PK_ERR_INCOMPLETE_INPUT: Incomplete input");
                 }
 
-                nBitBuffer += (pInBuffer[pInPos++] & 0xFF) << nBits;
+                nBitBuffer += (long) (pInBuffer[pInPos++] & 0xFF) << nBits;
                 nBits += 8;
             }
 
@@ -246,7 +246,7 @@ public class Exploder {
                         throw new IllegalArgumentException("PK_ERR_INCOMPLETE_INPUT: Incomplete input");
                     }
 
-                    nBitBuffer += (pInBuffer[pInPos++] & 0xFF) << nBits;
+                    nBitBuffer += (long) (pInBuffer[pInPos++] & 0xFF) << nBits;
                     nBits += 8;
                 }
 

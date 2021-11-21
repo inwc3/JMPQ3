@@ -5,8 +5,6 @@ package systems.crigges.jmpq3;
 
 import java.io.IOException;
 
-// TODO: Auto-generated Javadoc
-
 /**
  * The Class JMpqException.
  */

@@ -26,7 +26,7 @@ final class CryptographicLUT {
      *            old seed.
      * @return new seed.
      */
-    private static final int updateSeed(int seed) {
+    private static int updateSeed(int seed) {
         return (seed * 125 + 3) % 0x2AAAAB;
     }
 
