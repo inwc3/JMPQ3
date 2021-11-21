@@ -28,6 +28,6 @@ jobs:
 
       - run: ./gradlew clean check
 
-      - run: ./gradlew test dist
+      - run: ./gradlew test
 
       - run: ./gradlew jacocoTestReport coveralls
