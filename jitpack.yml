@@ -1,4 +1,4 @@
 jdk:
   - openjdk11
 install:
-  - ./gradlew dist publishToMavenLocal
+  - ./gradlew dist
