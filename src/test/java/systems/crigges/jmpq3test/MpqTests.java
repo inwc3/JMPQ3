@@ -367,17 +367,20 @@ public class MpqTests {
         Assert.assertNotNull(mpq);
 
         log.info(mpq.getName());
-        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        mpqEditor.setKeepHeaderOffset(false);
-        mpqEditor.close();
-        byte[] bytes = new byte[4];
-        new FileInputStream(mpq).read(bytes);
-        ByteBuffer order = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
-        Assert.assertEquals(order.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.setKeepHeaderOffset(false);
+            mpqEditor.close();
+            byte[] bytes = new byte[4];
+            try(FileInputStream fis = new FileInputStream(mpq)) {
+                fis.read(bytes);
+            }
+            ByteBuffer order = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+            Assert.assertEquals(order.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
+        }
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(mpqEditor.isCanWrite());
+        }
 
-        mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        Assert.assertTrue(mpqEditor.isCanWrite());
-        mpqEditor.close();
     }
 
     private Set<File> getFiles(File dir) {
