@@ -7,12 +7,13 @@ plugins {
 }
 
 group 'systems.crigges'
-version '1.9.1'
+version '1.9.4'
 
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(11))
     }
+    withSourcesJar()
 }
 
 repositories {
@@ -23,15 +24,6 @@ repositories {
 jacoco {
     toolVersion = "0.8.7"
 }
-
-task dist(type: Jar) {
-    from files(sourceSets.main.output.classesDirs)
-    from files(sourceSets.main.output.resourcesDir)
-    from { configurations.runtimeClasspath.collect { zipTree(it) } }
-}
-dist.dependsOn classes
-
-dist.archiveName = "${jar.baseName}.${jar.extension}"
 
 dependencies {
     implementation 'com.jcraft:jzlib:1.1.3'
@@ -53,18 +45,17 @@ jacocoTestReport {
     }
 }
 
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
 artifacts {
     archives jar
     archives sourcesJar
 }
+
 publishing {
     publications {
         maven(MavenPublication) {
+            groupId = 'inwc3'
+            artifactId = 'JMPQ3'
+
             from components.java
         }
     }
