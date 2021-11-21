@@ -96,7 +96,7 @@ public class ADPCM {
                 short stepbase = STEP_TABLE[chan.stepIndex];
                 short step = (short) (stepbase >>> stepshift);
                 for (int i = 0; i < 6; i += 1) {
-                    if ((op & 1 << i) != 0)
+                    if (((op & 0xff) & 1 << i) != 0)
                         step += stepbase >> i;
                 }
 

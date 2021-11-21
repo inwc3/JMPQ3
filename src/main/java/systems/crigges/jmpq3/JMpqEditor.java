@@ -885,175 +885,175 @@ public class JMpqEditor implements AutoCloseable {
         }
         File temp = File.createTempFile("jmpq", "temp", JMpqEditor.tempDir);
         temp.deleteOnExit();
-        FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ);
+        try (FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ)) {
 
-        ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
-        fc.position((keepHeaderOffset ? 0 : headerOffset));
-        readFully(headerReader, fc);
-        headerReader.rewind();
-        writeChannel.write(headerReader);
+            ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
+            fc.position((keepHeaderOffset ? 0 : headerOffset));
+            readFully(headerReader, fc);
+            headerReader.rewind();
+            writeChannel.write(headerReader);
 
-        newFormatVersion = formatVersion;
-        switch (newFormatVersion) {
-            case 0:
-                newHeaderSize = 32;
-                break;
-            case 1:
-                newHeaderSize = 44;
-                break;
-            case 2:
-            case 3:
-                newHeaderSize = 208;
-                break;
-        }
-        newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
-        newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
-        calcNewTableSize();
-
-        ArrayList<Block> newBlocks = new ArrayList<>();
-        ArrayList<String> newFiles = new ArrayList<>();
-        ArrayList<String> existingFiles = new ArrayList<>(listFile.getFiles());
-
-        sortListfileEntries(existingFiles);
-
-        log.debug("Sorted blocks");
-        if (attributes != null) {
-            attributes.setNames(existingFiles);
-        }
-        long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
-
-        for (String fileName : filenameToData.keySet()) {
-            existingFiles.remove(fileName);
-        }
-
-        for (String existingName : existingFiles) {
-            if (options.recompress && !existingName.endsWith(".wav")) {
-                ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
-                filenameToData.put(existingName, extracted);
-            } else {
-                newFiles.add(existingName);
-                int pos = hashTable.getBlockIndexOfFile(existingName);
-                Block b = blockTable.getBlockAtPos(pos);
-                ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-                fc.position(headerOffset + b.getFilePos());
-                readFully(buf, fc);
-                buf.rewind();
-                MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
-                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
-                newBlocks.add(newBlock);
-                f.writeFileAndBlock(newBlock, fileWriter);
-                currentPos += b.getCompressedSize();
+            newFormatVersion = formatVersion;
+            switch (newFormatVersion) {
+                case 0:
+                    newHeaderSize = 32;
+                    break;
+                case 1:
+                    newHeaderSize = 44;
+                    break;
+                case 2:
+                case 3:
+                    newHeaderSize = 208;
+                    break;
             }
+            newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
+            newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
+            calcNewTableSize();
+
+            ArrayList<Block> newBlocks = new ArrayList<>();
+            ArrayList<String> newFiles = new ArrayList<>();
+            ArrayList<String> existingFiles = new ArrayList<>(listFile.getFiles());
+
+            sortListfileEntries(existingFiles);
+
+            log.debug("Sorted blocks");
+            if (attributes != null) {
+                attributes.setNames(existingFiles);
+            }
+            long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
+
+            for (String fileName : filenameToData.keySet()) {
+                existingFiles.remove(fileName);
+            }
+
+            for (String existingName : existingFiles) {
+                if (options.recompress && !existingName.endsWith(".wav")) {
+                    ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
+                    filenameToData.put(existingName, extracted);
+                } else {
+                    newFiles.add(existingName);
+                    int pos = hashTable.getBlockIndexOfFile(existingName);
+                    Block b = blockTable.getBlockAtPos(pos);
+                    ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+                    fc.position(headerOffset + b.getFilePos());
+                    readFully(buf, fc);
+                    buf.rewind();
+                    MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
+                    MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+                    Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
+                    newBlocks.add(newBlock);
+                    f.writeFileAndBlock(newBlock, fileWriter);
+                    currentPos += b.getCompressedSize();
+                }
+            }
+            log.debug("Added existing files");
+            HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
+            for (String newFileName : filenameToData.keySet()) {
+                ByteBuffer newFile = filenameToData.get(newFileName);
+                newFiles.add(newFileName);
+                newFileMap.put(newFileName, newFile);
+                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
+                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
+                newBlocks.add(newBlock);
+                MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
+                currentPos += newBlock.getCompressedSize();
+                log.debug("Added file " + newFileName);
+            }
+            log.debug("Added new files");
+            if (buildListfile && !listFile.getFiles().isEmpty()) {
+                // Add listfile
+                newFiles.add("(listfile)");
+                byte[] listfileArr = listFile.asByteArray();
+                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
+                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+                newBlocks.add(newBlock);
+                MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
+                currentPos += newBlock.getCompressedSize();
+                log.debug("Added listfile");
+            }
+            // if (attributes != null) {
+            // newFiles.add("(attributes)");
+            // // Only generate attributes file when there has been one before
+            // AttributesFile attributesFile = new AttributesFile(newFiles.size());
+            // // Generate new values
+            // long time = (new Date().getTime() + 11644473600000L) * 10000L;
+            // for (int i = 0; i < newFiles.size() - 1; i++) {
+            // String name = newFiles.get(i);
+            // int entry = attributes.getEntry(name);
+            // if (newFileMap.containsKey(name)){
+            // // new file
+            // attributesFile.setEntry(i, getCrc32(newFileMap.get(name)), time);
+            // }else if (entry >= 0) {
+            // // has timestamp
+            // attributesFile.setEntry(i, getCrc32(name),
+            // attributes.getTimestamps()[entry]);
+            // } else {
+            // // doesnt have timestamp
+            // attributesFile.setEntry(i, getCrc32(name), time);
+            // }
+            // }
+            // // newfiles don't contain the attributes file yet, hence -1
+            // System.out.println("added attributes");
+            // byte[] attrArr = attributesFile.buildFile();
+            // fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos,
+            // attrArr.length);
+            // newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS |
+            // COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+            // newBlocks.add(newBlock);
+            // MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter,
+            // newDiscBlockSize, "(attributes)");
+            // currentPos += newBlock.getCompressedSize();
+            // }
+
+            newBlockSize = newBlocks.size();
+
+            newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
+            newBlockPos = newHashPos + newHashSize * 16L;
+
+            // generate new hash table
+            final int hashSize = newHashSize;
+            HashTable hashTable = new HashTable(hashSize);
+            int blockIndex = 0;
+            for (String file : newFiles) {
+                hashTable.setFileBlockIndex(file, HashTable.DEFAULT_LOCALE, blockIndex++);
+            }
+
+            // prepare hashtable for writing
+            final ByteBuffer hashTableBuffer = ByteBuffer.allocate(hashSize * 16);
+            hashTable.writeToBuffer(hashTableBuffer);
+            hashTableBuffer.flip();
+
+            // encrypt hash table
+            final MPQEncryption encrypt = new MPQEncryption(KEY_HASH_TABLE, false);
+            encrypt.processSingle(hashTableBuffer);
+            hashTableBuffer.flip();
+
+            // write out hash table
+            writeChannel.position(currentPos);
+            writeFully(hashTableBuffer, writeChannel);
+            currentPos = writeChannel.position();
+
+            // write out block table
+            MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
+            blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
+            BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
+            currentPos += newBlockSize * 16L;
+
+            newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
+
+            MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, (keepHeaderOffset ? headerOffset : 0L) + 4L, headerSize + 4L);
+            headerWriter.order(ByteOrder.LITTLE_ENDIAN);
+            writeHeader(headerWriter);
+
+            MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
+            tempReader.position(0);
+
+            fc.position(0);
+            fc.write(tempReader);
+            fc.truncate(fc.position());
+
+            fc.close();
         }
-        log.debug("Added existing files");
-        HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
-        for (String newFileName : filenameToData.keySet()) {
-            ByteBuffer newFile = filenameToData.get(newFileName);
-            newFiles.add(newFileName);
-            newFileMap.put(newFileName, newFile);
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
-            Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
-            newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
-            currentPos += newBlock.getCompressedSize();
-            log.debug("Added file " + newFileName);
-        }
-        log.debug("Added new files");
-        if (buildListfile && !listFile.getFiles().isEmpty()) {
-            // Add listfile
-            newFiles.add("(listfile)");
-            byte[] listfileArr = listFile.asByteArray();
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
-            Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-            newBlocks.add(newBlock);
-            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
-            currentPos += newBlock.getCompressedSize();
-            log.debug("Added listfile");
-        }
-        // if (attributes != null) {
-        // newFiles.add("(attributes)");
-        // // Only generate attributes file when there has been one before
-        // AttributesFile attributesFile = new AttributesFile(newFiles.size());
-        // // Generate new values
-        // long time = (new Date().getTime() + 11644473600000L) * 10000L;
-        // for (int i = 0; i < newFiles.size() - 1; i++) {
-        // String name = newFiles.get(i);
-        // int entry = attributes.getEntry(name);
-        // if (newFileMap.containsKey(name)){
-        // // new file
-        // attributesFile.setEntry(i, getCrc32(newFileMap.get(name)), time);
-        // }else if (entry >= 0) {
-        // // has timestamp
-        // attributesFile.setEntry(i, getCrc32(name),
-        // attributes.getTimestamps()[entry]);
-        // } else {
-        // // doesnt have timestamp
-        // attributesFile.setEntry(i, getCrc32(name), time);
-        // }
-        // }
-        // // newfiles don't contain the attributes file yet, hence -1
-        // System.out.println("added attributes");
-        // byte[] attrArr = attributesFile.buildFile();
-        // fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos,
-        // attrArr.length);
-        // newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS |
-        // COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-        // newBlocks.add(newBlock);
-        // MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter,
-        // newDiscBlockSize, "(attributes)");
-        // currentPos += newBlock.getCompressedSize();
-        // }
-
-        newBlockSize = newBlocks.size();
-
-        newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
-        newBlockPos = newHashPos + newHashSize * 16L;
-
-        // generate new hash table
-        final int hashSize = newHashSize;
-        HashTable hashTable = new HashTable(hashSize);
-        int blockIndex = 0;
-        for (String file : newFiles) {
-            hashTable.setFileBlockIndex(file, HashTable.DEFAULT_LOCALE, blockIndex++);
-        }
-
-        // prepare hashtable for writing
-        final ByteBuffer hashTableBuffer = ByteBuffer.allocate(hashSize * 16);
-        hashTable.writeToBuffer(hashTableBuffer);
-        hashTableBuffer.flip();
-
-        // encrypt hash table
-        final MPQEncryption encrypt = new MPQEncryption(KEY_HASH_TABLE, false);
-        encrypt.processSingle(hashTableBuffer);
-        hashTableBuffer.flip();
-
-        // write out hash table
-        writeChannel.position(currentPos);
-        writeFully(hashTableBuffer, writeChannel);
-        currentPos = writeChannel.position();
-
-        // write out block table
-        MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
-        blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
-        BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
-        currentPos += newBlockSize * 16L;
-
-        newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
-
-        MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, (keepHeaderOffset ? headerOffset : 0) + 4, headerSize + 4);
-        headerWriter.order(ByteOrder.LITTLE_ENDIAN);
-        writeHeader(headerWriter);
-
-        MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
-        tempReader.position(0);
-
-        fc.position(0);
-        fc.write(tempReader);
-        fc.truncate(fc.position());
-
-        fc.close();
-        writeChannel.close();
 
         t = System.nanoTime() - t;
         log.debug("Rebuild complete. Took: " + (t / 1000000) + "ms");
