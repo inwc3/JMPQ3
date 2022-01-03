@@ -550,19 +550,6 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
-     * Calc new table size.
-     */
-    private void calcNewTableSize() {
-        int target = listFile.getFiles().size() + 2;
-        int current = 2;
-        while (current < target) {
-            current *= 2;
-        }
-        newHashSize = current * 2;
-        newBlockSize = listFile.getFiles().size() + 2;
-    }
-
-    /**
      * Extract all files.
      *
      * @param dest the dest
@@ -861,7 +848,7 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     public void close(boolean buildListfile, boolean buildAttributes, boolean recompress) throws IOException {
-        close(buildListfile, buildAttributes, new RecompressOptions(recompress));
+        close(buildListfile, buildAttributes, new RecompressOptions(recompress), 0);
     }
 
     /**
@@ -869,7 +856,7 @@ public class JMpqEditor implements AutoCloseable {
      * @param buildAttributes whether or not to add a (attributes) file to this mpq
      * @throws IOException
      */
-    public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options) throws IOException {
+    public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options, int fakeFiles) throws IOException {
         // only rebuild if allowed
         if (!canWrite || !fc.isOpen()) {
             fc.close();
@@ -908,7 +895,6 @@ public class JMpqEditor implements AutoCloseable {
             }
             newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
             newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
-            calcNewTableSize();
 
             ArrayList<Block> newBlocks = new ArrayList<>();
             ArrayList<String> newFiles = new ArrayList<>();
@@ -1005,7 +991,35 @@ public class JMpqEditor implements AutoCloseable {
             // currentPos += newBlock.getCompressedSize();
             // }
 
-            newBlockSize = newBlocks.size();
+            if (fakeFiles > 0) {
+                for (int i = 0; i < 10000; i++) {
+                    Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
+                    Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() - 4, block.getNormalSize() - 2, block.getFlags());
+                    newBlocks.add(newBlock);
+
+                    newFiles.add("assetDupe" + i);
+                }
+
+                for (int i = 0; i < 10000; i++) {
+                    int size = (int) (Math.random() * currentPos);
+                    Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, Math.random() > 0.5 ? EXISTS : EXISTS | COMPRESSED);
+                    newBlocks.add(newBlock);
+                    newFiles.add("assetFake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
+                }
+
+                long seed = System.nanoTime();
+                Collections.shuffle(newFiles, new Random(seed));
+                Collections.shuffle(newBlocks, new Random(seed));
+            }
+
+
+            int target = newFiles.size() + 2;
+            int current = 2;
+            while (current < target) {
+                current *= 2;
+            }
+            newHashSize = current * 2;
+            newBlockSize = newFiles.size() + 2;
 
             newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
             newBlockPos = newHashPos + newHashSize * 16L;
@@ -1036,6 +1050,7 @@ public class JMpqEditor implements AutoCloseable {
             // write out block table
             MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
             blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
+
             BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
             currentPos += newBlockSize * 16L;
 
