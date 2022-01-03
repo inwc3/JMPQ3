@@ -992,7 +992,7 @@ public class JMpqEditor implements AutoCloseable {
             // }
 
             if (fakeFiles > 0) {
-                for (int i = 0; i < 10000; i++) {
+                for (int i = 0; i < fakeFiles; i++) {
                     Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
                     Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() - 4, block.getNormalSize() - 2, block.getFlags());
                     newBlocks.add(newBlock);
@@ -1000,7 +1000,7 @@ public class JMpqEditor implements AutoCloseable {
                     newFiles.add("assetDupe" + i);
                 }
 
-                for (int i = 0; i < 10000; i++) {
+                for (int i = 0; i < fakeFiles; i++) {
                     int size = (int) (Math.random() * currentPos);
                     Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, Math.random() > 0.5 ? EXISTS : EXISTS | COMPRESSED);
                     newBlocks.add(newBlock);
