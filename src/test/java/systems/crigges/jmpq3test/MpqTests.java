@@ -130,7 +130,7 @@ public class MpqTests {
             if (mpqEditor.isCanWrite()) {
                 mpqEditor.deleteFile("(listfile)");
             }
-            mpqEditor.close(false, false, false);
+            mpqEditor.close(false, false, new RecompressOptions(true), 1000);
         }
     }
 
@@ -156,7 +156,7 @@ public class MpqTests {
             JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
             long length = mpq.length();
             options.useZopfli = !options.useZopfli;
-            mpqEditor.close(true, true, options);
+            mpqEditor.close(true, true, options, 0);
             long newlength = mpq.length();
             System.out.println("Size win: " + (length - newlength));
         }
