@@ -994,17 +994,30 @@ public class JMpqEditor implements AutoCloseable {
             if (fakeFiles > 0) {
                 for (int i = 0; i < fakeFiles; i++) {
                     Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
-                    Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() - 4, block.getNormalSize() - 2, block.getFlags());
+                    int offset = (int) (Math.random() * 10 - 5);
+                    if (offset == 0) {
+                        offset = 4;
+                    }
+                    Block newBlock = new Block(block.getFilePos() + offset, block.getCompressedSize(), block.getNormalSize(), block.getFlags());
                     newBlocks.add(newBlock);
 
-                    newFiles.add("assetDupe" + i);
+                    newFiles.add("w3p_assetoff" + i);
+                }
+
+                for (int i = 0; i < fakeFiles; i++) {
+                    Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
+                    int offset = (int) (Math.random() * 10 - 5);
+                    Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() + offset, block.getNormalSize() + offset, block.getFlags());
+                    newBlocks.add(newBlock);
+
+                    newFiles.add("w3p_assetdupe" + i);
                 }
 
                 for (int i = 0; i < fakeFiles; i++) {
                     int size = (int) (Math.random() * currentPos);
                     Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, Math.random() > 0.5 ? EXISTS : EXISTS | COMPRESSED);
                     newBlocks.add(newBlock);
-                    newFiles.add("assetFake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
+                    newFiles.add("w3p_assetfake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
                 }
 
                 long seed = System.nanoTime();
