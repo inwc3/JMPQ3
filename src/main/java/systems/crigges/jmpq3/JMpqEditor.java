@@ -856,7 +856,7 @@ public class JMpqEditor implements AutoCloseable {
      * @param buildAttributes whether or not to add a (attributes) file to this mpq
      * @throws IOException
      */
-    public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options, int fakeFiles) throws IOException {
+    public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options, int fakeFilesCount) throws IOException {
         // only rebuild if allowed
         if (!canWrite || !fc.isOpen()) {
             fc.close();
@@ -991,34 +991,43 @@ public class JMpqEditor implements AutoCloseable {
             // currentPos += newBlock.getCompressedSize();
             // }
 
-            if (fakeFiles > 0) {
-                for (int i = 0; i < fakeFiles; i++) {
-                    Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
-                    int offset = (int) (Math.random() * 10 - 5);
-                    if (offset == 0) {
-                        offset = 4;
+            if (fakeFilesCount > 0) {
+                ArrayList<Block> fakeBlocks = new ArrayList<>();
+                ArrayList<String> fakeFiles = new ArrayList<>();
+
+                if (newBlocks.size() > 0) {
+                    for (int i = 0; i < fakeFilesCount; i++) {
+                        Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
+                        int offset = (int) (Math.random() * 10 - 5);
+                        if (offset == 0) {
+                            offset = 4;
+                        }
+                        Block newBlock = new Block(block.getFilePos() + offset, block.getCompressedSize(), block.getNormalSize(), block.getFlags());
+                        fakeBlocks.add(newBlock);
+
+                        fakeFiles.add("w3p_assetoff" + i);
                     }
-                    Block newBlock = new Block(block.getFilePos() + offset, block.getCompressedSize(), block.getNormalSize(), block.getFlags());
-                    newBlocks.add(newBlock);
 
-                    newFiles.add("w3p_assetoff" + i);
+                    for (int i = 0; i < fakeFilesCount; i++) {
+                        Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
+                        int offset = (int) (Math.random() * 10 - 5);
+                        Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() + offset, block.getNormalSize() + offset, block.getFlags());
+                        fakeBlocks.add(newBlock);
+
+                        fakeFiles.add("w3p_assetdupe" + i);
+                    }
                 }
 
-                for (int i = 0; i < fakeFiles; i++) {
-                    Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
-                    int offset = (int) (Math.random() * 10 - 5);
-                    Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() + offset, block.getNormalSize() + offset, block.getFlags());
-                    newBlocks.add(newBlock);
 
-                    newFiles.add("w3p_assetdupe" + i);
-                }
-
-                for (int i = 0; i < fakeFiles; i++) {
+                for (int i = 0; i < fakeFilesCount; i++) {
                     int size = (int) (Math.random() * currentPos);
                     Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, Math.random() > 0.5 ? EXISTS : EXISTS | COMPRESSED);
-                    newBlocks.add(newBlock);
-                    newFiles.add("w3p_assetfake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
+                    fakeBlocks.add(newBlock);
+                    fakeFiles.add("w3p_assetfake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
                 }
+
+                newBlocks.addAll(fakeBlocks);
+                newFiles.addAll(fakeFiles);
 
                 long seed = System.nanoTime();
                 Collections.shuffle(newFiles, new Random(seed));
