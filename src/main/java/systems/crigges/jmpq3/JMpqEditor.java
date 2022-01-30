@@ -1021,7 +1021,27 @@ public class JMpqEditor implements AutoCloseable {
 
                 for (int i = 0; i < fakeFilesCount; i++) {
                     int size = (int) (Math.random() * currentPos);
-                    Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, Math.random() > 0.5 ? EXISTS : EXISTS | COMPRESSED);
+                    int rand = (int)(Math.random() * 5);
+                    int flag = EXISTS;
+                    switch (rand) {
+                        case 0:
+                            flag |= COMPRESSED;
+                            break;
+                        case 1:
+                            flag |= ENCRYPTED;
+                            break;
+                        case 2:
+                            flag |= ENCRYPTED | ADJUSTED_ENCRYPTED;
+                            break;
+                        case 3:
+                            flag |= ENCRYPTED | COMPRESSED;
+                            break;
+                        case 4:
+                            flag |= ENCRYPTED | ADJUSTED_ENCRYPTED | COMPRESSED;
+                            break;
+                    }
+
+                    Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, flag);
                     fakeBlocks.add(newBlock);
                     fakeFiles.add("w3p_assetfake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
                 }
