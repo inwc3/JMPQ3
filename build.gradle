@@ -11,7 +11,7 @@ version '1.9.6'
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(8))
     }
     withSourcesJar()
 }
