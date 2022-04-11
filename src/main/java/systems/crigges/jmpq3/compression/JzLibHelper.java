@@ -25,11 +25,17 @@ public class JzLibHelper {
         return uncomp;
     }
 
-    public static byte[] deflate(byte[] bytes, boolean strongDeflate) {
-        tryCreateDeflater(strongDeflate ? 9 : 1);
+    static byte[] comp = new byte[1024];
 
-        byte[] comp = new byte[bytes.length];
-        def.init(9);
+    public static byte[] deflate(byte[] bytes, boolean strongDeflate) {
+        boolean created = tryCreateDeflater(strongDeflate ? 9 : 1);
+
+        if (comp.length < bytes.length) {
+            comp = new byte[bytes.length];
+        }
+        if (!created) {
+            def.init(strongDeflate ? 9 : 1);
+        }
         def.setInput(bytes);
         def.setOutput(comp);
         while ((def.total_in != bytes.length) && (def.total_out < bytes.length)) {
@@ -48,14 +54,16 @@ public class JzLibHelper {
         return temp;
     }
 
-    private static void tryCreateDeflater(int lvl) {
+    private static boolean tryCreateDeflater(int lvl) {
         if (def == null || lvl != defLvl) {
             try {
                 def = new Deflater(lvl);
                 defLvl = lvl;
+                return true;
             } catch (GZIPException e) {
                 throw new RuntimeException(e);
             }
         }
+        return false;
     }
 }
