@@ -1,5 +1,6 @@
 package systems.crigges.jmpq3;
 
+import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import systems.crigges.jmpq3.BlockTable.Block;
@@ -14,11 +15,8 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
+import java.nio.channels.*;
 import java.nio.channels.FileChannel.MapMode;
-import java.nio.channels.NonWritableChannelException;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.nio.file.*;
 import java.util.*;
 
@@ -71,7 +69,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * The fc.
      */
-    private final FileChannel fc;
+    private final SeekableByteChannel fc;
     /**
      * The header offset.
      */
@@ -201,24 +199,43 @@ public class JMpqEditor implements AutoCloseable {
                 : new OpenOption[]{StandardOpenOption.READ};
             fc = FileChannel.open(mpqArchive, fcOptions);
 
-            headerOffset = searchHeader();
-
-            readHeaderSize();
-
-            readHeader();
-
-            checkLegacyCompat();
-
-            readHashTable();
-
-            readBlockTable();
-
-            readListFile();
-
-            readAttributesFile();
+            readMpq();
         } catch (IOException e) {
             throw new JMpqException(mpqArchive.toAbsolutePath() + ": " + e.getMessage());
         }
+    }
+
+    public JMpqEditor(byte[] mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
+        // process open options
+        canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
+        legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
+        try {
+            setupTempDir();
+
+            fc = new SeekableInMemoryByteChannel(mpqArchive);
+
+            readMpq();
+        } catch (IOException e) {
+            throw new JMpqException("Byte array mpq: " + e.getMessage());
+        }
+    }
+
+    private void readMpq() throws IOException {
+        headerOffset = searchHeader();
+
+        readHeaderSize();
+
+        readHeader();
+
+        checkLegacyCompat();
+
+        readHashTable();
+
+        readBlockTable();
+
+        readListFile();
+
+        readAttributesFile();
     }
 
     /**

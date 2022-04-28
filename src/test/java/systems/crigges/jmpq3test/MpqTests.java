@@ -192,6 +192,23 @@ public class MpqTests {
     }
 
     @Test
+    public void testExtractScriptFileBA() throws IOException {
+        File[] mpqs = getMpqs();
+        for (File mpq : mpqs) {
+            log.info("test extract script: " + mpq.getName());
+            JMpqEditor mpqEditor = new JMpqEditor(Files.readAllBytes(mpq.toPath()), MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
+            File temp = File.createTempFile("war3mapj", "extracted", JMpqEditor.tempDir);
+            temp.deleteOnExit();
+            if (mpqEditor.hasFile("war3map.j")) {
+                String extractedFile = mpqEditor.extractFileAsString("war3map.j").replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+                String existingFile = new String(Files.readAllBytes(getFile("war3map.j").toPath())).replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n");
+                Assert.assertEquals(existingFile, extractedFile);
+            }
+            mpqEditor.close();
+        }
+    }
+
+    @Test
     public void testInsertDeleteRegularFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
