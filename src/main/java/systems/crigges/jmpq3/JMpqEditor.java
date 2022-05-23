@@ -172,6 +172,7 @@ public class JMpqEditor implements AutoCloseable {
      * If write operations are supported on the archive.
      */
     private boolean canWrite;
+    private byte[] outputByteArray;
 
     /**
      * Creates a new MPQ editor for the MPQ file at the specified path.
@@ -553,7 +554,7 @@ public class JMpqEditor implements AutoCloseable {
      *
      * @param buffer the buffer
      */
-    private void writeHeader(MappedByteBuffer buffer) {
+    private void writeHeader(ByteBuffer buffer) {
         buffer.putInt(newHeaderSize);
         buffer.putInt((int) newArchiveSize);
         buffer.putShort((short) newFormatVersion);
@@ -562,7 +563,7 @@ public class JMpqEditor implements AutoCloseable {
         buffer.putInt((int) newBlockPos);
         buffer.putInt(newHashSize);
         buffer.putInt(newBlockSize);
-
+        buffer.putLong(0L);
         // TODO add full write support for versions above 1
     }
 
@@ -875,6 +876,8 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options, int fakeFilesCount) throws IOException {
         // only rebuild if allowed
+        boolean isInMemory = fc instanceof SeekableInMemoryByteChannel;
+
         if (!canWrite || !fc.isOpen()) {
             fc.close();
             log.debug("closed readonly mpq.");
@@ -887,15 +890,23 @@ public class JMpqEditor implements AutoCloseable {
             fc.close();
             return;
         }
-        File temp = File.createTempFile("jmpq", "temp", JMpqEditor.tempDir);
-        temp.deleteOnExit();
-        try (FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ)) {
+        File temp = null;
+
+        SeekableInMemoryByteChannel outputChannel = null;
+        if (!isInMemory) {
+            temp = File.createTempFile("jmpq", "temp", JMpqEditor.tempDir);
+            temp.deleteOnExit();
+        } else {
+            outputChannel = new SeekableInMemoryByteChannel(new byte[32 * 32 * 32]);
+        }
+
+        try (SeekableByteChannel writeChannel = isInMemory ? outputChannel : FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ)) {
 
             ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
             fc.position((keepHeaderOffset ? 0 : headerOffset));
             readFully(headerReader, fc);
             headerReader.rewind();
-            writeChannel.write(headerReader);
+            writeFully(headerReader, writeChannel);
 
             newFormatVersion = formatVersion;
             switch (newFormatVersion) {
@@ -942,10 +953,22 @@ public class JMpqEditor implements AutoCloseable {
                     readFully(buf, fc);
                     buf.rewind();
                     MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
-                    MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+                    ByteBuffer fileWriter;
+                    if (writeChannel instanceof FileChannel) {
+                        fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
+                    } else {
+                        fileWriter = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+                    }
+
                     Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
                     newBlocks.add(newBlock);
                     f.writeFileAndBlock(newBlock, fileWriter);
+                    if (!(writeChannel instanceof FileChannel)) {
+                        writeChannel.position(currentPos);
+                        fileWriter.rewind();
+                        writeFully(fileWriter, writeChannel);
+                    }
+
                     currentPos += b.getCompressedSize();
                 }
             }
@@ -955,10 +978,20 @@ public class JMpqEditor implements AutoCloseable {
                 ByteBuffer newFile = filenameToData.get(newFileName);
                 newFiles.add(newFileName);
                 newFileMap.put(newFileName, newFile);
-                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
+                ByteBuffer fileWriter;
+                if (writeChannel instanceof FileChannel) {
+                    fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
+                } else {
+                    fileWriter = ByteBuffer.allocate(newFile.limit() * 2).order(ByteOrder.LITTLE_ENDIAN);
+                }
                 Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
                 newBlocks.add(newBlock);
                 MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
+                if (!(writeChannel instanceof FileChannel)) {
+                    writeChannel.position(currentPos);
+                    fileWriter.rewind();
+                    writeFully(fileWriter, writeChannel);
+                }
                 currentPos += newBlock.getCompressedSize();
                 log.debug("Added file " + newFileName);
             }
@@ -967,10 +1000,20 @@ public class JMpqEditor implements AutoCloseable {
                 // Add listfile
                 newFiles.add("(listfile)");
                 byte[] listfileArr = listFile.asByteArray();
-                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
+                ByteBuffer fileWriter;
+                if (writeChannel instanceof FileChannel) {
+                    fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
+                } else {
+                    fileWriter = ByteBuffer.allocate(listfileArr.length * 2).order(ByteOrder.LITTLE_ENDIAN);
+                }
                 Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
                 newBlocks.add(newBlock);
                 MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
+                if (!(writeChannel instanceof FileChannel)) {
+                    writeChannel.position(currentPos);
+                    fileWriter.rewind();
+                    writeFully(fileWriter, writeChannel);
+                }
                 currentPos += newBlock.getCompressedSize();
                 log.debug("Added listfile");
             }
@@ -1038,7 +1081,7 @@ public class JMpqEditor implements AutoCloseable {
 
                 for (int i = 0; i < fakeFilesCount; i++) {
                     int size = (int) (Math.random() * currentPos);
-                    int rand = (int)(Math.random() * 5);
+                    int rand = (int) (Math.random() * 5);
                     int flag = EXISTS;
                     switch (rand) {
                         case 0:
@@ -1107,30 +1150,64 @@ public class JMpqEditor implements AutoCloseable {
             currentPos = writeChannel.position();
 
             // write out block table
-            MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
+            ByteBuffer blocktableWriter;
+            if (writeChannel instanceof FileChannel) {
+                blocktableWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
+            } else {
+                blocktableWriter = ByteBuffer.allocate(newBlockSize * 16);
+            }
             blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
 
             BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
+
+            if (!(writeChannel instanceof FileChannel)) {
+                writeChannel.position(currentPos);
+                blocktableWriter.rewind();
+                writeFully(blocktableWriter, writeChannel);
+            }
+
             currentPos += newBlockSize * 16L;
 
             newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
 
-            MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, (keepHeaderOffset ? headerOffset : 0L) + 4L, headerSize + 4L);
+            ByteBuffer headerWriter;
+            if (writeChannel instanceof FileChannel) {
+                headerWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, (keepHeaderOffset ? headerOffset : 0L) + 4L, headerSize + 4L);
+            } else {
+                headerWriter = ByteBuffer.allocate(headerSize + 4);
+            }
             headerWriter.order(ByteOrder.LITTLE_ENDIAN);
+
             writeHeader(headerWriter);
+            if (!(writeChannel instanceof FileChannel)) {
+                writeChannel.position((keepHeaderOffset ? headerOffset : 0L) + 4L);
+                headerWriter.rewind();
+                writeFully(headerWriter, writeChannel);
+            }
 
-            MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
-            tempReader.position(0);
+            if (writeChannel instanceof FileChannel) {
+                ByteBuffer tempReader = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, 0, currentPos + 1);
+                tempReader.rewind();
 
-            fc.position(0);
-            fc.write(tempReader);
-            fc.truncate(fc.position());
+                fc.position(0);
+                fc.write(tempReader);
+                fc.truncate(fc.position());
+            } else {
+                int size = (int) writeChannel.size();
+                outputByteArray = new byte[size + 1];
+                System.arraycopy(((SeekableInMemoryByteChannel)writeChannel).array(), 0, outputByteArray, 0, size);
+            }
+
 
             fc.close();
         }
 
         t = System.nanoTime() - t;
         log.debug("Rebuild complete. Took: " + (t / 1000000) + "ms");
+    }
+
+    public byte[] getOutputByteArray() throws IOException {
+        return outputByteArray;
     }
 
     private void sortListfileEntries(ArrayList<String> remainingFiles) {
@@ -1174,6 +1251,9 @@ public class JMpqEditor implements AutoCloseable {
      * @throws IOException if an exception occurs when writing.
      */
     private static void writeFully(ByteBuffer buffer, WritableByteChannel dest) throws IOException {
+        if (!buffer.hasRemaining()) {
+            throw new EOFException("Trying to write empty buffer.");
+        }
         while (buffer.hasRemaining()) {
             if (dest.write(buffer) < 1)
                 throw new EOFException("Cannot write enough bytes.");

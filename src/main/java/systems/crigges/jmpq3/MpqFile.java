@@ -203,7 +203,7 @@ public class MpqFile {
      * @param newBlock        the new block
      * @param writeBuffer the write buffer
      */
-    public void writeFileAndBlock(Block newBlock, MappedByteBuffer writeBuffer) throws JMpqException {
+    public void writeFileAndBlock(Block newBlock, ByteBuffer writeBuffer) throws JMpqException {
         newBlock.setNormalSize(normalSize);
         newBlock.setCompressedSize(compressedSize);
         if (normalSize == 0) {
@@ -273,7 +273,7 @@ public class MpqFile {
      * @param sectorSize the sector size
      * @param recompress
      */
-    public static void writeFileAndBlock(byte[] file, Block b, MappedByteBuffer buf, int sectorSize, RecompressOptions recompress) {
+    public static void writeFileAndBlock(byte[] file, Block b, ByteBuffer buf, int sectorSize, RecompressOptions recompress) {
         writeFileAndBlock(file, b, buf, sectorSize, "", recompress);
     }
 
@@ -286,7 +286,7 @@ public class MpqFile {
      * @param sectorSize the sector size
      * @param recompress
      */
-    public static void writeFileAndBlock(byte[] fileArr, Block b, MappedByteBuffer buf, int sectorSize, String pathlessName, RecompressOptions recompress) {
+    public static void writeFileAndBlock(byte[] fileArr, Block b, ByteBuffer buf, int sectorSize, String pathlessName, RecompressOptions recompress) {
         ByteBuffer fileBuf = ByteBuffer.wrap(fileArr);
         fileBuf.position(0);
         b.setNormalSize(fileArr.length);

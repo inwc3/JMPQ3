@@ -56,7 +56,7 @@ public class HashTable {
      */
     public HashTable(int capacity) {
         if (capacity <= 0 || (capacity & (capacity - 1)) != 0) {
-            throw new IllegalArgumentException("Capacity must be power of 2.");
+            throw new IllegalArgumentException("Capacity " + capacity + " must be power of 2.");
         }
 
         buckets = new Bucket[capacity];

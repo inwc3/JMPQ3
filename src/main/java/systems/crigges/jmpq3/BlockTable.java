@@ -23,7 +23,7 @@ public class BlockTable {
         this.blockMap.order(ByteOrder.LITTLE_ENDIAN);
     }
 
-    public static void writeNewBlocktable(ArrayList<Block> blocks, int size, MappedByteBuffer buf) {
+    public static void writeNewBlocktable(ArrayList<Block> blocks, int size, ByteBuffer buf) {
         ByteBuffer temp = ByteBuffer.allocate(size * 16);
         temp.order(ByteOrder.LITTLE_ENDIAN);
         for (Block b : blocks) {

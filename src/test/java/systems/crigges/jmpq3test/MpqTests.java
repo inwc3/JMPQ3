@@ -18,7 +18,10 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Scanner;
+import java.util.Set;
 
 /**
  * Created by Frotty on 06.03.2017.
@@ -29,12 +32,12 @@ public class MpqTests {
 
     private static File[] getMpqs() throws IOException {
         File[] files = new File(MpqTests.class.getClassLoader().getResource("./mpqs/").getFile())
-                .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq") || name.endsWith(".scx"));
+            .listFiles((dir, name) -> name.endsWith(".w3x") || name.endsWith("" + ".mpq") || name.endsWith(".scx"));
         if (files != null) {
             for (int i = 0; i < files.length; i++) {
                 Path target = files[i].toPath().resolveSibling(files[i].getName() + "_copy");
                 files[i] = Files.copy(files[i].toPath(), target,
-                        StandardCopyOption.REPLACE_EXISTING).toFile();
+                    StandardCopyOption.REPLACE_EXISTING).toFile();
             }
         }
         MpqTests.files = files;
@@ -139,7 +142,7 @@ public class MpqTests {
         File mpq = getFile("mpqs/normalMap.w3x");
         File listFile = getFile("listfile.txt");
         JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        if(mpqEditor.isCanWrite()) {
+        if (mpqEditor.isCanWrite()) {
             mpqEditor.deleteFile("(listfile)");
         }
         mpqEditor.setExternalListfile(listFile);
@@ -225,6 +228,28 @@ public class MpqTests {
     }
 
     @Test
+    public void testOpenByteArray() throws IOException {
+        File[] mpqs = getMpqs();
+        File mpq = Arrays.stream(mpqs).findFirst().get();
+        byte[] bytes = Files.readAllBytes(mpq.toPath());
+        JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0);
+        mpqEditor.deleteFile("(listfile)");
+        mpqEditor.close(false, false, false);
+        byte[] outputByteArray = mpqEditor.getOutputByteArray();
+
+        JMpqEditor mpqEditor2 = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+        mpqEditor2.deleteFile("(listfile)");
+        mpqEditor2.close(false, false, false);
+        byte[] outputByteArray2 = Files.readAllBytes(mpq.toPath());
+
+        Assert.assertNotEquals(bytes, outputByteArray2);
+
+        Assert.assertEquals(outputByteArray, outputByteArray2);
+
+        System.out.println("");
+    }
+
+    @Test
     public void testInsertDeleteZeroLengthFile() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
@@ -237,8 +262,8 @@ public class MpqTests {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
             JMpqEditor[] mpqEditors = new JMpqEditor[]{new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
-                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
-                    new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)};
+                new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0),
+                new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)};
             for (JMpqEditor mpqEditor1 : mpqEditors) {
                 mpqEditor1.extractAllFiles(JMpqEditor.tempDir);
             }
@@ -388,7 +413,7 @@ public class MpqTests {
             mpqEditor.setKeepHeaderOffset(false);
             mpqEditor.close();
             byte[] bytes = new byte[4];
-            try(FileInputStream fis = new FileInputStream(mpq)) {
+            try (FileInputStream fis = new FileInputStream(mpq)) {
                 fis.read(bytes);
             }
             ByteBuffer order = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
@@ -404,7 +429,8 @@ public class MpqTests {
         Set<File> ret = new LinkedHashSet<>();
 
         for (File file : dir.listFiles()) {
-            if (file.isDirectory()) ret.addAll(getFiles(file)); else ret.add(file);
+            if (file.isDirectory()) ret.addAll(getFiles(file));
+            else ret.add(file);
         }
 
         return ret;
@@ -436,7 +462,7 @@ public class MpqTests {
 
         mpqEditor.close();
     }
-    
+
     @Test()
     public void testForGetMpqFileByBlock() throws IOException {
         File[] mpqs = getMpqs();
