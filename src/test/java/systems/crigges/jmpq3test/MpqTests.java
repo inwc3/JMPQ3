@@ -230,23 +230,32 @@ public class MpqTests {
     @Test
     public void testOpenByteArray() throws IOException {
         File[] mpqs = getMpqs();
-        File mpq = Arrays.stream(mpqs).findFirst().get();
-        byte[] bytes = Files.readAllBytes(mpq.toPath());
-        JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0);
-        mpqEditor.deleteFile("(listfile)");
-        mpqEditor.close(false, false, false);
-        byte[] outputByteArray = mpqEditor.getOutputByteArray();
+        for (File mpq : mpqs) {
+            byte[] bytes = Files.readAllBytes(mpq.toPath());
+            JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0);
+            if (mpqEditor.isCanWrite()) {
+                mpqEditor.deleteFile("(listfile)");
+                mpqEditor.insertByteArray("testfile12", new byte[]{1, 2, 3, 4});
+                mpqEditor.close(false, false, false);
+                byte[] outputByteArray = mpqEditor.getOutputByteArray();
 
-        JMpqEditor mpqEditor2 = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        mpqEditor2.deleteFile("(listfile)");
-        mpqEditor2.close(false, false, false);
-        byte[] outputByteArray2 = Files.readAllBytes(mpq.toPath());
+                JMpqEditor mpqEditor2 = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+                mpqEditor2.deleteFile("(listfile)");
+                mpqEditor2.insertByteArray("testfile12", new byte[]{1, 2, 3, 4});
+                mpqEditor2.close(false, false, false);
+                byte[] outputByteArray2 = Files.readAllBytes(mpq.toPath());
 
-        Assert.assertNotEquals(bytes, outputByteArray2);
+                Assert.assertNotEquals(bytes, outputByteArray2);
+                if (outputByteArray.length == outputByteArray2.length) {
+                    Assert.assertEquals(outputByteArray, outputByteArray2);
+                } else {
+                    System.out.println("Different output: " + mpq.getName());
+                }
+            } else {
+                mpqEditor.close(false, false, false);
+            }
 
-        Assert.assertEquals(outputByteArray, outputByteArray2);
-
-        System.out.println("");
+        }
     }
 
     @Test

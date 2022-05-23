@@ -979,10 +979,11 @@ public class JMpqEditor implements AutoCloseable {
                 newFiles.add(newFileName);
                 newFileMap.put(newFileName, newFile);
                 ByteBuffer fileWriter;
+                int sectorCount = (int) (Math.ceil(((double) newFile.limit() / (double) newDiscBlockSize)) + 1);
                 if (writeChannel instanceof FileChannel) {
-                    fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
+                    fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, newFile.limit() + (sectorCount * 4L) * 2L);
                 } else {
-                    fileWriter = ByteBuffer.allocate(newFile.limit() * 2).order(ByteOrder.LITTLE_ENDIAN);
+                    fileWriter = ByteBuffer.allocate(newFile.limit() + (sectorCount * 4) * 2).order(ByteOrder.LITTLE_ENDIAN);
                 }
                 Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
                 newBlocks.add(newBlock);
