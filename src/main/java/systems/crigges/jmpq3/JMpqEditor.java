@@ -1195,7 +1195,7 @@ public class JMpqEditor implements AutoCloseable {
                 fc.write(tempReader);
                 fc.truncate(fc.position());
             } else {
-                int size = (int) writeChannel.size();
+                int size = (int) currentPos;
                 outputByteArray = new byte[size + 1];
                 System.arraycopy(((SeekableInMemoryByteChannel)writeChannel).array(), 0, outputByteArray, 0, size);
             }
