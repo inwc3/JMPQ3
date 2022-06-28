@@ -17,6 +17,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -126,13 +127,14 @@ public class MpqTests {
 
     @Test
     public void testRebuildByteArray() throws IOException {
-        File mpq = getMpqs()[0];
+        File mpq = getMpqs()[5];
         log.info(mpq.getName());
         byte[] bytes = Files.readAllBytes(mpq.toPath());
         JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0);
-        mpqEditor.close(false, false, new RecompressOptions(true), 0);
+        RecompressOptions options = new RecompressOptions(true);
+        options.newSectorSizeShift = 15;
+        mpqEditor.close(true, false, options, 0);
         int length = mpqEditor.getOutputByteArray().length;
-        System.out.println("orig: " + bytes.length + " compressed: " + length);
         Assert.assertTrue(length <= bytes.length);
     }
 

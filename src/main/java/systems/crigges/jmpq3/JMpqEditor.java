@@ -69,7 +69,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * The fc.
      */
-    private final SeekableByteChannel fc;
+    private final SeekableInMemoryByteChannel fc;
     /**
      * The header offset.
      */
@@ -174,38 +174,6 @@ public class JMpqEditor implements AutoCloseable {
     private boolean canWrite;
     private byte[] outputByteArray;
 
-    /**
-     * Creates a new MPQ editor for the MPQ file at the specified path.
-     * <p>
-     * If the archive file does not exist a new archive file will be created
-     * automatically. Any changes made to the archive might only propagate to
-     * the file system once this's close method is called.
-     * <p>
-     * When READ_ONLY option is specified then the archive file will never be
-     * modified by this editor.
-     *
-     * @param mpqArchive  path to a MPQ archive file.
-     * @param openOptions options to use when opening the archive.
-     * @throws JMpqException if mpq is damaged or not supported.
-     */
-    public JMpqEditor(Path mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
-        // process open options
-        canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
-        legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
-        log.debug(mpqArchive.toString());
-        try {
-            setupTempDir();
-
-            final OpenOption[] fcOptions = canWrite ? new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE}
-                : new OpenOption[]{StandardOpenOption.READ};
-            fc = FileChannel.open(mpqArchive, fcOptions);
-
-            readMpq();
-        } catch (IOException e) {
-            throw new JMpqException(mpqArchive.toAbsolutePath() + ": " + e.getMessage());
-        }
-    }
-
     public JMpqEditor(byte[] mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
         // process open options
         canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
@@ -219,6 +187,13 @@ public class JMpqEditor implements AutoCloseable {
         } catch (IOException e) {
             throw new JMpqException("Byte array mpq: " + e.getMessage());
         }
+    }
+
+    public JMpqEditor(Path mpq, MPQOpenOption... openOptions) throws IOException {
+        this(Files.readAllBytes(mpq), openOptions);
+    }
+    public JMpqEditor(File mpq, MPQOpenOption... openOptions) throws IOException {
+        this(mpq.toPath(), openOptions);
     }
 
     private void readMpq() throws IOException {
@@ -237,29 +212,6 @@ public class JMpqEditor implements AutoCloseable {
         readListFile();
 
         readAttributesFile();
-    }
-
-    /**
-     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
-     *
-     * @param mpqArchive  a MPQ archive file.
-     * @param openOptions options to use when opening the archive.
-     * @throws JMpqException if mpq is damaged or not supported.
-     */
-    public JMpqEditor(File mpqArchive, MPQOpenOption... openOptions) throws IOException {
-        this(mpqArchive.toPath(), openOptions);
-    }
-
-    /**
-     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
-     * Kept for backwards compatibility, but deprecated
-     *
-     * @param mpqArchive a MPQ archive file.
-     * @throws JMpqException if mpq is damaged or not supported.
-     */
-    @Deprecated
-    public JMpqEditor(File mpqArchive) throws IOException {
-        this(mpqArchive.toPath(), MPQOpenOption.FORCE_V0);
     }
 
     private void checkLegacyCompat() throws IOException {
@@ -563,7 +515,6 @@ public class JMpqEditor implements AutoCloseable {
         buffer.putInt((int) newBlockPos);
         buffer.putInt(newHashSize);
         buffer.putInt(newBlockSize);
-        buffer.putLong(0L);
         // TODO add full write support for versions above 1
     }
 
@@ -876,8 +827,6 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options, int fakeFilesCount) throws IOException {
         // only rebuild if allowed
-        boolean isInMemory = fc instanceof SeekableInMemoryByteChannel;
-
         if (!canWrite || !fc.isOpen()) {
             fc.close();
             log.debug("closed readonly mpq.");
@@ -892,317 +841,247 @@ public class JMpqEditor implements AutoCloseable {
         }
         File temp = null;
 
-        SeekableInMemoryByteChannel outputChannel = null;
-        if (!isInMemory) {
-            temp = File.createTempFile("jmpq", "temp", JMpqEditor.tempDir);
-            temp.deleteOnExit();
-        } else {
-            outputChannel = new SeekableInMemoryByteChannel(new byte[32 * 32 * 32]);
+        ByteBuffer output = ByteBuffer.allocate((int) archiveSize).order(ByteOrder.LITTLE_ENDIAN);
+
+
+        ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
+        fc.position((keepHeaderOffset ? 0 : headerOffset));
+        readFully(headerReader, fc);
+        headerReader.rewind();
+        output.put(headerReader);
+
+        newFormatVersion = formatVersion;
+        switch (newFormatVersion) {
+            case 0:
+                newHeaderSize = 32;
+                break;
+            case 1:
+                newHeaderSize = 44;
+                break;
+            case 2:
+            case 3:
+                newHeaderSize = 208;
+                break;
         }
 
-        try (SeekableByteChannel writeChannel = isInMemory ? outputChannel : FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ)) {
+        output.put(ByteBuffer.allocate(newHeaderSize - 4));
+        newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
+        newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
 
-            ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position((keepHeaderOffset ? 0 : headerOffset));
-            readFully(headerReader, fc);
-            headerReader.rewind();
-            writeFully(headerReader, writeChannel);
+        ArrayList<Block> newBlocks = new ArrayList<>();
+        ArrayList<String> newFiles = new ArrayList<>();
+        ArrayList<String> existingFiles = new ArrayList<>(listFile.getFiles());
 
-            newFormatVersion = formatVersion;
-            switch (newFormatVersion) {
-                case 0:
-                    newHeaderSize = 32;
-                    break;
-                case 1:
-                    newHeaderSize = 44;
-                    break;
-                case 2:
-                case 3:
-                    newHeaderSize = 208;
-                    break;
-            }
-            newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
-            newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
+        sortListfileEntries(existingFiles);
 
-            ArrayList<Block> newBlocks = new ArrayList<>();
-            ArrayList<String> newFiles = new ArrayList<>();
-            ArrayList<String> existingFiles = new ArrayList<>(listFile.getFiles());
+        log.debug("Sorted blocks");
+        if (attributes != null) {
+            attributes.setNames(existingFiles);
+        }
+        long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
 
-            sortListfileEntries(existingFiles);
+        for (String fileName : filenameToData.keySet()) {
+            existingFiles.remove(fileName);
+        }
 
-            log.debug("Sorted blocks");
-            if (attributes != null) {
-                attributes.setNames(existingFiles);
-            }
-            long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
-
-            for (String fileName : filenameToData.keySet()) {
-                existingFiles.remove(fileName);
-            }
-
-            for (String existingName : existingFiles) {
-                if (options.recompress && !existingName.endsWith(".wav")) {
-                    ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
-                    filenameToData.put(existingName, extracted);
-                } else {
-                    newFiles.add(existingName);
-                    int pos = hashTable.getBlockIndexOfFile(existingName);
-                    Block b = blockTable.getBlockAtPos(pos);
-                    ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-                    fc.position(headerOffset + b.getFilePos());
-                    readFully(buf, fc);
-                    buf.rewind();
-                    MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
-                    ByteBuffer fileWriter;
-                    int sectorCount = (int) (Math.ceil(((double) b.getCompressedSize() / (double) newDiscBlockSize)) + 1);
-                    if (writeChannel instanceof FileChannel) {
-                        fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-                    } else {
-                        fileWriter = ByteBuffer.allocate(b.getNormalSize() + (sectorCount * 4) * 2).order(ByteOrder.LITTLE_ENDIAN);
-                    }
-
-                    Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
-                    newBlocks.add(newBlock);
-                    f.writeFileAndBlock(newBlock, fileWriter);
-                    if (!(writeChannel instanceof FileChannel)) {
-                        writeChannel.position(currentPos);
-                        fileWriter.rewind();
-                        writeFully(fileWriter, writeChannel);
-                    }
-
-                    currentPos += b.getCompressedSize();
-                }
-            }
-            log.debug("Added existing files");
-            HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
-            for (String newFileName : filenameToData.keySet()) {
-                ByteBuffer newFile = filenameToData.get(newFileName);
-                newFiles.add(newFileName);
-                newFileMap.put(newFileName, newFile);
-                ByteBuffer fileWriter;
-                int sectorCount = (int) (Math.ceil(((double) newFile.limit() / (double) newDiscBlockSize)) + 1);
-                if (writeChannel instanceof FileChannel) {
-                    fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, newFile.limit() + (sectorCount * 4L) * 2L);
-                } else {
-                    fileWriter = ByteBuffer.allocate(newFile.limit() + (sectorCount * 4) * 2).order(ByteOrder.LITTLE_ENDIAN);
-                }
-                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
+        for (String existingName : existingFiles) {
+            if (options.recompress && !existingName.endsWith(".wav")) {
+                ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
+                filenameToData.put(existingName, extracted);
+            } else {
+                newFiles.add(existingName);
+                int pos = hashTable.getBlockIndexOfFile(existingName);
+                Block b = blockTable.getBlockAtPos(pos);
+                ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+                fc.position(headerOffset + b.getFilePos());
+                readFully(buf, fc);
+                buf.rewind();
+                MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
+                int sectorCount = (int) (Math.ceil(((double) b.getCompressedSize() / (double) newDiscBlockSize)) + 1);
+                ByteBuffer fileWriter=  ByteBuffer.allocate(b.getNormalSize() + (sectorCount * 4) * 2).order(ByteOrder.LITTLE_ENDIAN);
+                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
                 newBlocks.add(newBlock);
-                MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
-                if (!(writeChannel instanceof FileChannel)) {
-                    writeChannel.position(currentPos);
-                    fileWriter.rewind();
-                    writeFully(fileWriter, writeChannel);
-                }
-                currentPos += newBlock.getCompressedSize();
-                log.debug("Added file " + newFileName);
+                f.writeFileAndBlock(newBlock, fileWriter);
+                fileWriter.rewind();
+                output.put(fileWriter);
+
+                currentPos += b.getCompressedSize();
             }
-            log.debug("Added new files");
-            if (buildListfile && !listFile.getFiles().isEmpty()) {
-                // Add listfile
-                newFiles.add("(listfile)");
-                byte[] listfileArr = listFile.asByteArray();
-                ByteBuffer fileWriter;
-                if (writeChannel instanceof FileChannel) {
-                    fileWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
-                } else {
-                    fileWriter = ByteBuffer.allocate(listfileArr.length * 2).order(ByteOrder.LITTLE_ENDIAN);
-                }
-                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-                newBlocks.add(newBlock);
-                MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
-                if (!(writeChannel instanceof FileChannel)) {
-                    writeChannel.position(currentPos);
-                    fileWriter.rewind();
-                    writeFully(fileWriter, writeChannel);
-                }
-                currentPos += newBlock.getCompressedSize();
-                log.debug("Added listfile");
-            }
-            // if (attributes != null) {
-            // newFiles.add("(attributes)");
-            // // Only generate attributes file when there has been one before
-            // AttributesFile attributesFile = new AttributesFile(newFiles.size());
-            // // Generate new values
-            // long time = (new Date().getTime() + 11644473600000L) * 10000L;
-            // for (int i = 0; i < newFiles.size() - 1; i++) {
-            // String name = newFiles.get(i);
-            // int entry = attributes.getEntry(name);
-            // if (newFileMap.containsKey(name)){
-            // // new file
-            // attributesFile.setEntry(i, getCrc32(newFileMap.get(name)), time);
-            // }else if (entry >= 0) {
-            // // has timestamp
-            // attributesFile.setEntry(i, getCrc32(name),
-            // attributes.getTimestamps()[entry]);
-            // } else {
-            // // doesnt have timestamp
-            // attributesFile.setEntry(i, getCrc32(name), time);
-            // }
-            // }
-            // // newfiles don't contain the attributes file yet, hence -1
-            // System.out.println("added attributes");
-            // byte[] attrArr = attributesFile.buildFile();
-            // fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos,
-            // attrArr.length);
-            // newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS |
-            // COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-            // newBlocks.add(newBlock);
-            // MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter,
-            // newDiscBlockSize, "(attributes)");
-            // currentPos += newBlock.getCompressedSize();
-            // }
+        }
+        log.debug("Added existing files");
+        HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
+        for (String newFileName : filenameToData.keySet()) {
+            ByteBuffer newFile = filenameToData.get(newFileName);
+            newFiles.add(newFileName);
+            newFileMap.put(newFileName, newFile);
+            int sectorCount = (int) (Math.ceil(((double) newFile.limit() / (double) newDiscBlockSize)) + 1);
+            Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
+            newBlocks.add(newBlock);
+            ByteBuffer fileWriter=  ByteBuffer.allocate(sectorCount * 4 + (sectorCount - 1) * newDiscBlockSize ).order(ByteOrder.LITTLE_ENDIAN);
+            MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
+            currentPos += newBlock.getCompressedSize();
+            output.put(fileWriter.array(), 0, newBlock.getCompressedSize());
+            log.debug("Added file " + newFileName);
+        }
+        log.debug("Added new files");
+        if (buildListfile && !listFile.getFiles().isEmpty()) {
+            // Add listfile
+            newFiles.add("(listfile)");
+            byte[] listfileArr = listFile.asByteArray();
+            Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+            newBlocks.add(newBlock);
+            ByteBuffer fileWriter=  ByteBuffer.allocate(listfileArr.length).order(ByteOrder.LITTLE_ENDIAN);
+            MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
+            currentPos += newBlock.getCompressedSize();
+            output.put(fileWriter.array(), 0, newBlock.getCompressedSize());
+            log.debug("Added listfile");
+        }
+        // if (attributes != null) {
+        // newFiles.add("(attributes)");
+        // // Only generate attributes file when there has been one before
+        // AttributesFile attributesFile = new AttributesFile(newFiles.size());
+        // // Generate new values
+        // long time = (new Date().getTime() + 11644473600000L) * 10000L;
+        // for (int i = 0; i < newFiles.size() - 1; i++) {
+        // String name = newFiles.get(i);
+        // int entry = attributes.getEntry(name);
+        // if (newFileMap.containsKey(name)){
+        // // new file
+        // attributesFile.setEntry(i, getCrc32(newFileMap.get(name)), time);
+        // }else if (entry >= 0) {
+        // // has timestamp
+        // attributesFile.setEntry(i, getCrc32(name),
+        // attributes.getTimestamps()[entry]);
+        // } else {
+        // // doesnt have timestamp
+        // attributesFile.setEntry(i, getCrc32(name), time);
+        // }
+        // }
+        // // newfiles don't contain the attributes file yet, hence -1
+        // System.out.println("added attributes");
+        // byte[] attrArr = attributesFile.buildFile();
+        // fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos,
+        // attrArr.length);
+        // newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS |
+        // COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
+        // newBlocks.add(newBlock);
+        // MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter,
+        // newDiscBlockSize, "(attributes)");
+        // currentPos += newBlock.getCompressedSize();
+        // }
 
-            if (fakeFilesCount > 0) {
-                ArrayList<Block> fakeBlocks = new ArrayList<>();
-                ArrayList<String> fakeFiles = new ArrayList<>();
+        if (fakeFilesCount > 0) {
+            ArrayList<Block> fakeBlocks = new ArrayList<>();
+            ArrayList<String> fakeFiles = new ArrayList<>();
 
-                if (newBlocks.size() > 0) {
-                    for (int i = 0; i < fakeFilesCount; i++) {
-                        Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
-                        int offset = (int) (Math.random() * 10 - 5);
-                        if (offset == 0) {
-                            offset = 4;
-                        }
-                        Block newBlock = new Block(block.getFilePos() + offset, block.getCompressedSize(), block.getNormalSize(), block.getFlags());
-                        fakeBlocks.add(newBlock);
-
-                        fakeFiles.add("w3p_assetoff" + i);
+            if (newBlocks.size() > 0) {
+                for (int i = 0; i < fakeFilesCount; i++) {
+                    Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
+                    int offset = (int) (Math.random() * 10 - 5);
+                    if (offset == 0) {
+                        offset = 4;
                     }
+                    Block newBlock = new Block(block.getFilePos() + offset, block.getCompressedSize(), block.getNormalSize(), block.getFlags());
+                    fakeBlocks.add(newBlock);
 
-                    for (int i = 0; i < fakeFilesCount; i++) {
-                        Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
-                        int offset = (int) (Math.random() * 10 - 5);
-                        Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() + offset, block.getNormalSize() + offset, block.getFlags());
-                        fakeBlocks.add(newBlock);
-
-                        fakeFiles.add("w3p_assetdupe" + i);
-                    }
+                    fakeFiles.add("w3p_assetoff" + i);
                 }
-
 
                 for (int i = 0; i < fakeFilesCount; i++) {
-                    int size = (int) (Math.random() * currentPos);
-                    int rand = (int) (Math.random() * 5);
-                    int flag = EXISTS;
-                    switch (rand) {
-                        case 0:
-                            flag |= COMPRESSED;
-                            break;
-                        case 1:
-                            flag |= ENCRYPTED;
-                            break;
-                        case 2:
-                            flag |= ENCRYPTED | ADJUSTED_ENCRYPTED;
-                            break;
-                        case 3:
-                            flag |= ENCRYPTED | COMPRESSED;
-                            break;
-                        case 4:
-                            flag |= ENCRYPTED | ADJUSTED_ENCRYPTED | COMPRESSED;
-                            break;
-                    }
-
-                    Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, flag);
+                    Block block = newBlocks.get((int) (Math.random() * newBlocks.size()));
+                    int offset = (int) (Math.random() * 10 - 5);
+                    Block newBlock = new Block(block.getFilePos(), block.getCompressedSize() + offset, block.getNormalSize() + offset, block.getFlags());
                     fakeBlocks.add(newBlock);
-                    fakeFiles.add("w3p_assetfake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
+
+                    fakeFiles.add("w3p_assetdupe" + i);
+                }
+            }
+
+
+            for (int i = 0; i < fakeFilesCount; i++) {
+                int size = (int) (Math.random() * currentPos);
+                int rand = (int) (Math.random() * 5);
+                int flag = EXISTS;
+                switch (rand) {
+                    case 0:
+                        flag |= COMPRESSED;
+                        break;
+                    case 1:
+                        flag |= ENCRYPTED;
+                        break;
+                    case 2:
+                        flag |= ENCRYPTED | ADJUSTED_ENCRYPTED;
+                        break;
+                    case 3:
+                        flag |= ENCRYPTED | COMPRESSED;
+                        break;
+                    case 4:
+                        flag |= ENCRYPTED | ADJUSTED_ENCRYPTED | COMPRESSED;
+                        break;
                 }
 
-                newBlocks.addAll(fakeBlocks);
-                newFiles.addAll(fakeFiles);
-
-                long seed = System.nanoTime();
-                Collections.shuffle(newFiles, new Random(seed));
-                Collections.shuffle(newBlocks, new Random(seed));
+                Block newBlock = new Block(currentPos - size, (int) (size * Math.random()), size, flag);
+                fakeBlocks.add(newBlock);
+                fakeFiles.add("w3p_assetfake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
             }
 
+            newBlocks.addAll(fakeBlocks);
+            newFiles.addAll(fakeFiles);
 
-            int target = newFiles.size() + 2;
-            int current = 2;
-            while (current < target) {
-                current *= 2;
-            }
-            newHashSize = current * 2;
-            newBlockSize = newFiles.size() + 2;
-
-            newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
-            newBlockPos = newHashPos + newHashSize * 16L;
-
-            // generate new hash table
-            final int hashSize = newHashSize;
-            HashTable hashTable = new HashTable(hashSize);
-            int blockIndex = 0;
-            for (String file : newFiles) {
-                hashTable.setFileBlockIndex(file, HashTable.DEFAULT_LOCALE, blockIndex++);
-            }
-
-            // prepare hashtable for writing
-            final ByteBuffer hashTableBuffer = ByteBuffer.allocate(hashSize * 16);
-            hashTable.writeToBuffer(hashTableBuffer);
-            hashTableBuffer.flip();
-
-            // encrypt hash table
-            final MPQEncryption encrypt = new MPQEncryption(KEY_HASH_TABLE, false);
-            encrypt.processSingle(hashTableBuffer);
-            hashTableBuffer.flip();
-
-            // write out hash table
-            writeChannel.position(currentPos);
-            writeFully(hashTableBuffer, writeChannel);
-            currentPos = writeChannel.position();
-
-            // write out block table
-            ByteBuffer blocktableWriter;
-            if (writeChannel instanceof FileChannel) {
-                blocktableWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
-            } else {
-                blocktableWriter = ByteBuffer.allocate(newBlockSize * 16);
-            }
-            blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
-
-            BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
-
-            if (!(writeChannel instanceof FileChannel)) {
-                writeChannel.position(currentPos);
-                blocktableWriter.rewind();
-                writeFully(blocktableWriter, writeChannel);
-            }
-
-            currentPos += newBlockSize * 16L;
-
-            newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
-
-            ByteBuffer headerWriter;
-            if (writeChannel instanceof FileChannel) {
-                headerWriter = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, (keepHeaderOffset ? headerOffset : 0L) + 4L, headerSize + 4L);
-            } else {
-                headerWriter = ByteBuffer.allocate(headerSize + 4);
-            }
-            headerWriter.order(ByteOrder.LITTLE_ENDIAN);
-
-            writeHeader(headerWriter);
-            if (!(writeChannel instanceof FileChannel)) {
-                writeChannel.position((keepHeaderOffset ? headerOffset : 0L) + 4L);
-                headerWriter.rewind();
-                writeFully(headerWriter, writeChannel);
-            }
-
-            if (writeChannel instanceof FileChannel) {
-                ByteBuffer tempReader = ((FileChannel)writeChannel).map(MapMode.READ_WRITE, 0, currentPos + 1);
-                tempReader.rewind();
-
-                fc.position(0);
-                fc.write(tempReader);
-                fc.truncate(fc.position());
-            } else {
-                int size = (int) currentPos;
-                outputByteArray = new byte[size + 1];
-                System.arraycopy(((SeekableInMemoryByteChannel)writeChannel).array(), 0, outputByteArray, 0, size);
-            }
-
-
-            fc.close();
+            long seed = System.nanoTime();
+            Collections.shuffle(newFiles, new Random(seed));
+            Collections.shuffle(newBlocks, new Random(seed));
         }
+
+
+        int target = newFiles.size() + 2;
+        int current = 2;
+        while (current < target) {
+            current *= 2;
+        }
+        newHashSize = current * 2;
+        newBlockSize = newFiles.size() + 2;
+
+        newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
+        newBlockPos = newHashPos + newHashSize * 16L;
+
+        // generate new hash table
+        final int hashSize = newHashSize;
+        HashTable hashTable = new HashTable(hashSize);
+        int blockIndex = 0;
+        for (String file : newFiles) {
+            hashTable.setFileBlockIndex(file, HashTable.DEFAULT_LOCALE, blockIndex++);
+        }
+
+        // prepare hashtable for writing
+        final ByteBuffer hashTableBuffer = ByteBuffer.allocate(hashSize * 16);
+        hashTable.writeToBuffer(hashTableBuffer);
+        hashTableBuffer.flip();
+
+        // encrypt hash table
+        final MPQEncryption encrypt = new MPQEncryption(KEY_HASH_TABLE, false);
+        encrypt.processSingle(hashTableBuffer);
+        hashTableBuffer.flip();
+
+        // write out hash table
+        output.put(hashTableBuffer);
+
+        // write out block table
+        BlockTable.writeNewBlocktable(newBlocks, newBlockSize, output);
+
+        currentPos += newBlockSize * 16L;
+
+        newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
+
+        int size = output.position();
+        output.position((int) ((keepHeaderOffset ? headerOffset : 0) + 4));
+        writeHeader(output);
+
+
+        outputByteArray = new byte[size];
+        System.arraycopy(output.array(), 0, outputByteArray, 0, size);
+
+        fc.close();
 
         t = System.nanoTime() - t;
         log.debug("Rebuild complete. Took: " + (t / 1000000) + "ms");
