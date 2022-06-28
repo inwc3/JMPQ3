@@ -217,7 +217,7 @@ public class JMpqEditor implements AutoCloseable {
             archiveSize = Math.min(archiveSize, fc.size() - headerOffset);
 
             // limit block table size by end of archive
-            blockSize = (int) (Math.min(blockSize, (archiveSize - blockPos) / 16));
+            blockSize = Math.toIntExact((Math.min(blockSize, (archiveSize - blockPos) / 16)));
         }
     }
 
@@ -310,6 +310,7 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     private void readBlockTable() throws IOException {
+        System.out.println("blockSize: " + blockSize);
         ByteBuffer blockBuffer = ByteBuffer.allocate(blockSize * 16).order(ByteOrder.LITTLE_ENDIAN);
         fc.position(headerOffset + blockPos);
         readFully(blockBuffer, fc);
@@ -505,11 +506,11 @@ public class JMpqEditor implements AutoCloseable {
      */
     private void writeHeader(ByteBuffer buffer) {
         buffer.putInt(newHeaderSize);
-        buffer.putInt((int) newArchiveSize);
+        buffer.putInt(Math.toIntExact(newArchiveSize));
         buffer.putShort((short) newFormatVersion);
         buffer.putShort((short) newSectorSizeShift);
-        buffer.putInt((int) newHashPos);
-        buffer.putInt((int) newBlockPos);
+        buffer.putInt(Math.toIntExact(newHashPos));
+        buffer.putInt(Math.toIntExact(newBlockPos));
         buffer.putInt(newHashSize);
         buffer.putInt(newBlockSize);
         // TODO add full write support for versions above 1
@@ -838,10 +839,10 @@ public class JMpqEditor implements AutoCloseable {
         }
         File temp = null;
 
-        DynamicByteBuffer output = new DynamicByteBuffer((int) archiveSize);
+        DynamicByteBuffer output = new DynamicByteBuffer(Math.toIntExact(archiveSize));
         output.order(ByteOrder.LITTLE_ENDIAN);
 
-        ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer headerReader = ByteBuffer.allocate(Math.toIntExact(((keepHeaderOffset ? headerOffset : 0) + 4))).order(ByteOrder.LITTLE_ENDIAN);
         fc.position((keepHeaderOffset ? 0 : headerOffset));
         readFully(headerReader, fc);
         headerReader.rewind();
@@ -894,7 +895,6 @@ public class JMpqEditor implements AutoCloseable {
                 readFully(buf, fc);
                 buf.rewind();
                 MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
-                int sectorCount = (int) (Math.ceil(((double) b.getCompressedSize() / (double) newDiscBlockSize)) + 1);
                 ByteBuffer fileWriter=  ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
                 Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
                 newBlocks.add(newBlock);
@@ -1064,7 +1064,7 @@ public class JMpqEditor implements AutoCloseable {
         output.put(hashTableBuffer);
 
         // write out block table
-        ByteBuffer blocktableWriter = ByteBuffer.allocate((int) (newBlockSize * 16L));
+        ByteBuffer blocktableWriter = ByteBuffer.allocate(Math.toIntExact((newBlockSize * 16L)));
         blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
         BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
 
@@ -1074,12 +1074,12 @@ public class JMpqEditor implements AutoCloseable {
 
         newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
 
-        ByteBuffer headerWriter = ByteBuffer.allocate((int) (headerSize + 4L));
+        ByteBuffer headerWriter = ByteBuffer.allocate(Math.toIntExact((headerSize + 4L)));
         headerWriter.order(ByteOrder.LITTLE_ENDIAN);
         writeHeader(headerWriter);
 
         int size = output.position();
-        output.position((int) ((keepHeaderOffset ? headerOffset : 0) + 4));
+        output.position(Math.toIntExact(((keepHeaderOffset ? headerOffset : 0) + 4)));
         output.put(headerWriter.array(), 0, headerWriter.position());
 
 
