@@ -217,7 +217,10 @@ public class JMpqEditor implements AutoCloseable {
             archiveSize = Math.min(archiveSize, fc.size() - headerOffset);
 
             // limit block table size by end of archive
-            blockSize = Math.toIntExact((Math.min(blockSize, (archiveSize - blockPos) / 16)));
+            long delta = archiveSize - blockPos;
+            if (delta > 0) {
+                blockSize = Math.toIntExact((Math.min(blockSize, delta / 16)));
+            }
         }
     }
 

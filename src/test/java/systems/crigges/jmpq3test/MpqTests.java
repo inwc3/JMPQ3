@@ -126,18 +126,20 @@ public class MpqTests {
     }
 
     @Test
-    public void testRebuildByteArray() throws IOException {
-        File mpq = getMpqs()[5];
+    public void testReadAsByteArray() throws IOException {
+        File mpq = getMpqs()[0];
         log.info(mpq.getName());
         byte[] bytes = Files.readAllBytes(mpq.toPath());
         JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0);
-        RecompressOptions options = new RecompressOptions(true);
-        options.newSectorSizeShift = 15;
+        RecompressOptions options = new RecompressOptions(false);
         mpqEditor.close(true, false, options, 0);
         int length = mpqEditor.getOutputByteArray().length;
         System.out.println("orig: " + bytes.length + " compressed: " + length);
         Assert.assertTrue(length <= bytes.length);
         Files.write(Paths.get("output.w3x"), mpqEditor.getOutputByteArray());
+
+        mpqEditor = new JMpqEditor(mpqEditor.getOutputByteArray(), MPQOpenOption.FORCE_V0);
+        mpqEditor.close(true, false, options, 0);
     }
 
     @Test
