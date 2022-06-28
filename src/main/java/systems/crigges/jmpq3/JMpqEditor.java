@@ -8,10 +8,7 @@ import systems.crigges.jmpq3.compression.RecompressOptions;
 import systems.crigges.jmpq3.security.MPQEncryption;
 import systems.crigges.jmpq3.security.MPQHashGenerator;
 
-import java.io.EOFException;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -841,8 +838,8 @@ public class JMpqEditor implements AutoCloseable {
         }
         File temp = null;
 
-        ByteBuffer output = ByteBuffer.allocate((int) archiveSize).order(ByteOrder.LITTLE_ENDIAN);
-
+        DynamicByteBuffer output = new DynamicByteBuffer((int) archiveSize);
+        output.order(ByteOrder.LITTLE_ENDIAN);
 
         ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
         fc.position((keepHeaderOffset ? 0 : headerOffset));
@@ -1067,15 +1064,24 @@ public class JMpqEditor implements AutoCloseable {
         output.put(hashTableBuffer);
 
         // write out block table
-        BlockTable.writeNewBlocktable(newBlocks, newBlockSize, output);
+        ByteBuffer blocktableWriter = ByteBuffer.allocate((int) (newBlockSize * 16L));
+        blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
+        BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
+
+        output.put(blocktableWriter.array(), 0, blocktableWriter.position());
 
         currentPos += newBlockSize * 16L;
 
         newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
 
+        ByteBuffer headerWriter = ByteBuffer.allocate((int) (headerSize + 4L));
+        headerWriter.order(ByteOrder.LITTLE_ENDIAN);
+        writeHeader(headerWriter);
+
         int size = output.position();
         output.position((int) ((keepHeaderOffset ? headerOffset : 0) + 4));
-        writeHeader(output);
+        output.put(headerWriter.array(), 0, headerWriter.position());
+
 
 
         outputByteArray = new byte[size];
