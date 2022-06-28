@@ -348,7 +348,7 @@ public class DynamicByteBuffer implements Comparable<ByteBuffer> {
 	}
 	ByteBuffer expanded = ByteBuffer.allocate(newCapacity);
 	expanded.order(byteBuffer.order());
-	expanded.put(byteBuffer);
+	expanded.put(byteBuffer.array(), 0, byteBuffer.position());
 	byteBuffer = expanded;
     }
 }

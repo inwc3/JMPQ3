@@ -895,7 +895,7 @@ public class JMpqEditor implements AutoCloseable {
                 buf.rewind();
                 MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
                 int sectorCount = (int) (Math.ceil(((double) b.getCompressedSize() / (double) newDiscBlockSize)) + 1);
-                ByteBuffer fileWriter=  ByteBuffer.allocate(b.getNormalSize() + (sectorCount * 4) * 2).order(ByteOrder.LITTLE_ENDIAN);
+                ByteBuffer fileWriter=  ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
                 Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
                 newBlocks.add(newBlock);
                 f.writeFileAndBlock(newBlock, fileWriter);

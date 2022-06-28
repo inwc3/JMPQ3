@@ -137,7 +137,7 @@ public class MpqTests {
         int length = mpqEditor.getOutputByteArray().length;
         System.out.println("orig: " + bytes.length + " compressed: " + length);
         Assert.assertTrue(length <= bytes.length);
-//        Files.write(Paths.get("output.w3x"), mpqEditor.getOutputByteArray());
+        Files.write(Paths.get("output.w3x"), mpqEditor.getOutputByteArray());
     }
 
     @Test
