@@ -1025,6 +1025,13 @@ public class JMpqEditor implements AutoCloseable {
                 fakeFiles.add("w3p_assetfake" + i + (Math.random() > 0.5 ? ".mdx" : ".blp"));
             }
 
+            if (hasFile("war3map.j")) {
+                int pos = hashTable.getBlockIndexOfFile("war3map.j");
+                Block copyBlock = blockTable.getBlockAtPos(pos);
+                fakeBlocks.add(copyBlock);
+                fakeFiles.add("scripts\\war3map.j");
+            }
+
             newBlocks.addAll(fakeBlocks);
             newFiles.addAll(fakeFiles);
 
