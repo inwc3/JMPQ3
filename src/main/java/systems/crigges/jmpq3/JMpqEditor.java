@@ -19,6 +19,7 @@ import java.nio.channels.*;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static systems.crigges.jmpq3.MpqFile.*;
 
@@ -965,7 +966,7 @@ public class JMpqEditor implements AutoCloseable {
             }
             log.debug("Added existing files");
             HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
-            for (String newFileName : filenameToData.keySet()) {
+            for (String newFileName : filenameToData.keySet().stream().sorted().collect(Collectors.toList())) {
                 ByteBuffer newFile = filenameToData.get(newFileName);
                 newFiles.add(newFileName);
                 newFileMap.put(newFileName, newFile);
