@@ -138,12 +138,13 @@ public class MpqTests {
     public void testExternalListfile() throws Exception {
         File mpq = getFile("mpqs/normalMap.w3x");
         File listFile = getFile("listfile.txt");
-        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        if(mpqEditor.isCanWrite()) {
-            mpqEditor.deleteFile("(listfile)");
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            if (mpqEditor.isCanWrite()) {
+                mpqEditor.deleteFile("(listfile)");
+            }
+            mpqEditor.setExternalListfile(listFile);
+            Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
         }
-        mpqEditor.setExternalListfile(listFile);
-        Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
     }
 
     @Test

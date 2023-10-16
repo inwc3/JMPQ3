@@ -9,6 +9,7 @@ import systems.crigges.jmpq3.security.MPQHashGenerator;
 
 import java.io.*;
 import java.nio.*;
+import java.nio.file.Files;
 
 public class MpqFile {
     public static final int COMPRESSED = 0x00000200;
@@ -65,7 +66,7 @@ public class MpqFile {
         if (sectorCount == 1) {
             f.createNewFile();
         }
-        extractToOutputStream(new FileOutputStream(f));
+        extractToOutputStream(Files.newOutputStream(f.toPath()));
     }
 
     public byte[] extractToBytes() throws IOException {

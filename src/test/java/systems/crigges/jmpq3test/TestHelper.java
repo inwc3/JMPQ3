@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -17,7 +18,7 @@ public class TestHelper {
         try {
             byte[] buf = new byte[1024];
             MessageDigest md = MessageDigest.getInstance("MD5");
-            try (InputStream is = new FileInputStream(f);
+            try (InputStream is = Files.newInputStream(f.toPath());
                  DigestInputStream dis = new DigestInputStream(is, md)) {
                 while (dis.read(buf) >= 0);
             }
