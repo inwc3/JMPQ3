@@ -17,6 +17,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
@@ -131,6 +132,34 @@ public class MpqTests {
                 mpqEditor.deleteFile("(listfile)");
             }
             mpqEditor.close(false, false, false);
+        }
+    }
+
+    @Test
+    public void testInsertOrder() throws IOException {
+        files = new File[1];
+        files[0] = Files.copy(getFile("mpqs/normalMap.w3x").toPath(), Paths.get("temp.w3x")).toFile();
+        File mpq = files[0];
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.insertByteArray("a", new byte[12]);
+            mpqEditor.insertByteArray("b", new byte[12]);
+        }
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            int aI = mpqEditor.getHashTable().getBlockIndexOfFile("a");
+            int bI = mpqEditor.getHashTable().getBlockIndexOfFile("b");
+            Assert.assertTrue(bI > aI);
+        }
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.insertByteArray("d", new byte[12]);
+            mpqEditor.insertByteArray("c", new byte[12]);
+        }
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            int dI = mpqEditor.getHashTable().getBlockIndexOfFile("d");
+            int cI = mpqEditor.getHashTable().getBlockIndexOfFile("c");
+            Assert.assertTrue(cI > dI);
         }
     }
 

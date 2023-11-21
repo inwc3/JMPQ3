@@ -125,7 +125,7 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * The internal filename.
      */
-    private final IdentityHashMap<String, ByteBuffer> filenameToData = new IdentityHashMap<>();
+    private final LinkedIdentityHashMap<String, ByteBuffer> filenameToData = new LinkedIdentityHashMap<>();
     /** The files to add. */
     /**
      * The keep header offset.
@@ -965,7 +965,7 @@ public class JMpqEditor implements AutoCloseable {
             }
             log.debug("Added existing files");
             HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
-            for (String newFileName : filenameToData.keySet()) {
+            for (String newFileName : filenameToData) {
                 ByteBuffer newFile = filenameToData.get(newFileName);
                 newFiles.add(newFileName);
                 newFileMap.put(newFileName, newFile);
@@ -1147,6 +1147,10 @@ public class JMpqEditor implements AutoCloseable {
      */
     public BlockTable getBlockTable() {
         return blockTable;
+    }
+
+    public HashTable getHashTable() {
+        return hashTable;
     }
 
     /**
