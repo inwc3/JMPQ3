@@ -840,7 +840,6 @@ public class JMpqEditor implements AutoCloseable {
             fc.close();
             return;
         }
-        File temp = null;
 
         DynamicByteBuffer output = new DynamicByteBuffer(Math.toIntExact(archiveSize));
         output.order(ByteOrder.LITTLE_ENDIAN);
@@ -914,11 +913,13 @@ public class JMpqEditor implements AutoCloseable {
             ByteBuffer newFile = filenameToData.get(newFileName);
             newFiles.add(newFileName);
             newFileMap.put(newFileName, newFile);
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
+            int sectorCount = (int) (Math.ceil(((double) newFile.limit() / (double) newDiscBlockSize)) + 1);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
             newBlocks.add(newBlock);
+            ByteBuffer fileWriter=  ByteBuffer.allocate(sectorCount * 4 + (sectorCount - 1) * newDiscBlockSize ).order(ByteOrder.LITTLE_ENDIAN);
             MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
             currentPos += newBlock.getCompressedSize();
+            output.put(fileWriter.array(), 0, newBlock.getCompressedSize());
             log.debug("Added file " + newFileName);
         }
         log.debug("Added new files");
@@ -926,11 +927,12 @@ public class JMpqEditor implements AutoCloseable {
             // Add listfile
             newFiles.add("(listfile)");
             byte[] listfileArr = listFile.asByteArray();
-            MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
+            ByteBuffer fileWriter=  ByteBuffer.allocate(listfileArr.length + 10).order(ByteOrder.LITTLE_ENDIAN);
             MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
             currentPos += newBlock.getCompressedSize();
+            output.put(fileWriter.array(), 0, newBlock.getCompressedSize());
             log.debug("Added listfile");
         }
         // if (attributes != null) {
