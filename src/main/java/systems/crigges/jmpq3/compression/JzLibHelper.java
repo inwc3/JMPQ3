@@ -3,6 +3,14 @@ package systems.crigges.jmpq3.compression;
 import com.jcraft.jzlib.Deflater;
 import com.jcraft.jzlib.GZIPException;
 import com.jcraft.jzlib.Inflater;
+import com.jcraft.jzlib.JZlib;
+import org.apache.commons.compress.compressors.deflate.DeflateCompressorInputStream;
+import org.apache.commons.compress.compressors.deflate.DeflateParameters;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.zip.InflaterInputStream;
 
 public class JzLibHelper {
     private static final Inflater inf = new Inflater();
@@ -10,19 +18,34 @@ public class JzLibHelper {
     private static int defLvl = 0;
     private static Deflater def = null;
 
+
     public static byte[] inflate(byte[] bytes, int offset, int uncompSize) {
+        Inflater inf = new Inflater(); // Create a new Inflater instance
         byte[] uncomp = new byte[uncompSize];
-        inf.init();
-        inf.setInput(bytes, offset, bytes.length - 1, false);
-        inf.setOutput(uncomp);
-        while ((inf.total_out < uncompSize) && (inf.total_in < bytes.length)) {
-            inf.avail_in = (inf.avail_out = 1);
-            int err = inf.inflate(0);
-            if (err == 1)
-                break;
+        try {
+            // Set the input data correctly
+            inf.setInput(bytes, offset, bytes.length - offset, false);
+            inf.setOutput(uncomp);
+
+            int err;
+            do {
+                // Perform the inflation without manually setting avail_in and avail_out
+                err = inf.inflate(JZlib.Z_NO_FLUSH);
+                if (err == JZlib.Z_STREAM_END) {
+                    break;
+                } else if (err != JZlib.Z_OK && err != JZlib.Z_BUF_ERROR) {
+                    throw new RuntimeException("Inflater error: " + inf.msg);
+                }
+                // If no progress is made, break to avoid infinite loop
+                if (inf.avail_in == 0 && inf.avail_out == 0) {
+                    break;
+                }
+            } while (true);
+
+            return uncomp;
+        } finally {
+            inf.end(); // Ensure resources are released
         }
-        inf.end();
-        return uncomp;
     }
 
     static byte[] comp = new byte[1024];
