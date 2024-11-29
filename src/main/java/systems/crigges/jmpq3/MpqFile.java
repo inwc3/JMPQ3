@@ -53,6 +53,14 @@ public class MpqFile {
         }
     }
 
+    public int getCompressedSize() {
+        return compressedSize;
+    }
+
+    public int getNormalSize() {
+        return normalSize;
+    }
+
     public int getFlags() {
         return flags;
     }

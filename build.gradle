@@ -27,7 +27,7 @@ jacoco {
 
 dependencies {
     implementation 'com.jcraft:jzlib:1.1.3'
-    implementation group: 'org.apache.commons', name: 'commons-compress', version: '1.21'
+    implementation group: 'org.apache.commons', name: 'commons-compress', version: '1.27.1'
     implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
     implementation group: 'org.tukaani', name: 'xz', version: '1.9'
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31'
