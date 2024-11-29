@@ -156,15 +156,44 @@ public class MpqTests {
     }
 
     @Test
+    public void testInsertOrder() throws IOException {
+        files = new File[1];
+        files[0] = Files.copy(getFile("mpqs/normalMap.w3x").toPath(), Paths.get("temp.w3x")).toFile();
+        File mpq = files[0];
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.insertByteArray("a", new byte[12]);
+            mpqEditor.insertByteArray("b", new byte[12]);
+        }
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            int aI = mpqEditor.getHashTable().getBlockIndexOfFile("a");
+            int bI = mpqEditor.getHashTable().getBlockIndexOfFile("b");
+            Assert.assertTrue(bI > aI);
+        }
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.insertByteArray("d", new byte[12]);
+            mpqEditor.insertByteArray("c", new byte[12]);
+        }
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            int dI = mpqEditor.getHashTable().getBlockIndexOfFile("d");
+            int cI = mpqEditor.getHashTable().getBlockIndexOfFile("c");
+            Assert.assertTrue(cI > dI);
+        }
+    }
+
+    @Test
     public void testExternalListfile() throws Exception {
         File mpq = getFile("mpqs/normalMap.w3x");
         File listFile = getFile("listfile.txt");
-        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
-        if (mpqEditor.isCanWrite()) {
-            mpqEditor.deleteFile("(listfile)");
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            if (mpqEditor.isCanWrite()) {
+                mpqEditor.deleteFile("(listfile)");
+            }
+            mpqEditor.setExternalListfile(listFile);
+            Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
         }
-        mpqEditor.setExternalListfile(listFile);
-        Assert.assertTrue(mpqEditor.getListfileEntries().contains("war3map.w3a"));
     }
 
     @Test
