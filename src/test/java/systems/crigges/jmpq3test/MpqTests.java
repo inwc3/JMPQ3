@@ -123,6 +123,20 @@ public class MpqTests {
     }
 
     @Test
+    public void testInsertAndExtract() throws IOException {
+        File mpq = Arrays.stream(getMpqs()).filter(pq -> pq.getName().contains("normalMap")).findFirst().get();
+        JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0);
+        mpqEditor.insertFile("test.txt", getFile("Example.txt"));
+        mpqEditor.close(false, false, false);
+
+        // Test if mpq is still valid
+        try (JMpqEditor mpqEditor2 = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            byte[] bytes = mpqEditor2.extractFileAsBytes("test.txt");
+            Assert.assertTrue(Arrays.equals(Files.readAllBytes(getFile("Example.txt").toPath()), bytes));
+        }
+    }
+
+    @Test
     public void testRebuild() throws IOException {
         File[] mpqs = getMpqs();
         for (File mpq : mpqs) {
