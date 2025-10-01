@@ -23,46 +23,49 @@ public class CompressionUtil {
     private static final byte FLAG_ADPCM2C = -0x80;
     private static final byte FLAG_LMZA = 0x12;
 
-    static byte[] zlibStoreLevel0(byte[] in) {
-        // zlib header for deflate, 32K window, "fastest" -> 0x78 0x01
-        // (CMF=0x78, FLG chosen so (CMF*256+FLG)%31==0 and low 2 bits indicate level)
+    private static byte[] zlibStoreLevel0(byte[] in) {
         int len = in.length;
         int blocks = (len + 65534) / 65535;
-        int outCap = 2 + len + blocks * 5 + 4; // header + data + block headers + adler32
+        int outCap = 2 + len + blocks * 5 + 4;
         byte[] out = new byte[outCap];
-        int p = 0;
-        out[p++] = (byte)0x78;
-        out[p++] = (byte)0x01;
 
-        int off = 0;
+        // Pre-compute Adler-32 in a single pass
+        int s1 = 1, s2 = 0;
+        for (int i = 0; i < len; i++) {
+            s1 = (s1 + (in[i] & 0xFF)) % 65521;
+            s2 = (s2 + s1) % 65521;
+        }
+        int adler = (s2 << 16) | s1;
+
+        // Write header
+        out[0] = 0x78;
+        out[1] = 0x01;
+
+        // Write blocks
+        int p = 2, off = 0;
         while (off < len) {
             int n = Math.min(65535, len - off);
             boolean finalBlock = (off + n) == len;
-            out[p++] = (byte)(finalBlock ? 0x01 : 0x00); // BFINAL=1 on last, BTYPE=00 (stored)
-            // 2 bytes LEN (little endian), 2 bytes NLEN = ~LEN
+
+            out[p++] = (byte)(finalBlock ? 0x01 : 0x00);
             out[p++] = (byte)(n & 0xFF);
             out[p++] = (byte)((n >>> 8) & 0xFF);
             int nlen = (~n) & 0xFFFF;
             out[p++] = (byte)(nlen & 0xFF);
             out[p++] = (byte)((nlen >>> 8) & 0xFF);
+
             System.arraycopy(in, off, out, p, n);
             p += n;
             off += n;
         }
 
-        // Adler-32
-        long s1 = 1, s2 = 0;
-        for (byte b : in) {
-            s1 = (s1 + (b & 0xFF)) % 65521;
-            s2 = (s2 + s1) % 65521;
-        }
-        int adler = (int)((s2 << 16) | s1);
+        // Write Adler-32
         out[p++] = (byte)((adler >>> 24) & 0xFF);
         out[p++] = (byte)((adler >>> 16) & 0xFF);
         out[p++] = (byte)((adler >>> 8) & 0xFF);
-        out[p++] = (byte)(adler & 0xFF);
+        out[p] = (byte)(adler & 0xFF);
 
-        return (p == out.length) ? out : Arrays.copyOf(out, p);
+        return out;
     }
 
 

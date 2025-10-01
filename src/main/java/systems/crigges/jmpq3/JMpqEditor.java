@@ -125,7 +125,8 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * The internal filename.
      */
-    private final LinkedIdentityHashMap<String, ByteBuffer> filenameToData = new LinkedIdentityHashMap<>();
+    private final LinkedIdentityHashMap<String, Path> filenameToPaths = new LinkedIdentityHashMap<>();
+    private final LinkedIdentityHashMap<String, byte[]> filenameToBytes = new LinkedIdentityHashMap<>();
     /** The files to add. */
     /**
      * The keep header offset.
@@ -793,7 +794,8 @@ public class JMpqEditor implements AutoCloseable {
 
         if (listFile.containsFile(name)) {
             listFile.removeFile(name);
-            filenameToData.remove(name);
+            filenameToPaths.remove(name);
+            filenameToBytes.remove(name);
         }
     }
 
@@ -805,19 +807,16 @@ public class JMpqEditor implements AutoCloseable {
      * @param override whether to override an existing file with the same name
      * @throws IllegalArgumentException when the mpq has filename and not override
      */
-    public void insertByteArray(String name, byte[] input, boolean override) throws NonWritableChannelException,
-        IllegalArgumentException {
+    public void insertByteArray(String name, byte[] input, boolean override) {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
-
         if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
         listFile.addFile(name);
-        ByteBuffer data = ByteBuffer.wrap(input);
-        filenameToData.put(name, data);
+        filenameToBytes.put(name, input);
     }
 
     /**
@@ -849,24 +848,17 @@ public class JMpqEditor implements AutoCloseable {
      * @param override whether to override an existing file with the same name
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File file, boolean override) throws IOException, IllegalArgumentException {
+    public void insertFile(String name, File file, boolean override) throws IOException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
-
         log.info("insert file: " + name);
-
         if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
-        try {
-            listFile.addFile(name);
-            ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
-            filenameToData.put(name, data);
-        } catch (IOException e) {
-            throw new JMpqException(e);
-        }
+        listFile.addFile(name);
+        filenameToPaths.put(name, file.toPath()); // Store path, not data
     }
 
     public void closeReadOnly() throws IOException {
@@ -939,14 +931,17 @@ public class JMpqEditor implements AutoCloseable {
             }
             long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
 
-            for (String fileName : filenameToData.keySet()) {
+            for (String fileName : filenameToBytes.keySet()) {
+                existingFiles.remove(fileName);
+            }
+
+            for (String fileName : filenameToPaths.keySet()) {
                 existingFiles.remove(fileName);
             }
 
             for (String existingName : existingFiles) {
                 if (options.recompress && !existingName.endsWith(".wav")) {
-                    ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
-                    filenameToData.put(existingName, extracted);
+                    filenameToBytes.put(existingName, extractFileAsBytes(existingName));
                 } else {
                     newFiles.add(existingName);
                     int pos = hashTable.getBlockIndexOfFile(existingName);
@@ -964,15 +959,24 @@ public class JMpqEditor implements AutoCloseable {
                 }
             }
             log.debug("Added existing files");
-            HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
-            for (String newFileName : filenameToData) {
-                ByteBuffer newFile = filenameToData.get(newFileName);
+            for (String newFileName : filenameToPaths.keySet()) {
+                byte[] fileData = Files.readAllBytes(filenameToPaths.get(newFileName));
                 newFiles.add(newFileName);
-                newFileMap.put(newFileName, newFile);
-                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newFile.limit() * 2L);
+                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, fileData.length * 2L);
                 Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
                 newBlocks.add(newBlock);
-                MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
+                MpqFile.writeFileAndBlock(fileData, newBlock, fileWriter, newDiscBlockSize, options);
+                currentPos += newBlock.getCompressedSize();
+                log.debug("Added file " + newFileName);
+            }
+
+            for (String newFileName : filenameToBytes.keySet()) {
+                byte[] fileData = filenameToBytes.get(newFileName);
+                newFiles.add(newFileName);
+                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, fileData.length * 2L);
+                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
+                newBlocks.add(newBlock);
+                MpqFile.writeFileAndBlock(fileData, newBlock, fileWriter, newDiscBlockSize, options);
                 currentPos += newBlock.getCompressedSize();
                 log.debug("Added file " + newFileName);
             }
