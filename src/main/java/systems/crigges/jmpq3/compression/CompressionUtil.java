@@ -22,61 +22,99 @@ public class CompressionUtil {
     private static final byte FLAG_ADPCM1C = 0x40;
     private static final byte FLAG_ADPCM2C = -0x80;
     private static final byte FLAG_LMZA = 0x12;
+    private static final ThreadLocal<ByteBuffer> STORE_BUFFER =
+        ThreadLocal.withInitial(() -> ByteBuffer.allocateDirect(70000));
 
+    /**
+     * Optimized level-0 zlib compression (stored blocks only).
+     * Uses direct ByteBuffer for better performance and reduces allocations.
+     */
     private static byte[] zlibStoreLevel0(byte[] in) {
         int len = in.length;
         int blocks = (len + 65534) / 65535;
         int outCap = 2 + len + blocks * 5 + 4;
-        byte[] out = new byte[outCap];
 
-        // Pre-compute Adler-32 in a single pass
-        int s1 = 1, s2 = 0;
-        for (int i = 0; i < len; i++) {
-            s1 = (s1 + (in[i] & 0xFF)) % 65521;
-            s2 = (s2 + s1) % 65521;
+        // Get thread-local buffer and ensure capacity
+        ByteBuffer buffer = STORE_BUFFER.get();
+        if (buffer.capacity() < outCap) {
+            buffer = ByteBuffer.allocateDirect(Math.max(outCap, buffer.capacity() * 2));
+            STORE_BUFFER.set(buffer);
         }
+
+        buffer.clear();
+        buffer.limit(outCap);
+
+        // Pre-compute Adler-32 in a single pass (optimized modulo operations)
+        int s1 = 1, s2 = 0;
+        int i = 0;
+
+        // Process in chunks to reduce modulo operations (major optimization)
+        while (i < len) {
+            int chunk = Math.min(5552, len - i); // 5552 is max before overflow
+            int end = i + chunk;
+
+            while (i < end) {
+                s1 += (in[i++] & 0xFF);
+                s2 += s1;
+            }
+
+            s1 %= 65521;
+            s2 %= 65521;
+        }
+
         int adler = (s2 << 16) | s1;
 
-        // Write header
-        out[0] = 0x78;
-        out[1] = 0x01;
+        // Write zlib header (CMF and FLG)
+        buffer.put((byte) 0x78);
+        buffer.put((byte) 0x01);
 
-        // Write blocks
-        int p = 2, off = 0;
+        // Write stored blocks
+        int off = 0;
         while (off < len) {
-            int n = Math.min(65535, len - off);
-            boolean finalBlock = (off + n) == len;
+            int blockLen = Math.min(65535, len - off);
+            boolean finalBlock = (off + blockLen) == len;
 
-            out[p++] = (byte)(finalBlock ? 0x01 : 0x00);
-            out[p++] = (byte)(n & 0xFF);
-            out[p++] = (byte)((n >>> 8) & 0xFF);
-            int nlen = (~n) & 0xFFFF;
-            out[p++] = (byte)(nlen & 0xFF);
-            out[p++] = (byte)((nlen >>> 8) & 0xFF);
+            // Block header
+            buffer.put((byte) (finalBlock ? 0x01 : 0x00));
 
-            System.arraycopy(in, off, out, p, n);
-            p += n;
-            off += n;
+            // LEN (little-endian)
+            buffer.put((byte) (blockLen & 0xFF));
+            buffer.put((byte) ((blockLen >>> 8) & 0xFF));
+
+            // NLEN (one's complement of LEN, little-endian)
+            int nlen = (~blockLen) & 0xFFFF;
+            buffer.put((byte) (nlen & 0xFF));
+            buffer.put((byte) ((nlen >>> 8) & 0xFF));
+
+            // Block data
+            buffer.put(in, off, blockLen);
+            off += blockLen;
         }
 
-        // Write Adler-32
-        out[p++] = (byte)((adler >>> 24) & 0xFF);
-        out[p++] = (byte)((adler >>> 16) & 0xFF);
-        out[p++] = (byte)((adler >>> 8) & 0xFF);
-        out[p] = (byte)(adler & 0xFF);
+        // Write Adler-32 checksum (big-endian)
+        buffer.put((byte) ((adler >>> 24) & 0xFF));
+        buffer.put((byte) ((adler >>> 16) & 0xFF));
+        buffer.put((byte) ((adler >>> 8) & 0xFF));
+        buffer.put((byte) (adler & 0xFF));
+
+        // Copy to output array
+        buffer.flip();
+        byte[] out = new byte[buffer.remaining()];
+        buffer.get(out);
 
         return out;
     }
 
-
+    // Update your compress method to use the optimized version:
     public static byte[] compress(byte[] temp, RecompressOptions recompress) {
         if (!recompress.recompress) {
-            return zlibStoreLevel0(temp);
+            return zlibStoreLevel0(temp); // Use the fastest version
         }
         if (recompress.recompress && recompress.useZopfli && zopfli == null) {
             zopfli = new ZopfliHelper();
         }
-        return recompress.useZopfli ? zopfli.deflate(temp, recompress.iterations) : JzLibHelper.deflate(temp, recompress.recompress);
+        return recompress.useZopfli ? zopfli.deflate(temp, recompress.iterations)
+            : JzLibHelper.deflate(temp, recompress.recompress);
     }
 
     public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {

@@ -1,5 +1,6 @@
 package systems.crigges.jmpq3;
 
+import ch.qos.logback.core.joran.sanity.Pair;
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,8 +126,20 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * The internal filename.
      */
-    private final LinkedIdentityHashMap<String, Path> filenameToPaths = new LinkedIdentityHashMap<>();
-    private final LinkedIdentityHashMap<String, byte[]> filenameToBytes = new LinkedIdentityHashMap<>();
+    static class Either {
+        Path path;
+        byte[] data;
+
+        Either(Path path) {
+            this.path = path;
+        }
+
+        Either(byte[] data) {
+            this.data = data;
+        }
+
+    }
+    private final LinkedIdentityHashMap<String, Either> filenameToData = new LinkedIdentityHashMap<>();
     /** The files to add. */
     /**
      * The keep header offset.
@@ -735,7 +748,12 @@ public class JMpqEditor implements AutoCloseable {
         int pos = hashTable.getBlockIndexOfFile(name);
         Block b = blockTable.getBlockAtPos(pos);
 
-        ByteBuffer buffer = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer;
+        if (b.getCompressedSize() > 1024 * 1024) { // 1 MB
+            buffer = ByteBuffer.allocateDirect(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+        } else {
+            buffer = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
+        }
         fc.position(headerOffset + b.getFilePos());
         readFully(buffer, fc);
         buffer.rewind();
@@ -794,8 +812,7 @@ public class JMpqEditor implements AutoCloseable {
 
         if (listFile.containsFile(name)) {
             listFile.removeFile(name);
-            filenameToPaths.remove(name);
-            filenameToBytes.remove(name);
+            filenameToData.remove(name);
         }
     }
 
@@ -816,7 +833,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         listFile.addFile(name);
-        filenameToBytes.put(name, input);
+        filenameToData.put(name, new Either(input));
     }
 
     /**
@@ -858,7 +875,7 @@ public class JMpqEditor implements AutoCloseable {
         }
 
         listFile.addFile(name);
-        filenameToPaths.put(name, file.toPath()); // Store path, not data
+        filenameToData.put(name, new Either(file.toPath())); // Store path, not data
     }
 
     public void closeReadOnly() throws IOException {
@@ -931,17 +948,13 @@ public class JMpqEditor implements AutoCloseable {
             }
             long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
 
-            for (String fileName : filenameToBytes.keySet()) {
-                existingFiles.remove(fileName);
-            }
-
-            for (String fileName : filenameToPaths.keySet()) {
+            for (String fileName : filenameToData.keySet()) {
                 existingFiles.remove(fileName);
             }
 
             for (String existingName : existingFiles) {
                 if (options.recompress && !existingName.endsWith(".wav")) {
-                    filenameToBytes.put(existingName, extractFileAsBytes(existingName));
+                    filenameToData.put(existingName, new Either(extractFileAsBytes(existingName)));
                 } else {
                     newFiles.add(existingName);
                     int pos = hashTable.getBlockIndexOfFile(existingName);
@@ -959,19 +972,12 @@ public class JMpqEditor implements AutoCloseable {
                 }
             }
             log.debug("Added existing files");
-            for (String newFileName : filenameToPaths.keySet()) {
-                byte[] fileData = Files.readAllBytes(filenameToPaths.get(newFileName));
-                newFiles.add(newFileName);
-                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, fileData.length * 2L);
-                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
-                newBlocks.add(newBlock);
-                MpqFile.writeFileAndBlock(fileData, newBlock, fileWriter, newDiscBlockSize, options);
-                currentPos += newBlock.getCompressedSize();
-                log.debug("Added file " + newFileName);
-            }
-
-            for (String newFileName : filenameToBytes.keySet()) {
-                byte[] fileData = filenameToBytes.get(newFileName);
+            for (String newFileName : filenameToData.keySet()) {
+                Either either = filenameToData.get(newFileName);
+                byte[] fileData = either.data;
+                if (either.path != null) {
+                    fileData = Files.readAllBytes(either.path);
+                }
                 newFiles.add(newFileName);
                 MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, fileData.length * 2L);
                 Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
