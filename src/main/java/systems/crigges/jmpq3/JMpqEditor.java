@@ -1,6 +1,5 @@
 package systems.crigges.jmpq3;
 
-import ch.qos.logback.core.joran.sanity.Pair;
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
