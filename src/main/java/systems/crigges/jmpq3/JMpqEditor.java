@@ -748,12 +748,7 @@ public class JMpqEditor implements AutoCloseable {
         int pos = hashTable.getBlockIndexOfFile(name);
         Block b = blockTable.getBlockAtPos(pos);
 
-        ByteBuffer buffer;
-        if (b.getCompressedSize() > 1024 * 1024) { // 1 MB
-            buffer = ByteBuffer.allocateDirect(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-        } else {
-            buffer = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-        }
+        ByteBuffer buffer = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
         fc.position(headerOffset + b.getFilePos());
         readFully(buffer, fc);
         buffer.rewind();

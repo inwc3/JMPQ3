@@ -23,7 +23,7 @@ public class CompressionUtil {
     private static final byte FLAG_ADPCM2C = -0x80;
     private static final byte FLAG_LMZA = 0x12;
     private static final ThreadLocal<ByteBuffer> STORE_BUFFER =
-        ThreadLocal.withInitial(() -> ByteBuffer.allocateDirect(70000));
+        ThreadLocal.withInitial(() -> ByteBuffer.allocate(70000));
 
     /**
      * Optimized level-0 zlib compression (stored blocks only).
@@ -37,7 +37,7 @@ public class CompressionUtil {
         // Get thread-local buffer and ensure capacity
         ByteBuffer buffer = STORE_BUFFER.get();
         if (buffer.capacity() < outCap) {
-            buffer = ByteBuffer.allocateDirect(Math.max(outCap, buffer.capacity() * 2));
+            buffer = ByteBuffer.allocate(Math.max(outCap, buffer.capacity() * 2));
             STORE_BUFFER.set(buffer);
         }
 
