@@ -122,7 +122,20 @@ public class JMpqEditor implements AutoCloseable {
     /**
      * The internal filename.
      */
-    private final LinkedIdentityHashMap<String, ByteBuffer> filenameToData = new LinkedIdentityHashMap<>();
+    static class Either {
+        Path path;
+        byte[] data;
+
+        Either(Path path) {
+            this.path = path;
+        }
+
+        Either(byte[] data) {
+            this.data = data;
+        }
+
+    }
+    private final LinkedIdentityHashMap<String, Either> filenameToData = new LinkedIdentityHashMap<>();
     /** The files to add. */
     /**
      * The keep header offset.
@@ -745,19 +758,16 @@ public class JMpqEditor implements AutoCloseable {
      * @param override whether to override an existing file with the same name
      * @throws IllegalArgumentException when the mpq has filename and not override
      */
-    public void insertByteArray(String name, byte[] input, boolean override) throws NonWritableChannelException,
-        IllegalArgumentException {
+    public void insertByteArray(String name, byte[] input, boolean override) {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
-
         if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
         listFile.addFile(name);
-        ByteBuffer data = ByteBuffer.wrap(input);
-        filenameToData.put(name, data);
+        filenameToData.put(name, new Either(input));
     }
 
     /**
@@ -789,24 +799,17 @@ public class JMpqEditor implements AutoCloseable {
      * @param override whether to override an existing file with the same name
      * @throws JMpqException if file is not found or access errors occur
      */
-    public void insertFile(String name, File file, boolean override) throws IOException, IllegalArgumentException {
+    public void insertFile(String name, File file, boolean override) throws IOException {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
-
         log.info("insert file: " + name);
-
         if ((!override) && listFile.containsFile(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
 
-        try {
-            listFile.addFile(name);
-            ByteBuffer data = ByteBuffer.wrap(Files.readAllBytes(file.toPath()));
-            filenameToData.put(name, data);
-        } catch (IOException e) {
-            throw new JMpqException(e);
-        }
+        listFile.addFile(name);
+        filenameToData.put(name, new Either(file.toPath())); // Store path, not data
     }
 
     public void closeReadOnly() throws IOException {
@@ -887,7 +890,7 @@ public class JMpqEditor implements AutoCloseable {
         for (String existingName : existingFiles) {
             if (options.recompress && !existingName.endsWith(".wav")) {
                 ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
-                filenameToData.put(existingName, extracted);
+                filenameToData.put(existingName, new Either(extracted.array()));
             } else {
                 newFiles.add(existingName);
                 int pos = hashTable.getBlockIndexOfFile(existingName);
@@ -908,21 +911,38 @@ public class JMpqEditor implements AutoCloseable {
             }
         }
         log.debug("Added existing files");
+
+        // --- BEGIN: merged, minimal fix to use Either from the map (path or data) ---
         HashMap<String, ByteBuffer> newFileMap = new HashMap<>();
-        for (String newFileName : filenameToData) {
-            ByteBuffer newFile = filenameToData.get(newFileName);
+        for (Map.Entry<String, Either> entry : filenameToData.entrySet()) {
+            String newFileName = entry.getKey();
+            Either either = entry.getValue();
+
+            byte[] fileData = either.data;
+            if (fileData == null && either.path != null) {
+                fileData = Files.readAllBytes(either.path);
+            }
+            if (fileData == null) {
+                log.warn("Skipping empty insertion for " + newFileName);
+                continue;
+            }
+
             newFiles.add(newFileName);
-            newFileMap.put(newFileName, newFile);
-            int sectorCount = (int) (Math.ceil(((double) newFile.limit() / (double) newDiscBlockSize)) + 1);
+            ByteBuffer newFileBuf = ByteBuffer.wrap(fileData).order(ByteOrder.LITTLE_ENDIAN);
+            newFileMap.put(newFileName, newFileBuf);
+
+            int sectorCount = (int) (Math.ceil(((double) fileData.length / (double) newDiscBlockSize)) + 1);
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
             newBlocks.add(newBlock);
-            ByteBuffer fileWriter=  ByteBuffer.allocate(sectorCount * 4 + (sectorCount - 1) * newDiscBlockSize ).order(ByteOrder.LITTLE_ENDIAN);
-            MpqFile.writeFileAndBlock(newFile.array(), newBlock, fileWriter, newDiscBlockSize, options);
+            ByteBuffer fileWriter = ByteBuffer.allocate(sectorCount * 4 + (sectorCount - 1) * newDiscBlockSize).order(ByteOrder.LITTLE_ENDIAN);
+            MpqFile.writeFileAndBlock(fileData, newBlock, fileWriter, newDiscBlockSize, options);
             currentPos += newBlock.getCompressedSize();
             output.put(fileWriter.array(), 0, newBlock.getCompressedSize());
             log.debug("Added file " + newFileName);
         }
         log.debug("Added new files");
+        // --- END: minimal fix ---
+
         if (buildListfile && !listFile.getFiles().isEmpty()) {
             // Add listfile
             newFiles.add("(listfile)");
@@ -995,7 +1015,6 @@ public class JMpqEditor implements AutoCloseable {
                     fakeFiles.add("w3p_assetdupe" + i);
                 }
             }
-
 
             for (int i = 0; i < fakeFilesCount; i++) {
                 int size = (int) (Math.random() * currentPos);
