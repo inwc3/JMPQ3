@@ -13,7 +13,6 @@ import java.security.NoSuchAlgorithmException;
  * Created by Frotty on 11.06.2017.
  */
 public class TestHelper {
-    // stolen from http://stackoverflow.com/a/304350/303637
     public static String md5(File f) {
         try {
             byte[] buf = new byte[1024];
@@ -25,6 +24,17 @@ public class TestHelper {
             byte[] digest = md.digest();
             return bytesToHex(digest);
         } catch (NoSuchAlgorithmException | IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String md5(byte[] data) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(data);
+            byte[] digest = md.digest();
+            return bytesToHex(digest);
+        } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
     }

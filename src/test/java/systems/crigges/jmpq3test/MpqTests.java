@@ -133,7 +133,7 @@ public class MpqTests {
         mpqEditor.close(false, false, false);
 
         // Test if mpq is still valid
-        try (JMpqEditor mpqEditor2 = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor2 = new JMpqEditor(mpqEditor.getOutputByteArray(), MPQOpenOption.FORCE_V0)) {
             byte[] bytes = mpqEditor2.extractFileAsBytes("test.txt");
             Assert.assertTrue(Arrays.equals(Files.readAllBytes(getFile("Example.txt").toPath()), bytes));
         }
@@ -174,23 +174,30 @@ public class MpqTests {
         files = new File[1];
         files[0] = Files.copy(getFile("mpqs/normalMap.w3x").toPath(), Paths.get("temp.w3x")).toFile();
         File mpq = files[0];
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        byte[] bytes;
+        try (JMpqEditor mpqEditor = new JMpqEditor(Files.readAllBytes(mpq.toPath()), MPQOpenOption.FORCE_V0)) {
             mpqEditor.insertByteArray("a", new byte[12]);
             mpqEditor.insertByteArray("b", new byte[12]);
+            mpqEditor.close();
+            bytes = mpqEditor.getOutputByteArray();
         }
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0)) {
             int aI = mpqEditor.getHashTable().getBlockIndexOfFile("a");
             int bI = mpqEditor.getHashTable().getBlockIndexOfFile("b");
             Assert.assertTrue(bI > aI);
+            mpqEditor.close();
+            bytes = mpqEditor.getOutputByteArray();
         }
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0)) {
             mpqEditor.insertByteArray("d", new byte[12]);
             mpqEditor.insertByteArray("c", new byte[12]);
+            mpqEditor.close();
+            bytes = mpqEditor.getOutputByteArray();
         }
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(bytes, MPQOpenOption.FORCE_V0)) {
             int dI = mpqEditor.getHashTable().getBlockIndexOfFile("d");
             int cI = mpqEditor.getHashTable().getBlockIndexOfFile("c");
             Assert.assertTrue(cI > dI);
@@ -304,9 +311,12 @@ public class MpqTests {
                 mpqEditor2.deleteFile("(listfile)");
                 mpqEditor2.insertByteArray("testfile12", new byte[]{1, 2, 3, 4});
                 mpqEditor2.close(false, false, false);
-                byte[] outputByteArray2 = Files.readAllBytes(mpq.toPath());
+                byte[] outputByteArray2 = mpqEditor2.getOutputByteArray();
 
-                Assert.assertNotEquals(bytes, outputByteArray2);
+                Assert.assertNotEquals(
+                    Arrays.toString(bytes),
+                    Arrays.toString(outputByteArray2)
+                );
                 if (outputByteArray.length == outputByteArray2.length) {
                     Assert.assertEquals(outputByteArray, outputByteArray2);
                 } else {
@@ -378,6 +388,7 @@ public class MpqTests {
     private void insertByteArrayAndVerify(File mpq, String filename) throws IOException {
         String hashBefore;
         byte[] bytes;
+        byte[] rebuilt;
 
         try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
@@ -386,33 +397,44 @@ public class MpqTests {
             File file = getFile(filename);
             hashBefore = TestHelper.md5(mpq);
             bytes = Files.readAllBytes(file.toPath());
-            mpqEditor.insertByteArray(filename, Files.readAllBytes(getFile(filename).toPath()));
+
+            mpqEditor.insertByteArray(filename, bytes);
+
+            // IMPORTANT: build and capture result in memory
+            mpqEditor.close(false, false, false);
+            rebuilt = mpqEditor.getOutputByteArray();
         }
 
-        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
+        try (JMpqEditor mpqEditor = verifyMpq(filename, hashBefore, bytes, rebuilt)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
-
     }
 
-    private JMpqEditor verifyMpq(File mpq, String filename, String hashBefore, byte[] bytes) throws IOException {
-        String hashAfter = TestHelper.md5(mpq);
-        // If this fails, the mpq is not changed by the insert file command and something went wrong
-        Assert.assertNotEquals(hashBefore, hashAfter);
+    private JMpqEditor verifyMpq(String filename, String hashBefore, byte[] expectedContent, byte[] rebuilt) throws IOException {
+        // Hash change detection must use rebuilt bytes, not original disk file
+        String hashAfter = TestHelper.md5(rebuilt);
+        Assert.assertNotEquals(hashBefore, hashAfter, "Archive should change after insert");
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
-            Assert.assertTrue(mpqEditor.hasFile(filename));
-            byte[] bytes2 = mpqEditor.extractFileAsBytes(filename);
-            Assert.assertEquals(bytes, bytes2);
+        byte[] bytes;
+        // Verify content from rebuilt bytes in-memory
+        try (JMpqEditor mpqEditor = new JMpqEditor(rebuilt, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(mpqEditor.hasFile(filename), "Rebuilt MPQ missing inserted file");
+            byte[] actual = mpqEditor.extractFileAsBytes(filename);
+            Assert.assertEquals(actual, expectedContent, "File did not round-trip correctly");
             mpqEditor.deleteFile(filename);
+            mpqEditor.close(false, false, false);
+            bytes = mpqEditor.getOutputByteArray();
         }
 
-        return new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
+        // Return a fresh read-only editor over the rebuilt archive
+        return new JMpqEditor(bytes, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0);
     }
 
     private void insertAndVerify(File mpq, String filename) throws IOException {
         String hashBefore;
         byte[] bytes;
+        byte[] rebuilt;
+
         try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
@@ -421,50 +443,64 @@ public class MpqTests {
             hashBefore = TestHelper.md5(mpq);
             bytes = Files.readAllBytes(file.toPath());
             mpqEditor.insertFile(filename, getFile(filename));
+
+            // Build in-memory and capture
+            mpqEditor.close(false, false, false);
+            rebuilt = mpqEditor.getOutputByteArray();
         }
 
-        try (JMpqEditor mpqEditor = verifyMpq(mpq, filename, hashBefore, bytes)) {
+        try (JMpqEditor mpqEditor = verifyMpq(filename, hashBefore, bytes, rebuilt)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
     }
 
     private void insertAndDelete(File mpq, String filename) throws IOException {
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        // Work entirely in-memory; thread the rebuilt bytes through each step
+        byte[] current = Files.readAllBytes(mpq.toPath());
+
+        // Step 1: insert, delete, insert; ensure hash changed
+        String hashBefore = TestHelper.md5(current);
+        byte[] rebuilt;
+        try (JMpqEditor mpqEditor = new JMpqEditor(current, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
             Assert.assertFalse(mpqEditor.hasFile(filename));
-            String hashBefore = TestHelper.md5(mpq);
             mpqEditor.insertFile(filename, getFile(filename));
             mpqEditor.deleteFile(filename);
             mpqEditor.insertFile(filename, getFile(filename));
-            mpqEditor.close();
-
-            String hashAfter = TestHelper.md5(mpq);
-            // If this fails, the mpq is not changed by the insert file command and something went wrong
-            Assert.assertNotEquals(hashBefore, hashAfter);
+            mpqEditor.close(false, false, false);
+            rebuilt = mpqEditor.getOutputByteArray();
         }
+        String hashAfter = TestHelper.md5(rebuilt);
+        Assert.assertNotEquals(hashBefore, hashAfter, "Archive should change after insert/delete/insert");
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        // Step 2: verify file exists, then delete it
+        try (JMpqEditor mpqEditor = new JMpqEditor(rebuilt, MPQOpenOption.FORCE_V0)) {
             Assert.assertTrue(mpqEditor.hasFile(filename));
-
             mpqEditor.deleteFile(filename);
+            mpqEditor.close(false, false, false);
+            rebuilt = mpqEditor.getOutputByteArray();
         }
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        // Step 3: re-insert twice with override, then delete again
+        try (JMpqEditor mpqEditor = new JMpqEditor(rebuilt, MPQOpenOption.FORCE_V0)) {
             if (!mpqEditor.isCanWrite()) {
                 return;
             }
             mpqEditor.insertFile(filename, getFile(filename), true);
             mpqEditor.insertFile(filename, getFile(filename), true);
-
             mpqEditor.deleteFile(filename);
+            mpqEditor.close(false, false, false);
+            rebuilt = mpqEditor.getOutputByteArray();
         }
 
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+        // Final: ensure file is absent
+        try (JMpqEditor mpqEditor = new JMpqEditor(rebuilt, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
             Assert.assertFalse(mpqEditor.hasFile(filename));
         }
     }
+
 
     @Test
     public void testRemoveHeaderoffset() throws IOException {
@@ -479,17 +515,15 @@ public class MpqTests {
         Assert.assertNotNull(mpq);
 
         log.info(mpq.getName());
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        byte[] out;
+        try (JMpqEditor mpqEditor = new JMpqEditor(Files.readAllBytes(mpq.toPath()), MPQOpenOption.FORCE_V0)) {
             mpqEditor.setKeepHeaderOffset(false);
             mpqEditor.close();
-            byte[] bytes = new byte[4];
-            try (FileInputStream fis = new FileInputStream(mpq)) {
-                fis.read(bytes);
-            }
-            ByteBuffer order = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+            out = mpqEditor.getOutputByteArray();
+            ByteBuffer order = ByteBuffer.wrap(out).order(ByteOrder.LITTLE_ENDIAN);
             Assert.assertEquals(order.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
         }
-        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+        try (JMpqEditor mpqEditor = new JMpqEditor(out, MPQOpenOption.FORCE_V0)) {
             Assert.assertTrue(mpqEditor.isCanWrite());
         }
 

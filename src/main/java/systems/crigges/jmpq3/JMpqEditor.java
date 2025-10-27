@@ -289,8 +289,8 @@ public class JMpqEditor implements AutoCloseable {
                 log.warn("Extracting the mpq's listfile failed. It cannot be rebuild.", e);
             }
         } else {
-            log.warn("The mpq doesn't contain a listfile. It cannot be rebuild.");
-            canWrite = false;
+            log.warn("The mpq doesn't contain a listfile. Unknown blocks will be discarded.");
+//            canWrite = false;
         }
     }
 
