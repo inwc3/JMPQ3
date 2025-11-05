@@ -949,7 +949,9 @@ public class JMpqEditor implements AutoCloseable {
             byte[] listfileArr = listFile.asByteArray();
             Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
-            ByteBuffer fileWriter=  ByteBuffer.allocate(listfileArr.length + 10).order(ByteOrder.LITTLE_ENDIAN);
+            int sectorCount = (int) Math.ceil((double) listfileArr.length / newDiscBlockSize);
+            int worst = sectorCount * 4 + listfileArr.length + sectorCount + 16; // slack
+            ByteBuffer fileWriter = ByteBuffer.allocate(worst).order(ByteOrder.LITTLE_ENDIAN);
             MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
             currentPos += newBlock.getCompressedSize();
             output.put(fileWriter.array(), 0, newBlock.getCompressedSize());
