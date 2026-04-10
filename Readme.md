@@ -1,56 +1,153 @@
 [![CircleCI](https://circleci.com/gh/inwc3/JMPQ3.svg?style=svg)](https://circleci.com/gh/inwc3/JMPQ3) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master) [![codebeat badge](https://codebeat.co/badges/5ccfd060-8d57-4a51-9c6b-2688482f857e)](https://codebeat.co/projects/github-com-inwc3-jmpq3-master)
+
 # JMPQ3
-**Note: Since Version `1.9.0` jmpq3 requires Java 11 or higher**
 
-## What?
-JMPQ3 is a small java library for accessing and modifying mpq (MoPaQ) archives. Common file endings are .mpq, .w3m, .w3x. 
+JMPQ3 is a small Java library for reading and modifying MPQ (MoPaQ) archives.
+Common file endings are `.mpq`, `.w3m`, and `.w3x`.
 
-MoPaQ is Blizzard's old, proprietary archive format for storing gamedata (replaced with CASC).
+MoPaQ is Blizzard's older proprietary archive format for game data. It is used by Warcraft III maps and was later replaced by CASC in newer Blizzard games.
 
-You can find more info and an excellent graphical editor here http://www.zezula.net/en/mpq/main.html
+JMPQ3 is primarily tested with Warcraft III maps and MPQs. Archives from other games may work, but Warcraft III compatibility is the main target.
 
-## Get it
-*currently only warcraft 3 maps and mpqs are confirmed supported. Mpqs from other games (WoW, starcraft) might cause problems.*
+For MPQ format background and a graphical editor, see Ladislav Zezula's MPQ tools:
+http://www.zezula.net/en/mpq/main.html
 
-It is recommended to use jitpack with a dependency manager like gradle.
+## Requirements
 
-See https://jitpack.io/#inwc3/JMPQ3/
+JMPQ3 1.9.0 and newer requires Java 11 or newer at runtime.
 
-Gradle Example:
+The project currently builds with a Java 17 toolchain while compiling Java 11-compatible bytecode.
+
+## Installation
+
+JMPQ3 is available through JitPack:
+https://jitpack.io/#inwc3/JMPQ3/
+
+Gradle:
+
 ```gradle
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
 dependencies {
-    compile 'com.github.inwc3:JMPQ3:1.7.14'
-}
-allprojects {
-    repositories {
-	maven { url 'https://jitpack.io' }
-    }
+    implementation 'com.github.inwc3:JMPQ3:1.9.8'
 }
 ```
-You can still download the jar directly if you prefer
-https://github.com/inwc3/JMPQ3/releases
 
-## How to use
-Quick API Overview:
+You can also depend on a Git commit or branch through JitPack while testing unreleased changes.
 
-Jmpq provides the OpenOptions `READ_ONLY` which should be selfexplanatory and `FORCE_V0` which forces the mpq to be opened like warcraft3 would open it, ignoring optional data from later specifications for compatability.
+## Opening Archives
+
+Use try-with-resources so the editor is closed correctly. Writable archives are rebuilt when the editor is closed.
+
 ```java
-// Automatically rebuilds mpq after use if not in readonly mode
-try (JMpqEditor e = new JMpqEditor(new File("my.mpq"), MPQOpenOption.FORCE_V0)){
-        e.hasFile("filename"); //Checks if the file exists
-        e.extractFile("filename", new File("target location")); //Extracts a specific file out of the mpq to the target location
-        if (e.isCanWrite()) {
-            e.deleteFile("filename"); //Deletes a specific file out of the mpq
-            e.insertFile("filename", new File("file to add"), true); //Inserts a specific into the mpq from the target location
-            e.extractAllFiles(new File("target folder")); //Extracts all files inside the mpq to the target folder. If a proper listfile exists,
-            e.getFileNames(); //Get the listfile as java HashSet<String>
-        }
+import systems.crigges.jmpq3.JMpqEditor;
+import systems.crigges.jmpq3.MPQOpenOption;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+
+try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+    if (mpq.hasFile("war3map.j")) {
+        byte[] script = mpq.extractFileAsBytes("war3map.j");
+        System.out.println(new String(script, StandardCharsets.UTF_8));
     }
 
+    for (String fileName : mpq.getFileNames()) {
+        System.out.println(fileName);
+    }
 }
 ```
 
-### Known issues:
-* Unsupported decompression algorithms: sparse and bzip2
-* Only supported compression is zlib/zopfli
-* JMPQ doesn't build a valid (attributes) file for now. (which seems to be fine for warcraft3)
+`MPQOpenOption.READ_ONLY` opens the archive without modifying it.
+
+`MPQOpenOption.FORCE_V0` reads the archive like Warcraft III does, ignoring newer optional MPQ metadata where needed. This is useful for Warcraft III maps and some intentionally odd or damaged archives.
+
+## Modifying Archives
+
+Open without `READ_ONLY` to allow writes. Changes are applied when `close()` runs.
+
+```java
+import systems.crigges.jmpq3.JMpqEditor;
+import systems.crigges.jmpq3.MPQOpenOption;
+
+import java.io.File;
+
+try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.FORCE_V0)) {
+    if (mpq.hasFile("war3map.j")) {
+        mpq.deleteFile("war3map.j");
+    }
+
+    mpq.insertFile("war3map.j", new File("build/war3map.j"));
+    mpq.insertByteArray("war3mapImported/readme.txt", "generated by JMPQ3".getBytes());
+}
+```
+
+`insertFile` stores the file path and reads the file when the archive is rebuilt on close. Keep that source file alive until the editor is closed. If the data is temporary, use `insertByteArray` instead.
+
+To overwrite an existing file directly:
+
+```java
+mpq.insertFile("war3map.j", new File("build/war3map.j"), true);
+mpq.insertByteArray("war3mapImported/readme.txt", bytes, true);
+```
+
+## Creating Archives From Scratch
+
+JMPQ3 can create a minimal empty archive and then rebuild it with inserted files. This is useful for Warcraft III "folder mode" maps, where a `.w3x` directory contains the files that should become a real MPQ archive.
+
+```java
+import systems.crigges.jmpq3.JMpqEditor;
+import systems.crigges.jmpq3.MPQOpenOption;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+File outputMap = new File("build/MyMap.w3x");
+JMpqEditor.createEmptyArchive(outputMap);
+
+try (JMpqEditor mpq = new JMpqEditor(outputMap, MPQOpenOption.FORCE_V0)) {
+    mpq.insertFile("war3map.w3i", new File("folderMap/war3map.w3i"));
+    mpq.insertFile("war3map.j", new File("folderMap/war3map.j"));
+    mpq.insertFile("war3mapImported/icon.blp", new File("folderMap/war3mapImported/icon.blp"));
+
+    byte[] generatedScript = Files.readAllBytes(Path.of("build/war3map.j"));
+    mpq.insertByteArray("war3map.j", generatedScript, true);
+}
+```
+
+You can also get the initial empty archive bytes without writing a file:
+
+```java
+byte[] emptyArchive = JMpqEditor.createEmptyArchive();
+```
+
+Empty directories are not represented in MPQ archives, so only insert regular files.
+
+## Extracting All Known Files
+
+MPQs do not always contain a complete list of filenames. `extractAllFiles` extracts known files when a usable `(listfile)` is available. Archives without a complete listfile may still contain files that can only be accessed if you know their exact path.
+
+```java
+try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+    mpq.extractAllFiles(new File("extracted"));
+}
+```
+
+For writable archives with a missing or incomplete listfile, you can provide an external listfile before rebuilding:
+
+```java
+try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.FORCE_V0)) {
+    mpq.setExternalListfile(new File("listfile.txt"));
+    mpq.insertByteArray("war3mapImported/generated.txt", "hello".getBytes());
+}
+```
+
+## Known Issues
+
+- Unsupported decompression algorithms: sparse and bzip2.
+- Supported compression is zlib/zopfli.
+- JMPQ3 does not currently build a valid `(attributes)` file. Warcraft III maps appear to work without it.
+- Empty directories are not stored in MPQ archives.

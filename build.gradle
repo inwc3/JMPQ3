@@ -7,13 +7,17 @@ plugins {
 }
 
 group 'systems.crigges'
-version '1.9.7'
+version '1.9.8'
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
     withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release.set(11)
 }
 
 repositories {
