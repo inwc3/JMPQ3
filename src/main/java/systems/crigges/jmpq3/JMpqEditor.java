@@ -975,7 +975,7 @@ public class JMpqEditor implements AutoCloseable {
             }
             long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
 
-            for (String fileName : filenameToData.keySet()) {
+            for (String fileName : filenameToData) {
                 existingFiles.remove(fileName);
             }
 
@@ -999,7 +999,7 @@ public class JMpqEditor implements AutoCloseable {
                 }
             }
             log.debug("Added existing files");
-            for (String newFileName : filenameToData.keySet()) {
+            for (String newFileName : filenameToData) {
                 Either either = filenameToData.get(newFileName);
                 byte[] fileData = either.data;
                 if (either.path != null) {
