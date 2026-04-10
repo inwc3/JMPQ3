@@ -274,6 +274,39 @@ public class JMpqEditor implements AutoCloseable {
         this(mpqArchive.toPath(), MPQOpenOption.FORCE_V0);
     }
 
+    public static byte[] createEmptyArchive() throws IOException {
+        HashTable hashTable = new HashTable(2);
+        hashTable.setFileBlockIndex("(listfile)", HashTable.DEFAULT_LOCALE, 0);
+
+        ByteBuffer hashTableBuffer = ByteBuffer.allocate(2 * 16).order(ByteOrder.LITTLE_ENDIAN);
+        hashTable.writeToBuffer(hashTableBuffer);
+        hashTableBuffer.flip();
+        new MPQEncryption(KEY_HASH_TABLE, false).processSingle(hashTableBuffer);
+        hashTableBuffer.flip();
+
+        ByteBuffer archive = ByteBuffer.allocate(32 + 2 * 16 + 16).order(ByteOrder.LITTLE_ENDIAN);
+        archive.putInt(ARCHIVE_HEADER_MAGIC);
+        archive.putInt(32);
+        archive.putInt(archive.capacity());
+        archive.putShort((short) 0);
+        archive.putShort((short) 3);
+        archive.putInt(32);
+        archive.putInt(64);
+        archive.putInt(2);
+        archive.putInt(1);
+        archive.put(hashTableBuffer);
+        new Block(32, 0, 0, EXISTS).writeToBuffer(archive);
+        return archive.array();
+    }
+
+    public static void createEmptyArchive(File mpqArchive) throws IOException {
+        File parent = mpqArchive.getParentFile();
+        if (parent != null) {
+            Files.createDirectories(parent.toPath());
+        }
+        Files.write(mpqArchive.toPath(), createEmptyArchive());
+    }
+
     private void checkLegacyCompat() throws IOException {
         if (legacyCompatibility) {
             // limit end of archive by end of file

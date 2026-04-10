@@ -56,6 +56,27 @@ public class MpqTests {
     }
 
     @Test
+    public void createEmptyArchiveCanBeOpenedAndRebuilt() throws IOException {
+        Path archive = Files.createTempFile("jmpq-empty", ".w3x");
+        Files.deleteIfExists(archive);
+
+        try {
+            JMpqEditor.createEmptyArchive(archive.toFile());
+
+            try (JMpqEditor mpqEditor = new JMpqEditor(archive.toFile(), MPQOpenOption.FORCE_V0)) {
+                mpqEditor.insertByteArray("war3map.j", "test script".getBytes());
+            }
+
+            try (JMpqEditor mpqEditor = new JMpqEditor(archive.toFile(), MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+                Assert.assertTrue(mpqEditor.hasFile("war3map.j"));
+                Assert.assertEquals(new String(mpqEditor.extractFileAsBytes("war3map.j")), "test script");
+            }
+        } finally {
+            Files.deleteIfExists(archive);
+        }
+    }
+
+    @Test
     public void cryptoTest() throws IOException {
         byte[] bytes = "Hello World!".getBytes();
 
