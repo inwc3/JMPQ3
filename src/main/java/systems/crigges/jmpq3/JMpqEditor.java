@@ -12,7 +12,6 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.channels.*;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.*;
@@ -307,55 +306,8 @@ public class JMpqEditor implements AutoCloseable {
     private void checkListfileEntries() throws JMpqException {
         int hiddenFiles = (hasFile("(attributes)") ? 2 : 1) + (hasFile("(signature)") ? 1 : 0);
         if (canWrite) {
-            addDefaultListfileEntriesIfIncomplete(hiddenFiles);
             checkListfileCompleteness(hiddenFiles);
         }
-    }
-
-    private void addDefaultListfileEntriesIfIncomplete(int hiddenFiles) throws JMpqException {
-        int requiredNamedFiles = blockTable.getAllVaildBlocks().size() - hiddenFiles;
-        int knownArchiveEntries = countKnownArchiveListfileEntries();
-        if (knownArchiveEntries >= requiredNamedFiles) {
-            return;
-        }
-
-        log.info("Internal listfile is incomplete ({}/{} known archive entries). Probing bundled DefaultListfile.txt for known Warcraft III files.",
-            knownArchiveEntries, requiredNamedFiles);
-
-        int added = 0;
-        InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
-        if (resource == null) {
-            log.warn("DefaultListfile.txt not found. Unknown blocks cannot be rebuilt without their names.");
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource, StandardCharsets.UTF_8))) {
-            String fileName;
-            while ((fileName = reader.readLine()) != null) {
-                if (!listFile.containsFile(fileName) && hasFile(fileName)) {
-                    listFile.addFile(fileName);
-                    added++;
-                }
-            }
-        } catch (IOException e) {
-            throw new JMpqException(e);
-        }
-
-        if (added > 0) {
-            log.info("Default listfile discovery added {} real archive entries before rebuild.", added);
-        } else {
-            log.info("Default listfile discovery did not find additional known archive entries.");
-        }
-    }
-
-    private int countKnownArchiveListfileEntries() {
-        int knownArchiveEntries = 0;
-        for (String fileName : listFile.getFiles()) {
-            if (hasFile(fileName)) {
-                knownArchiveEntries++;
-            }
-        }
-        return knownArchiveEntries;
     }
 
     /**
@@ -365,16 +317,15 @@ public class JMpqEditor implements AutoCloseable {
      * @throws JMpqException If retrieving valid blocks fails
      */
     private void checkListfileCompleteness(int hiddenFiles) throws JMpqException {
+        if (listFile.getFiles().size() <= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
+            log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
+        }
         for (String fileName : listFile.getFiles()) {
             if (!hasFile(fileName)) {
                 log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
             }
         }
         listFile.getFileMap().entrySet().removeIf(file -> !hasFile(file.getValue()));
-        int requiredNamedFiles = blockTable.getAllVaildBlocks().size() - hiddenFiles;
-        if (listFile.getFiles().size() < requiredNamedFiles) {
-            log.warn("mpq's listfile is incomplete. Blocks without a known filename will be preserved under generated names during rebuild.");
-        }
     }
 
     private void readBlockTable() throws IOException {
@@ -813,15 +764,6 @@ public class JMpqEditor implements AutoCloseable {
         return fileName.substring(0, dot) + invisible + space + "_" + variant + fileName.substring(dot);
     }
 
-    private static byte[] buildFakeListfile(Collection<String> visibleFakeFiles) {
-        StringBuilder listfileBuilder = new StringBuilder();
-        listfileBuilder.append("(listfile)\r\n");
-        for (String fakeFile : visibleFakeFiles) {
-            listfileBuilder.append(fakeFile).append("\r\n");
-        }
-        return listfileBuilder.toString().getBytes(StandardCharsets.UTF_8);
-    }
-
     /**
      * Extract all files.
      *
@@ -1190,10 +1132,8 @@ public class JMpqEditor implements AutoCloseable {
 
         log.info("Copying {} existing named files.", existingFiles.size());
         int copiedExisting = 0;
-        HashSet<Integer> handledSourceBlockIndexes = new HashSet<>();
         for (String existingName : existingFiles) {
             int pos = hashTable.getBlockIndexOfFile(existingName);
-            handledSourceBlockIndexes.add(pos);
             if (options.recompress && !existingName.endsWith(".wav")) {
                 ByteBuffer extracted = ByteBuffer.wrap(extractFileAsBytes(existingName));
                 filenameToData.put(existingName, new Either(extracted.array()));
@@ -1263,35 +1203,6 @@ public class JMpqEditor implements AutoCloseable {
             usedFileKeys.add(HashTable.calculateFileKey(newFile));
         }
 
-        int preservedUnnamedBlocks = 0;
-        for (int sourceBlockIndex = 0; sourceBlockIndex < blockSize; sourceBlockIndex++) {
-            if (handledSourceBlockIndexes.contains(sourceBlockIndex)) {
-                continue;
-            }
-
-            Block b = blockTable.getBlockAtPos(sourceBlockIndex);
-            if (!b.hasFlag(EXISTS)) {
-                continue;
-            }
-
-            ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position(headerOffset + b.getFilePos());
-            readFully(buf, fc);
-            buf.rewind();
-
-            String preservedName = buildUniqueFakeVisiblePath("preserved", preservedUnnamedBlocks, usedFileKeys);
-            newFiles.add(preservedName);
-            Block newBlock = new Block(currentPos - newArchiveBase, b.getCompressedSize(), b.getNormalSize(), b.getFlags());
-            newBlocks.add(newBlock);
-            output.put(buf);
-            currentPos += b.getCompressedSize();
-            preservedUnnamedBlocks++;
-        }
-        if (preservedUnnamedBlocks > 0) {
-            log.info("Preserved {} valid source blocks whose original filenames are unknown.", preservedUnnamedBlocks);
-        }
-
-        ArrayList<String> visibleFakeFiles = new ArrayList<>();
         // if (attributes != null) {
         // newFiles.add("(attributes)");
         // // Only generate attributes file when there has been one before
@@ -1406,7 +1317,6 @@ public class JMpqEditor implements AutoCloseable {
                 logFakeProgress("padding fake entries", padIndex, padTotal);
             }
 
-            visibleFakeFiles.addAll(fakeFiles);
             newBlocks.addAll(fakeBlocks);
             newFiles.addAll(fakeFiles);
             log.info("Generated {} fake file names and {} fake block entries.", fakeFiles.size(), fakeBlocks.size());
@@ -1419,9 +1329,8 @@ public class JMpqEditor implements AutoCloseable {
 
         if (buildListfile && !listFile.getFiles().isEmpty()) {
             newFiles.add("(listfile)");
-            byte[] listfileArr = maximizeV0Tables ? buildFakeListfile(visibleFakeFiles) : listFile.asByteArray();
-            log.info("Writing {} listfile with {} visible fake entries ({} bytes).",
-                maximizeV0Tables ? "fake-only" : "normal", visibleFakeFiles.size(), listfileArr.length);
+            byte[] listfileArr = listFile.asByteArray();
+            log.info("Writing normal listfile ({} bytes).", listfileArr.length);
             Block newBlock = new Block(currentPos - newArchiveBase, 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
             newBlocks.add(newBlock);
             int sectorCount = (int) Math.ceil((double) listfileArr.length / newDiscBlockSize);
