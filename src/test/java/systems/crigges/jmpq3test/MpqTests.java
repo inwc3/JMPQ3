@@ -121,6 +121,86 @@ public class MpqTests {
     }
 
     @Test
+    public void hashTableSupportsNonPowerOfTwoSizes() throws IOException {
+        HashTable ht = new HashTable(10);
+
+        for (int i = 0; i < 9; i++) {
+            ht.setFileBlockIndex("file" + i, HashTable.DEFAULT_LOCALE, i);
+        }
+
+        for (int i = 0; i < 9; i++) {
+            Assert.assertEquals(ht.getBlockIndexOfFile("file" + i), i);
+        }
+    }
+
+    @Test
+    public void forceV0WritesWarcraftCompatibleHeaderAndAccurateArchiveSize() throws IOException {
+        File mpq = Arrays.stream(getMpqs()).filter(pq -> pq.getName().contains("normalMap")).findFirst().get();
+
+        byte[] rebuilt;
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.close(true, false, new RecompressOptions(false), 0);
+            rebuilt = mpqEditor.getOutputByteArray();
+        }
+        Files.write(Paths.get("output_war3_compatible.w3x"), rebuilt);
+
+        int headerOffset = -1;
+        for (int i = 0; i <= rebuilt.length - 4; i++) {
+            if (ByteBuffer.wrap(rebuilt, i, 4).order(ByteOrder.LITTLE_ENDIAN).getInt() == JMpqEditor.ARCHIVE_HEADER_MAGIC) {
+                headerOffset = i;
+                break;
+            }
+        }
+
+        Assert.assertTrue(headerOffset >= 0);
+        ByteBuffer header = ByteBuffer.wrap(rebuilt, headerOffset, rebuilt.length - headerOffset).order(ByteOrder.LITTLE_ENDIAN);
+        Assert.assertEquals(header.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
+        Assert.assertEquals(header.getInt(), 32);
+        Assert.assertEquals(Integer.toUnsignedLong(header.getInt()), (long) rebuilt.length - headerOffset);
+        Assert.assertEquals(header.getShort(), 0);
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(rebuilt, MPQOpenOption.READ_ONLY)) {
+            Assert.assertTrue(mpqEditor.hasFile("(listfile)"));
+        }
+    }
+
+    @Test
+    public void realWorldMaxTablesOutput() throws IOException {
+        File mpq = Paths.get("realworld.w3x").toFile();
+
+        byte[] rebuilt;
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.close(true, false, new RecompressOptions(false), -1);
+            rebuilt = mpqEditor.getOutputByteArray();
+        }
+        Files.write(Paths.get("realworld_out.w3x"), rebuilt);
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(rebuilt, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(mpqEditor.hasFile("war3map.w3i"));
+        }
+
+        int headerOffset = -1;
+        for (int i = 0; i <= rebuilt.length - 4; i += 512) {
+            if (ByteBuffer.wrap(rebuilt, i, 4).order(ByteOrder.LITTLE_ENDIAN).getInt() == JMpqEditor.ARCHIVE_HEADER_MAGIC) {
+                headerOffset = i;
+                break;
+            }
+        }
+        Assert.assertTrue(headerOffset >= 0);
+
+        ByteBuffer header = ByteBuffer.wrap(rebuilt, headerOffset, rebuilt.length - headerOffset).order(ByteOrder.LITTLE_ENDIAN);
+        Assert.assertEquals(header.getInt(), JMpqEditor.ARCHIVE_HEADER_MAGIC);
+        Assert.assertEquals(header.getInt(), 32);
+        header.getInt();
+        Assert.assertEquals(header.getShort(), 0);
+        header.getShort();
+        header.getInt();
+        header.getInt();
+        Assert.assertEquals(header.getInt(), 0x10000);
+        Assert.assertEquals(header.getInt(), 0x10000);
+    }
+
+    @Test
     public void testException() {
         Assert.expectThrows(JMpqException.class, () -> new BlockTable(ByteBuffer.wrap(new byte[0])).getBlockAtPos(-1));
     }
@@ -166,6 +246,19 @@ public class MpqTests {
                 mpqEditor.deleteFile("(listfile)");
             }
             mpqEditor.close(false, false, new RecompressOptions(true), 1000);
+        }
+    }
+
+    @Test
+    public void testStormLibSectorBug() throws IOException {
+        File mpq = Arrays.stream(getMpqs()).filter(pq -> pq.getName().contains("normalMap")).findFirst().get();
+
+        RecompressOptions options = new RecompressOptions(true);
+        options.newSectorSizeShift = 22;
+
+        try (JMpqEditor mpqEditor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            mpqEditor.close(true, true, options, 0);
+            Files.write(Paths.get("stormlib_bug.w3x"), mpqEditor.getOutputByteArray());
         }
     }
 

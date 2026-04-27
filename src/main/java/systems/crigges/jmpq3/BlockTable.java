@@ -35,7 +35,7 @@ public class BlockTable {
     }
 
     public Block getBlockAtPos(int pos) throws JMpqException {
-        if ((pos < 0) || (pos > this.size)) {
+        if ((pos < 0) || (pos >= this.size)) {
             throw new JMpqException("Invaild block position");
         }
         this.blockMap.position(pos * 16);

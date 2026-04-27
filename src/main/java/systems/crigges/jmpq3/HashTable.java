@@ -31,6 +31,12 @@ public class HashTable {
     private static final int ENTRY_DELETED = -2;
 
     /**
+     * Storm-style MPQ block index mask. Values outside this range are reserved
+     * for hash entry state flags.
+     */
+    public static final int BLOCK_INDEX_MASK = 0x0FFFFFFF;
+
+    /**
      * The default file locale, US English.
      */
     public static final short DEFAULT_LOCALE = 0;
@@ -48,15 +54,14 @@ public class HashTable {
     /**
      * Construct an empty hash table with the specified size.
      * <p>
-     * The table can hold at most the specified capacity worth of file mappings,
-     * which must be a power of 2.
+     * The table can hold at most the specified capacity worth of file mappings.
      * 
      * @param capacity
-     *            power of 2 capacity for the underlying bucket array.
+     *            capacity for the underlying bucket array.
      */
     public HashTable(int capacity) {
-        if (capacity <= 0 || (capacity & (capacity - 1)) != 0) {
-            throw new IllegalArgumentException("Capacity " + capacity + " must be power of 2.");
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Capacity " + capacity + " must be positive.");
         }
 
         buckets = new Bucket[capacity];
@@ -71,8 +76,10 @@ public class HashTable {
 
             // count active mappings
             final int blockIndex = entry.blockTableIndex;
-            if (blockIndex != ENTRY_UNUSED && blockIndex != ENTRY_DELETED)
+            if (blockIndex != ENTRY_UNUSED && blockIndex != ENTRY_DELETED) {
+                entry.blockTableIndex = blockIndex & BLOCK_INDEX_MASK;
                 mappingNumber++;
+            }
         }
 
     }
@@ -91,11 +98,10 @@ public class HashTable {
      * @return the bucket index used, or -1 if the file has no mapping.
      */
     private int getFileEntryIndex(FileIdentifier file) {
-        final int mask = buckets.length - 1;
-        final int start = file.offset & mask;
+        final int start = Integer.remainderUnsigned(file.offset, buckets.length);
         int bestEntryIndex = -1;
+        int index = start;
         for (int c = 0; c < buckets.length; c++) {
-            final int index = start + c & mask;
             final Bucket entry = buckets[index];
 
             if (entry.blockTableIndex == ENTRY_UNUSED) {
@@ -108,6 +114,11 @@ public class HashTable {
                 } else if (bestEntryIndex == -1 || entry.locale == DEFAULT_LOCALE) {
                     bestEntryIndex = index;
                 }
+            }
+
+            index++;
+            if (index == buckets.length) {
+                index = 0;
             }
         }
 
@@ -195,8 +206,8 @@ public class HashTable {
      *             if the mapping cannot be created.
      */
     public void setFileBlockIndex(String name, short locale, int blockIndex) throws IOException {
-        if (blockIndex < 0)
-            throw new IllegalArgumentException("Block index numbers cannot be negative.");
+        if (blockIndex < 0 || blockIndex > BLOCK_INDEX_MASK)
+            throw new IllegalArgumentException("Block index numbers must be between 0 and " + BLOCK_INDEX_MASK + ".");
 
         final FileIdentifier fid = new FileIdentifier(name, locale);
 
@@ -212,15 +223,20 @@ public class HashTable {
             throw new JMpqException("Hash table cannot fit another mapping.");
 
         // locate suitable entry
-        final int mask = buckets.length - 1;
-        final int start = fid.offset & mask;
+        final int start = Integer.remainderUnsigned(fid.offset, buckets.length);
         Bucket newEntry = null;
+        int index = start;
         for (int c = 0; c < buckets.length; c++) {
-            final Bucket entry = buckets[start + c & mask];
+            final Bucket entry = buckets[index];
 
             if (entry.blockTableIndex == ENTRY_UNUSED || entry.blockTableIndex == ENTRY_DELETED) {
                 newEntry = entry;
                 break;
+            }
+
+            index++;
+            if (index == buckets.length) {
+                index = 0;
             }
         }
 
@@ -251,15 +267,22 @@ public class HashTable {
         mappingNumber--;
 
         // cleanup to empty if possible
-        final int mask = buckets.length - 1;
-        if (buckets[index + 1 & mask].blockTableIndex == ENTRY_UNUSED) {
+        if (buckets[nextIndex(index)].blockTableIndex == ENTRY_UNUSED) {
             Bucket entry;
             int i = index;
             while ((entry = buckets[i]).blockTableIndex == ENTRY_DELETED) {
                 entry.blockTableIndex = ENTRY_UNUSED;
-                i = i - 1 & mask;
+                i = previousIndex(i);
             }
         }
+    }
+
+    private int nextIndex(int index) {
+        return index + 1 == buckets.length ? 0 : index + 1;
+    }
+
+    private int previousIndex(int index) {
+        return index == 0 ? buckets.length - 1 : index - 1;
     }
 
     /**
