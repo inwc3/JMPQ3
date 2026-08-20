@@ -216,7 +216,9 @@ public class MpqFile {
     private void extractStored(OutputStream writer) throws IOException {
         // Nothing encodes this file, so its two sizes must agree. Checking says
         // so explicitly instead of silently returning short content.
-        if (compressedSize != normalSize) {
+        // A SECTOR_CRC file carries an extra checksum sector, so its stored
+        // size is legitimately larger; everything else must match exactly.
+        if (compressedSize != normalSize && !block.hasFlag(SECTOR_CRC)) {
             throw new JMpqException("Uncompressed <" + name + "> stores " + compressedSize
                 + " bytes but declares " + normalSize + ".");
         }

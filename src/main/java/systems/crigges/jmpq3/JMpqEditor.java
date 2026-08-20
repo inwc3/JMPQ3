@@ -751,6 +751,18 @@ public class JMpqEditor implements AutoCloseable {
     private void validateTables() throws IOException {
         final long fileSize = fc.size();
 
+        // StormLib notes that dwArchiveSize "is ignored by Storm.dll and can
+        // contain garbage value", so clamp it for every archive rather than
+        // only in legacy mode. It feeds the rebuild's initial buffer size, and
+        // a header claiming 4 GiB in a 200 byte file would otherwise ask for a
+        // 4 GiB allocation the moment the archive is closed.
+        final long declaredArchiveSize = archiveSize;
+        archiveSize = Math.min(archiveSize, fileSize - headerOffset);
+        if (archiveSize != declaredArchiveSize) {
+            log.debug("Header claims a {} byte archive but only {} bytes follow the header; using the latter.",
+                declaredArchiveSize, archiveSize);
+        }
+
         if (hashSize <= 0) {
             throw new JMpqException("Archive declares " + hashSize + " hash table entries.");
         }
@@ -1425,7 +1437,15 @@ public class JMpqEditor implements AutoCloseable {
     private void writeEncodedFile(GrowingBuffer out, byte[] fileData, Block block, String name,
                                   RecompressOptions options) {
         final int sectors = Math.max(1, MpqFile.sectorCount(fileData.length, newDiscBlockSize));
-        final int worstCase = (sectors + 1) * 4 + fileData.length + sectors;
+        // long arithmetic: for a file close to 2 GiB the three terms overflow
+        // int, and a negative reservation fails with a nonsense message
+        // instead of saying what the real limit is.
+        final long worstCaseExact = (sectors + 1L) * 4L + fileData.length + sectors;
+        if (worstCaseExact > Integer.MAX_VALUE - 8) {
+            throw new IllegalArgumentException("File is too large for an in-memory rebuild: "
+                + fileData.length + " bytes would need " + worstCaseExact + " bytes of staging.");
+        }
+        final int worstCase = (int) worstCaseExact;
 
         final ByteBuffer region = out.reserve(worstCase);
         MpqFile.writeFileAndBlock(fileData, block, region, newDiscBlockSize, name, options);
