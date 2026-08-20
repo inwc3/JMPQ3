@@ -144,7 +144,7 @@ public final class JzLibHelper {
      * block covers at most 65535 bytes and costs 5 bytes of header.
      */
     private static int worstCaseZlibSize(int n, boolean zlibWrapper) {
-        final int blocks = (n + 65534) / 65535;
+        final int blocks = (int) (((long) n + 65534) / 65535);
         final int header = zlibWrapper ? 2 + 4 : 0;
         return n + blocks * 5 + header + 16;
     }

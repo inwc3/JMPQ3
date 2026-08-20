@@ -30,7 +30,9 @@ final class ZlibStore {
      */
     static byte[] storeLevel0(byte[] in) {
         final int len = in.length;
-        final int blocks = Math.max(1, (len + MAX_BLOCK - 1) / MAX_BLOCK);
+        // long arithmetic: len + MAX_BLOCK - 1 overflows for an input within
+        // 64 KiB of Integer.MAX_VALUE.
+        final int blocks = (int) Math.max(1, ((long) len + MAX_BLOCK - 1) / MAX_BLOCK);
         // 2 byte zlib header + 5 byte header per stored block + 4 byte Adler-32.
         final byte[] out = new byte[2 + len + blocks * 5 + 4];
 

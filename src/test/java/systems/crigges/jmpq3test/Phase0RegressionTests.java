@@ -6,6 +6,7 @@ import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.JMpqException;
 import systems.crigges.jmpq3.MPQOpenOption;
 import systems.crigges.jmpq3.HashTable;
+import systems.crigges.jmpq3.MpqFile;
 import systems.crigges.jmpq3.MpqNames;
 import systems.crigges.jmpq3.compression.CompressionUtil;
 import systems.crigges.jmpq3.compression.JzLibHelper;
@@ -764,6 +765,41 @@ public class Phase0RegressionTests {
         Assert.assertNotNull(editor.getOutputByteArray());
         Assert.assertTrue(editor.getOutputByteArray().length < pristine.length,
             "expected the rebuilt image to be smaller, so the in-place case is exercised");
+    }
+
+    /**
+     * Sector counting must not overflow. Both arguments are {@code int}, so the
+     * obvious {@code (size + sectorSize - 1) / sectorSize} goes negative for a
+     * file within one sector of {@link Integer#MAX_VALUE} -- about 2 GiB with
+     * 4 KiB sectors, or just over 1 GiB at the largest sector size the format
+     * allows. The archive would then be unreadable despite being valid.
+     */
+    @Test
+    public void sectorCountDoesNotOverflow() {
+        final int fourKiB = 4096;
+        final int oneGiB = 512 << 21;
+
+        Assert.assertEquals(MpqFile.sectorCount(0, fourKiB), 0);
+        Assert.assertEquals(MpqFile.sectorCount(1, fourKiB), 1);
+        Assert.assertEquals(MpqFile.sectorCount(fourKiB, fourKiB), 1);
+        Assert.assertEquals(MpqFile.sectorCount(fourKiB + 1, fourKiB), 2);
+
+        // The cases that overflowed.
+        Assert.assertEquals(MpqFile.sectorCount(Integer.MAX_VALUE, fourKiB), 524288);
+        Assert.assertEquals(MpqFile.sectorCount(Integer.MAX_VALUE, oneGiB), 2);
+        Assert.assertEquals(MpqFile.sectorCount(Integer.MAX_VALUE - 1, fourKiB), 524288);
+        Assert.assertEquals(MpqFile.sectorCount(oneGiB + 1, oneGiB), 2);
+
+        // A count can never exceed the size, so it always fits in an int.
+        for (int size : new int[]{1, 4095, 4096, oneGiB, Integer.MAX_VALUE}) {
+            Assert.assertTrue(MpqFile.sectorCount(size, fourKiB) > 0,
+                "non-positive sector count for size " + size);
+            Assert.assertTrue(MpqFile.sectorCount(size, fourKiB) <= size,
+                "sector count exceeds size for " + size);
+        }
+
+        Assert.expectThrows(IllegalArgumentException.class, () -> MpqFile.sectorCount(-1, fourKiB));
+        Assert.expectThrows(IllegalArgumentException.class, () -> MpqFile.sectorCount(1, 0));
     }
 
     /**

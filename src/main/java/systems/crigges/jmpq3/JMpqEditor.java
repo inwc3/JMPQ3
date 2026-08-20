@@ -1380,7 +1380,7 @@ public class JMpqEditor implements AutoCloseable {
      */
     private void writeEncodedFile(GrowingBuffer out, byte[] fileData, Block block, String name,
                                   RecompressOptions options) {
-        final int sectors = Math.max(1, (fileData.length + newDiscBlockSize - 1) / newDiscBlockSize);
+        final int sectors = Math.max(1, MpqFile.sectorCount(fileData.length, newDiscBlockSize));
         final int worstCase = (sectors + 1) * 4 + fileData.length + sectors;
 
         final ByteBuffer region = out.reserve(worstCase);

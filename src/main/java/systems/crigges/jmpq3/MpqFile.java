@@ -256,9 +256,31 @@ public class MpqFile {
 
     /** Number of sectors holding file content. */
     private int dataSectorCount() {
-        // Ceiling division without floating point: the double-based version in
-        // the old code lost precision for sizes above 2^53 and read strangely.
-        return (normalSize + sectorSize - 1) / sectorSize;
+        return sectorCount(normalSize, sectorSize);
+    }
+
+    /**
+     * Ceiling division of a file size by a sector size.
+     * <p>
+     * Done in {@code long} arithmetic deliberately. Both arguments are
+     * {@code int}, and {@code size + sectorSize - 1} overflows to a negative
+     * number for a file within about one sector of {@link Integer#MAX_VALUE} --
+     * roughly 2 GiB with 4 KiB sectors, or just over 1 GiB at the largest
+     * sector size the format allows. The result always fits in an {@code int}
+     * because it is at most {@code size}.
+     *
+     * @param size       file size in bytes; must not be negative.
+     * @param sectorSize sector size in bytes; must be positive.
+     * @return the number of sectors needed to hold {@code size} bytes.
+     */
+    public static int sectorCount(int size, int sectorSize) {
+        if (size < 0) {
+            throw new IllegalArgumentException("Size cannot be negative: " + size);
+        }
+        if (sectorSize <= 0) {
+            throw new IllegalArgumentException("Sector size must be positive: " + sectorSize);
+        }
+        return (int) (((long) size + sectorSize - 1) / sectorSize);
     }
 
     /**
@@ -413,7 +435,7 @@ public class MpqFile {
             return;
         }
 
-        final int dataSectors = (fileArr.length + sectorSize - 1) / sectorSize;
+        final int dataSectors = sectorCount(fileArr.length, sectorSize);
         final int sotEntries = dataSectors + 1;
         final int sotBytes = sotEntries * 4;
 
