@@ -79,15 +79,28 @@ public final class MpqArchiveWriter {
 
     /**
      * @param name    the file's path, as the caller spelled it.
+     * @param locale  Windows Language ID this variant is stored under.
      * @param content where its bytes come from.
      */
-    private record Pending(String name, Content content) {
+    private record Pending(String name, short locale, Content content) {
+    }
+
+    /**
+     * A pending file's identity: MPQ can hold several localised variants of one
+     * path, so the name alone does not identify a file. Keying on the name
+     * alone silently dropped every variant but one on rebuild, and relabelled a
+     * surviving non-neutral variant as neutral.
+     *
+     * @param canonicalName case-folded path.
+     * @param locale        Windows Language ID.
+     */
+    private record Key(String canonicalName, short locale) {
     }
 
     private final MpqWriteOptions options;
 
     /** Pending files, keyed on canonical name, in insertion order. */
-    private final SequencedMap<String, Pending> pending = new LinkedHashMap<>();
+    private final SequencedMap<Key, Pending> pending = new LinkedHashMap<>();
 
     /** Bytes preceding the archive header in the source, if any are kept. */
     private byte[] prefix = new byte[0];
@@ -131,12 +144,15 @@ public final class MpqArchiveWriter {
                 // Regenerated rather than copied.
                 continue;
             }
-            final MpqFileEntry entry = source.entry(name).orElse(null);
-            if (entry == null) {
-                continue;
+            // Every locale variant, not just the one a lookup resolves.
+            for (short locale : source.localesOf(name)) {
+                final MpqFileEntry entry = source.entry(name, locale).orElse(null);
+                if (entry == null || entry.locale() != locale) {
+                    continue;
+                }
+                writer.pending.put(new Key(MpqNames.canonical(name), locale),
+                    new Pending(name, locale, new Content.Existing(source, entry)));
             }
-            writer.pending.put(MpqNames.canonical(name),
-                new Pending(name, new Content.Existing(source, entry)));
         }
         log.debug("Writer seeded with {} files from {}", writer.pending.size(), source);
         return writer;
@@ -152,8 +168,21 @@ public final class MpqArchiveWriter {
      * @return this writer.
      */
     public MpqArchiveWriter put(String name, byte[] content) {
+        return put(name, MpqOpenOptions.NEUTRAL_LOCALE, content);
+    }
+
+    /**
+     * Adds or replaces a localised variant of a file.
+     *
+     * @param name    path inside the archive.
+     * @param locale  Windows Language ID; 0 is the neutral default.
+     * @param content the file's bytes, copied on insert.
+     * @return this writer.
+     */
+    public MpqArchiveWriter put(String name, short locale, byte[] content) {
         requireUsableName(name);
-        pending.put(MpqNames.canonical(name), new Pending(name, new Content.Bytes(content.clone())));
+        pending.put(new Key(MpqNames.canonical(name), locale),
+            new Pending(name, locale, new Content.Bytes(content.clone())));
         return this;
     }
 
@@ -165,8 +194,21 @@ public final class MpqArchiveWriter {
      * @return this writer.
      */
     public MpqArchiveWriter put(String name, Path file) {
+        return put(name, MpqOpenOptions.NEUTRAL_LOCALE, file);
+    }
+
+    /**
+     * Adds or replaces a localised variant, read from disk at save time.
+     *
+     * @param name   path inside the archive.
+     * @param locale Windows Language ID.
+     * @param file   source file.
+     * @return this writer.
+     */
+    public MpqArchiveWriter put(String name, short locale, Path file) {
         requireUsableName(name);
-        pending.put(MpqNames.canonical(name), new Pending(name, new Content.File(file)));
+        pending.put(new Key(MpqNames.canonical(name), locale),
+            new Pending(name, locale, new Content.File(file)));
         return this;
     }
 
@@ -177,7 +219,20 @@ public final class MpqArchiveWriter {
      * @return whether it was present.
      */
     public boolean remove(String name) {
-        return pending.remove(MpqNames.canonical(name)) != null;
+        // Removes every locale variant: a caller naming a path without a locale
+        // means the path, not one translation of it.
+        return pending.keySet().removeIf(key -> key.canonicalName().equals(MpqNames.canonical(name)));
+    }
+
+    /**
+     * Removes one localised variant.
+     *
+     * @param name   path inside the archive.
+     * @param locale Windows Language ID.
+     * @return whether it was present.
+     */
+    public boolean remove(String name, short locale) {
+        return pending.remove(new Key(MpqNames.canonical(name), locale)) != null;
     }
 
     /**
@@ -185,7 +240,17 @@ public final class MpqArchiveWriter {
      * @return whether the archive being built holds it.
      */
     public boolean contains(String name) {
-        return pending.containsKey(MpqNames.canonical(name));
+        final String canonical = MpqNames.canonical(name);
+        return pending.keySet().stream().anyMatch(key -> key.canonicalName().equals(canonical));
+    }
+
+    /**
+     * @param name   path inside the archive.
+     * @param locale Windows Language ID.
+     * @return whether that variant will be written.
+     */
+    public boolean contains(String name, short locale) {
+        return pending.containsKey(new Key(MpqNames.canonical(name), locale));
     }
 
     /**
@@ -289,19 +354,21 @@ public final class MpqArchiveWriter {
         // Reserve the header; its contents depend on where the tables land.
         image.skip(headerSize);
 
-        final List<String> written = new ArrayList<>(pending.size() + 1);
+        // Name plus locale, because the hash table needs both and a path
+        // may appear once per locale.
+        final List<Written> written = new ArrayList<>(pending.size() + 1);
         final List<BlockRow> blocks = new ArrayList<>(pending.size() + 1);
 
         for (Pending file : pending.values()) {
             blocks.add(writeFile(image, base, file, sectorSize));
-            written.add(file.name());
+            written.add(new Written(file.name(), file.locale()));
         }
 
         if (options.writeListfile()) {
             // Written even when empty: an archive with no (listfile) cannot be
             // enumerated, so a later rebuild would lose every name.
             final byte[] listfile = buildListfile(written);
-            written.add("(listfile)");
+            written.add(new Written("(listfile)", MpqOpenOptions.NEUTRAL_LOCALE));
             blocks.add(writeEncoded(image, base, "(listfile)", listfile, sectorSize,
                 MpqFileEntry.FLAG_EXISTS | MpqFileEntry.FLAG_COMPRESSED
                     | MpqFileEntry.FLAG_ENCRYPTED | MpqFileEntry.FLAG_ADJUSTED_KEY));
@@ -324,6 +391,15 @@ public final class MpqArchiveWriter {
 
     /** One block table row, as built. */
     private record BlockRow(long filePosition, int compressedSize, int normalSize, int flags) {
+    }
+
+    /**
+     * A name as it will be registered in the rebuilt hash table.
+     *
+     * @param name   path inside the archive.
+     * @param locale Windows Language ID this variant occupies.
+     */
+    private record Written(String name, short locale) {
     }
 
     private BlockRow writeFile(MpqImageBuffer image, int base, Pending file, int sectorSize)
@@ -380,9 +456,17 @@ public final class MpqArchiveWriter {
         };
     }
 
-    private byte[] buildListfile(List<String> names) {
-        final StringBuilder out = new StringBuilder(names.size() * 32);
-        for (String name : names) {
+    /**
+     * A list file names paths, not locale variants, so a path localised
+     * several times still appears once.
+     */
+    private byte[] buildListfile(List<Written> names) {
+        final java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>();
+        for (Written entry : names) {
+            unique.add(entry.name());
+        }
+        final StringBuilder out = new StringBuilder(unique.size() * 32);
+        for (String name : unique) {
             out.append(name).append("\r\n");
         }
         return out.toString().getBytes(StandardCharsets.UTF_8);
@@ -414,12 +498,15 @@ public final class MpqArchiveWriter {
         return capacity;
     }
 
-    private void writeHashTable(MpqImageBuffer image, List<String> names, int capacity)
+    private void writeHashTable(MpqImageBuffer image, List<Written> names, int capacity)
         throws IOException {
         final HashTable table = new HashTable(capacity);
         int blockIndex = 0;
-        for (String name : names) {
-            table.setFileBlockIndex(name, HashTable.DEFAULT_LOCALE, blockIndex++);
+        for (Written entry : names) {
+            // Each variant keeps its own locale. Registering everything as
+            // neutral collapsed localised variants onto one bucket, so all
+            // but one were lost and the survivor was relabelled.
+            table.setFileBlockIndex(entry.name(), entry.locale(), blockIndex++);
         }
 
         // capacity is bounded by MAX_HASH_TABLE_ENTRIES (0x80000), so 8 MiB at

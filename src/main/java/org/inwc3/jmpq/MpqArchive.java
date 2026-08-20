@@ -228,19 +228,64 @@ public final class MpqArchive implements AutoCloseable {
      * @return one entry per live block, in block table order.
      */
     public List<MpqFileEntry> entries() {
-        final Map<Integer, String> namesByBlock = new LinkedHashMap<>();
+        // Correlate every hash table mapping, not one lookup per name. A lookup
+        // resolves a single variant by the format's preference order, so naming
+        // blocks that way left every other localised variant of a path reported
+        // with no name and locale 0 -- misstating its locale, and leaving an
+        // encrypted variant unreadable because its key derives from the name.
+        final Map<Long, String> namesByKey = new LinkedHashMap<>();
         for (String name : names.values()) {
-            entry(name).ifPresent(found -> namesByBlock.put(found.blockIndex(), name));
+            namesByKey.put(MpqNames.fileKey(name), name);
+        }
+        final Map<Integer, HashTable.Mapping> byBlock = new LinkedHashMap<>();
+        for (HashTable.Mapping mapping : hashTable.mappings()) {
+            // Prefer a mapping whose name is known, so a block reachable by
+            // name is reported with it.
+            final HashTable.Mapping existing = byBlock.get(mapping.blockIndex());
+            if (existing == null || (!namesByKey.containsKey(existing.key())
+                && namesByKey.containsKey(mapping.key()))) {
+                byBlock.put(mapping.blockIndex(), mapping);
+            }
         }
 
         final List<MpqFileEntry> result = new ArrayList<>(blocks.length);
         for (MpqFileEntry block : blocks) {
-            if (block.exists()) {
-                final String name = namesByBlock.get(block.blockIndex());
-                result.add(name == null ? block : block.withName(name));
+            if (!block.exists()) {
+                continue;
             }
+            final HashTable.Mapping mapping = byBlock.get(block.blockIndex());
+            if (mapping == null) {
+                result.add(block);
+                continue;
+            }
+            final String name = namesByKey.getOrDefault(mapping.key(), "");
+            result.add(new MpqFileEntry(name, mapping.locale(), block.flags(),
+                block.filePosition(), block.compressedSize(), block.normalSize(),
+                block.blockIndex()));
         }
         return result;
+    }
+
+    /**
+     * The locales a path is stored under.
+     * <p>
+     * MPQ can hold several localised variants of one path, and a lookup returns
+     * only one of them. This reports all of them, so a caller can decide which
+     * to read and a rebuild can carry them all over.
+     *
+     * @param name file path.
+     * @return the locales present, in bucket order; empty if the archive does
+     *         not hold the path at all.
+     */
+    public List<Short> localesOf(String name) {
+        final long key = MpqNames.fileKey(name);
+        final List<Short> locales = new ArrayList<>(1);
+        for (HashTable.Mapping mapping : hashTable.mappings()) {
+            if (mapping.key() == key) {
+                locales.add(mapping.locale());
+            }
+        }
+        return locales;
     }
 
     /**
