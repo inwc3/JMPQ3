@@ -1,44 +1,68 @@
 package systems.crigges.jmpq3test;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 /**
- * Created by Frotty on 11.06.2017.
+ * Content-digest helpers shared by the tests.
  */
-public class TestHelper {
-    // stolen from http://stackoverflow.com/a/304350/303637
-    public static String md5(File f) {
-        try {
-            byte[] buf = new byte[1024];
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            try (InputStream is = Files.newInputStream(f.toPath());
-                 DigestInputStream dis = new DigestInputStream(is, md)) {
-                while (dis.read(buf) >= 0);
-            }
-            byte[] digest = md.digest();
-            return bytesToHex(digest);
-        } catch (NoSuchAlgorithmException | IOException e) {
-            throw new RuntimeException(e);
-        }
+public final class TestHelper {
+    private TestHelper() {
     }
 
-    // stolen from http://stackoverflow.com/a/9855338/303637
-    final protected static char[] hexArray = "0123456789abcdef".toCharArray();
-    public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        int v;
-        for ( int j = 0; j < bytes.length; j++ ) {
-            v = bytes[j] & 0xFF;
-            hexChars[j * 2] = hexArray[v >>> 4];
-            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+    /**
+     * @param path file to digest.
+     * @return lower case hex MD5 of the file content.
+     */
+    public static String md5(Path path) {
+        final MessageDigest md = digest();
+        final byte[] buf = new byte[8192];
+        try (InputStream is = Files.newInputStream(path);
+             DigestInputStream dis = new DigestInputStream(is, md)) {
+            while (dis.read(buf) >= 0) {
+                // Digest is updated as a side effect of reading.
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
-        return new String(hexChars);
+        return bytesToHex(md.digest());
+    }
+
+    /**
+     * @param f file to digest.
+     * @return lower case hex MD5 of the file content.
+     */
+    public static String md5(File f) {
+        return md5(f.toPath());
+    }
+
+    /**
+     * @param data bytes to digest.
+     * @return lower case hex MD5 of the given bytes.
+     */
+    public static String md5(byte[] data) {
+        final MessageDigest md = digest();
+        md.update(data);
+        return bytesToHex(md.digest());
+    }
+
+    public static String bytesToHex(byte[] bytes) {
+        return HexFormat.of().formatHex(bytes);
+    }
+
+    private static MessageDigest digest() {
+        try {
+            return MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("MD5 is required by the platform.", e);
+        }
     }
 }

@@ -8,150 +8,148 @@ import com.jcraft.jzlib.JZlib;
 import java.util.Arrays;
 
 /**
- * Faster jzlib helper tuned for level 0 (no compression).
- * NOTE: Not thread-safe.
+ * Deflate/inflate via jzlib.
+ * <p>
+ * <b>Thread safety:</b> every call creates and ends its own
+ * {@link Inflater}/{@link Deflater}. The previous implementation held them in
+ * static fields together with a shared scratch array and documented itself as
+ * "not thread-safe"; two archives compressed at the same time silently produced
+ * corrupt sectors.
  */
-public class JzLibHelper {
-    // If your consumer accepts RAW DEFLATE (no zlib header/Adler32),
-    // set this to true for level 0 to shave a bit more overhead.
+public final class JzLibHelper {
+    /**
+     * Whether level-0 output may omit the zlib header and Adler-32 trailer.
+     * MPQ consumers expect the wrapper, so this stays off.
+     */
     private static final boolean RAW_NOWRAP_FOR_LEVEL0 = false;
 
-    private static final Inflater INF = new Inflater();
-    private static Deflater DEF;
-    private static int currentLevel = Integer.MIN_VALUE;
-    private static boolean currentNowrap = false;
+    private JzLibHelper() {
+    }
 
-    private static byte[] comp = new byte[1024];
-
+    /**
+     * @param bytes      buffer holding the deflate stream.
+     * @param offset     index of the first stream byte.
+     * @param uncompSize expected size of the inflated output.
+     * @return the inflated bytes.
+     */
     public static byte[] inflate(byte[] bytes, int offset, int uncompSize) {
-        byte[] out = new byte[uncompSize];
-
-        INF.init(); // default = zlib wrapper
-        // Use correct remaining length (original used bytes.length - 1)
-        INF.setInput(bytes, offset, bytes.length - offset, true);
-
-        int outPos = 0;
-        while (outPos < uncompSize) {
-            // Provide remaining space in one go
-            INF.setOutput(out, outPos, uncompSize - outPos);
-            int rc = INF.inflate(JZlib.Z_NO_FLUSH);
-
-            if (rc == JZlib.Z_STREAM_END) {
-                outPos = (int) INF.getTotalOut();
-                break;
-            }
-            if (rc == JZlib.Z_OK || rc == JZlib.Z_BUF_ERROR) {
-                // Update outPos from total_out (cumulative)
-                outPos = (int) INF.getTotalOut();
-
-                // If no input left AND we didn't hit STREAM_END, break to avoid spin
-                if (INF.avail_in == 0 && rc == JZlib.Z_BUF_ERROR) break;
-                continue;
-            }
-            INF.end();
-            throw new RuntimeException("inflate error: " + rc);
-        }
-
-        INF.end();
-        return out;
+        return inflate(bytes, offset, bytes.length - offset, uncompSize);
     }
 
-    public static byte[] deflate(byte[] bytes, boolean strongDeflate) {
-        final int level = strongDeflate ? JZlib.Z_BEST_COMPRESSION : JZlib.Z_NO_COMPRESSION;
-        final boolean nowrap = (!strongDeflate) && RAW_NOWRAP_FOR_LEVEL0; // raw only for level 0
+    /**
+     * @param bytes      buffer holding the deflate stream.
+     * @param offset     index of the first stream byte.
+     * @param length     number of stream bytes available.
+     * @param uncompSize expected size of the inflated output.
+     * @return the inflated bytes, truncated to what the stream actually
+     *         produced.
+     */
+    public static byte[] inflate(byte[] bytes, int offset, int length, int uncompSize) {
+        final byte[] out = new byte[uncompSize];
+        final Inflater inf = new Inflater();
 
-        ensureDeflater(level, nowrap);
-        ensureCompCapacity(bytes.length, !nowrap);
-
-        // Attach full input/output once; jzlib manages avail_* internally
-        DEF.setInput(bytes, 0, bytes.length, true);
-        DEF.setOutput(comp, 0, comp.length);
-
-        // Main compress loop
-        while (true) {
-            int rc = DEF.deflate(JZlib.Z_NO_FLUSH);
-            if (rc == JZlib.Z_OK || rc == JZlib.Z_BUF_ERROR) {
-                // If all input consumed, move to finish
-                if (DEF.avail_in == 0) break;
-
-                // If out buffer is full, grow and reattach at current position
-                if (DEF.avail_out == 0) {
-                    growComp();
-                    DEF.setOutput(comp, (int) DEF.getTotalOut(), comp.length - (int) DEF.getTotalOut());
-                }
-                continue;
-            }
-            throw new RuntimeException("deflate(Z_NO_FLUSH) error: " + rc);
-        }
-
-        // Finish
-        while (true) {
-            if (DEF.avail_out == 0) {
-                growComp();
-                DEF.setOutput(comp, (int) DEF.getTotalOut(), comp.length - (int) DEF.getTotalOut());
-            }
-            int rc = DEF.deflate(JZlib.Z_FINISH);
-            if (rc == JZlib.Z_STREAM_END) break;
-            if (rc != JZlib.Z_OK && rc != JZlib.Z_BUF_ERROR) {
-                throw new RuntimeException("deflate(Z_FINISH) error: " + rc);
-            }
-        }
-
-        int outLen = (int) DEF.getTotalOut();
-        byte[] out = Arrays.copyOf(comp, outLen);
-
-        // Ready for next call: re-init with desired params then
-        // set again in ensureDeflater() on next invocation.
-        return out;
-    }
-
-    // -------------------- INTERNALS --------------------
-
-    private static void ensureDeflater(int level, boolean nowrap) {
         try {
-            if (DEF == null) {
-                DEF = new Deflater(level, nowrap);
-                currentLevel = level;
-                currentNowrap = nowrap;
-            } else {
-                if (currentLevel != level || currentNowrap != nowrap) {
-                    // Re-init with new level/nowrap (supported by jzlib)
-                    DEF.init(level, nowrap);
-                    currentLevel = level;
-                    currentNowrap = nowrap;
-                } else {
-                    // Same settings; start a fresh stream
-                    DEF.init(level, nowrap);
+            inf.init(); // default = zlib wrapper
+            inf.setInput(bytes, offset, length, true);
+
+            int outPos = 0;
+            while (outPos < uncompSize) {
+                inf.setOutput(out, outPos, uncompSize - outPos);
+                final int rc = inf.inflate(JZlib.Z_NO_FLUSH);
+
+                if (rc == JZlib.Z_STREAM_END) {
+                    outPos = (int) inf.getTotalOut();
+                    break;
                 }
+                if (rc == JZlib.Z_OK || rc == JZlib.Z_BUF_ERROR) {
+                    outPos = (int) inf.getTotalOut();
+
+                    // No input left and no progress possible: stop instead of
+                    // spinning on a truncated stream.
+                    if (inf.avail_in == 0 && rc == JZlib.Z_BUF_ERROR) {
+                        break;
+                    }
+                    continue;
+                }
+                throw new IllegalStateException("inflate error: " + rc);
             }
 
-        } catch (GZIPException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void ensureCompCapacity(int inputLen, boolean zlibWrapper) {
-        int worst = worstCaseZlibSize(inputLen, zlibWrapper);
-        if (comp.length < worst) {
-            comp = new byte[worst];
-        } else {
-            // Attach the full buffer from start for this stream
-            DEF.setOutput(comp, 0, comp.length);
+            return outPos == uncompSize ? out : Arrays.copyOf(out, outPos);
+        } finally {
+            inf.end();
         }
     }
 
     /**
-     * Worst-case for stored blocks + optional zlib header/adler.
-     * Each stored block (<=65535 bytes) = 5 bytes overhead.
+     * @param bytes          data to compress.
+     * @param strongDeflate  {@code true} for maximum compression, {@code false}
+     *                       for stored blocks only.
+     * @return the deflate stream.
      */
-    private static int worstCaseZlibSize(int n, boolean zlibWrapper) {
-        int blocks = (n + 65534) / 65535;       // number of 5-byte stored block headers
-        int storedOverhead = blocks * 5;
-        int header = zlibWrapper ? 2 /*zlib header*/ + 4 /*Adler32*/ : 0;
-        return n + storedOverhead + header + 16; // a little slack
+    public static byte[] deflate(byte[] bytes, boolean strongDeflate) {
+        final int level = strongDeflate ? JZlib.Z_BEST_COMPRESSION : JZlib.Z_NO_COMPRESSION;
+        final boolean nowrap = !strongDeflate && RAW_NOWRAP_FOR_LEVEL0;
+        final Deflater def = newDeflater(level, nowrap);
+        byte[] comp = new byte[worstCaseZlibSize(bytes.length, !nowrap)];
+
+        try {
+            def.setInput(bytes, 0, bytes.length, true);
+            def.setOutput(comp, 0, comp.length);
+
+            while (true) {
+                final int rc = def.deflate(JZlib.Z_NO_FLUSH);
+                if (rc == JZlib.Z_OK || rc == JZlib.Z_BUF_ERROR) {
+                    if (def.avail_in == 0) {
+                        break;
+                    }
+                    if (def.avail_out == 0) {
+                        comp = grow(comp);
+                        def.setOutput(comp, (int) def.getTotalOut(), comp.length - (int) def.getTotalOut());
+                    }
+                    continue;
+                }
+                throw new IllegalStateException("deflate(Z_NO_FLUSH) error: " + rc);
+            }
+
+            while (true) {
+                if (def.avail_out == 0) {
+                    comp = grow(comp);
+                    def.setOutput(comp, (int) def.getTotalOut(), comp.length - (int) def.getTotalOut());
+                }
+                final int rc = def.deflate(JZlib.Z_FINISH);
+                if (rc == JZlib.Z_STREAM_END) {
+                    break;
+                }
+                if (rc != JZlib.Z_OK && rc != JZlib.Z_BUF_ERROR) {
+                    throw new IllegalStateException("deflate(Z_FINISH) error: " + rc);
+                }
+            }
+
+            return Arrays.copyOf(comp, (int) def.getTotalOut());
+        } finally {
+            def.end();
+        }
     }
 
-    private static void growComp() {
-        comp = Arrays.copyOf(comp, comp.length * 2);
+    private static Deflater newDeflater(int level, boolean nowrap) {
+        try {
+            return new Deflater(level, nowrap);
+        } catch (GZIPException e) {
+            throw new IllegalStateException("Cannot create deflater.", e);
+        }
+    }
+
+    /**
+     * Worst case for stored blocks plus the optional zlib wrapper. Each stored
+     * block covers at most 65535 bytes and costs 5 bytes of header.
+     */
+    private static int worstCaseZlibSize(int n, boolean zlibWrapper) {
+        final int blocks = (int) (((long) n + 65534) / 65535);
+        final int header = zlibWrapper ? 2 + 4 : 0;
+        return n + blocks * 5 + header + 16;
+    }
+
+    private static byte[] grow(byte[] comp) {
+        return Arrays.copyOf(comp, Math.max(64, comp.length * 2));
     }
 }

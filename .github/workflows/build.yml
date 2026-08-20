@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Linux and Windows both, because path handling differs and most
+    # consumers build on one or the other.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - run: ./gradlew build jacocoTestReport
+
+      # Confirms that something other than JMPQ3 can read what JMPQ3 wrote.
+      # The Gradle run exported the rebuilt archives and their expected content
+      # digests; tools/mpqref.py is an independent implementation.
+      - name: Verify rebuilt archives with the reference implementation
+        run: |
+          python tools/mpqref.py selftest
+          python tools/mpqref.py verify build/roundtrip/archives --manifest build/roundtrip/expected.tsv
+
+      # Catches drift between the committed golden manifest and the fixtures.
+      - name: Check the golden manifest is up to date
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python tools/mpqref.py manifest src/test/resources/mpqs \
+            --names src/main/resources/DefaultListfile.txt \
+            -o /tmp/fixtures.tsv
+          diff -u src/test/resources/golden/fixtures.tsv /tmp/fixtures.tsv
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-report-${{ matrix.os }}
+          path: build/reports/tests/test
+          retention-days: 7
+
+      - name: Report coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        with:
+          file: build/reports/jacoco/test/jacocoTestReport.xml
+          format: jacoco
+          fail-on-error: false

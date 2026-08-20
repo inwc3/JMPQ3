@@ -1,46 +1,63 @@
 plugins {
     id "idea"
     id "jacoco"
-    id 'com.github.kt3k.coveralls' version '2.12.0'
     id "java"
     id 'maven-publish'
 }
 
 group 'systems.crigges'
-version '1.9.8'
+version '2.0.0-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
     withSourcesJar()
+    withJavadocJar()
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release.set(11)
+    options.release.set(25)
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:all,-serial,-this-escape'
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    // The compat adapter is deprecated by design; do not fail the build on it.
+    options.addStringOption('Xdoclint:none', '-quiet')
 }
 
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
+    maven { url = 'https://jitpack.io' }
 }
 
 jacoco {
-    toolVersion = "0.8.7"
+    toolVersion = "0.8.13"
 }
 
 dependencies {
     implementation 'com.jcraft:jzlib:1.1.3'
-    implementation group: 'org.apache.commons', name: 'commons-compress', version: '1.24.0'
+    implementation group: 'org.apache.commons', name: 'commons-compress', version: '1.27.1'
     implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
     implementation group: 'org.tukaani', name: 'xz', version: '1.9'
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31'
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.4.11'
-    testImplementation 'org.testng:testng:7.8.0'
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.16'
+
+    // Logging backend is a test-only concern: a library must never impose one
+    // on its consumers (P3-1).
+    testRuntimeOnly group: 'ch.qos.logback', name: 'logback-classic', version: '1.5.18'
+    testImplementation 'org.testng:testng:7.11.0'
 }
 
 test {
     useTestNG()
+    // FFM mapped-segment access in the read layer.
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
 }
 
 jacocoTestReport {
@@ -49,15 +66,10 @@ jacocoTestReport {
     }
 }
 
-artifacts {
-    archives jar
-    archives sourcesJar
-}
-
 publishing {
     publications {
         maven(MavenPublication) {
-            groupId = 'inwc3'
+            groupId = 'systems.crigges'
             artifactId = 'jmpq3'
 
             from components.java
