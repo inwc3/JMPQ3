@@ -897,6 +897,60 @@ public class Phase0RegressionTests {
 
 
     /**
+     * The codecs are ports of C code and report bad input with whatever
+     * unchecked exception came to hand. Those must surface as JMpqException, or
+     * a caller that catches the library's own exception type sees an
+     * IllegalStateException instead.
+     */
+    @Test
+    public void corruptSectorDataSurfacesAsJMpqException() {
+        // A deflate type byte followed by bytes that are not a deflate stream.
+        final byte[] garbage = new byte[64];
+        Arrays.fill(garbage, (byte) 0xAB);
+        final byte[] sector = withTypeByte(0x02, garbage);
+
+        Assert.expectThrows(JMpqException.class,
+            () -> CompressionUtil.decompress(sector, sector.length, 256));
+
+        // And the imploded path, which bypasses the mask dispatch entirely.
+        Assert.expectThrows(JMpqException.class,
+            () -> CompressionUtil.explode(garbage, garbage.length, 256));
+    }
+
+    /**
+     * Extracting everything is best effort: one damaged file must not cost the
+     * caller the rest of the archive. An unchecked codec failure used to abort
+     * the whole sweep.
+     */
+    @Test
+    public void corruptFileDoesNotAbortExtractAll() throws IOException {
+        Path mpq = TestResources.mpqCopy("normalMap");
+        final int expectedNames;
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            expectedNames = editor.getFileNames().size();
+        }
+        Assert.assertTrue(expectedNames > 3, "fixture should hold several files");
+
+        // Corrupt a stretch of the data area, well past the header and well
+        // before the hash table, so some file's sectors become undecodable.
+        final byte[] image = Files.readAllBytes(mpq);
+        Arrays.fill(image, 0x2000, 0x2400, (byte) 0x5A);
+        Files.write(mpq, image);
+
+        Path out = TestResources.scratchDir("corrupt-extract");
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            // Must not throw, despite the damage.
+            editor.extractAllFiles(out.toFile());
+        }
+
+        try (var extracted = Files.walk(out)) {
+            long files = extracted.filter(Files::isRegularFile).count();
+            Assert.assertTrue(files > 0, "the damage aborted the whole sweep");
+        }
+    }
+
+
+    /**
      * Every class of the library, discovered from the compiled output rather
      * than a hand-maintained list, so a newly added class cannot slip past the
      * global-state check.

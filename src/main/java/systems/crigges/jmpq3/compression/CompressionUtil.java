@@ -180,7 +180,7 @@ public final class CompressionUtil {
         int currentLength = length;
 
         for (CompressionType stage : stages) {
-            final byte[] produced = apply(stage, current == null ? sector : current,
+            final byte[] produced = applyGuarded(stage, current == null ? sector : current,
                 currentOffset, currentLength, uncompressedSize);
             current = produced;
             currentOffset = 0;
@@ -188,6 +188,30 @@ public final class CompressionUtil {
         }
         // stages is never empty, so current is never null here.
         return current;
+    }
+
+    /**
+     * Runs one decompression stage, translating any codec failure into a
+     * {@link JMpqException}.
+     * <p>
+     * The codecs are ports of C code and signal bad input with whatever came to
+     * hand: {@code IllegalStateException} for a zlib error code,
+     * {@code IllegalArgumentException} for a malformed PKWARE header,
+     * {@code BufferUnderflowException} from the Huffman and ADPCM readers.
+     * Those are all data conditions, not programming errors, and letting them
+     * escape unchecked meant one corrupt file aborted an entire
+     * {@code extractAllFiles} sweep. Translating here covers every codec at
+     * once, including any added later.
+     */
+    private static byte[] applyGuarded(CompressionType stage, byte[] in, int offset, int length,
+                                       int uncompressedSize) throws JMpqException {
+        try {
+            return apply(stage, in, offset, length, uncompressedSize);
+        } catch (JMpqException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new JMpqException("Corrupt " + stage + " data: " + e, e);
+        }
     }
 
     private static byte[] apply(CompressionType stage, byte[] in, int offset, int length, int uncompressedSize)
@@ -292,12 +316,18 @@ public final class CompressionUtil {
      * @param uncompressedSize expected size of the decompressed sector.
      * @return the decompressed sector.
      */
-    public static byte[] explode(byte[] sector, int compressedSize, int uncompressedSize) {
+    public static byte[] explode(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
         if (compressedSize == uncompressedSize) {
             return sector;
         }
         final byte[] out = new byte[uncompressedSize];
-        Exploder.pkexplode(sector, out, 0);
+        try {
+            Exploder.pkexplode(sector, out, 0);
+        } catch (RuntimeException e) {
+            // Same reasoning as applyGuarded: the exploder reports malformed
+            // input with unchecked exceptions.
+            throw new JMpqException("Corrupt imploded data: " + e, e);
+        }
         return out;
     }
 

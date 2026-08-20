@@ -850,7 +850,11 @@ public class JMpqEditor implements AutoCloseable {
                 try {
                     Files.createDirectories(target.getParent());
                     getMpqFile(name).extractToPath(target);
-                } catch (IOException e) {
+                } catch (IOException | RuntimeException e) {
+                    // Extracting everything is best effort by definition: one
+                    // damaged file must not cost the caller the rest of the
+                    // archive. RuntimeException is included because the codecs
+                    // are C ports that signal bad data unchecked.
                     log.warn("File possibly corrupted and could not be extracted: {}", name, e);
                 }
             }
