@@ -1,4 +1,4 @@
-package systems.crigges.jmpq;
+package org.inwc3.jmpq;
 
 /**
  * How to interpret an archive when opening it.

@@ -1,4 +1,4 @@
-package systems.crigges.jmpq;
+package org.inwc3.jmpq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

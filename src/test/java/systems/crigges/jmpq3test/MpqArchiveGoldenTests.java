@@ -5,9 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import systems.crigges.jmpq.MpqArchive;
-import systems.crigges.jmpq.MpqFileEntry;
-import systems.crigges.jmpq.MpqOpenOptions;
+import org.inwc3.jmpq.MpqArchive;
+import org.inwc3.jmpq.MpqFileEntry;
+import org.inwc3.jmpq.MpqOpenOptions;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
 

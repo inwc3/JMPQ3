@@ -2,8 +2,8 @@ package systems.crigges.jmpq3test;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import systems.crigges.jmpq.MpqHeader;
-import systems.crigges.jmpq.MpqSource;
+import org.inwc3.jmpq.MpqHeader;
+import org.inwc3.jmpq.MpqSource;
 import systems.crigges.jmpq3.JMpqException;
 
 import java.io.IOException;

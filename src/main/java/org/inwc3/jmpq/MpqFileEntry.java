@@ -1,4 +1,4 @@
-package systems.crigges.jmpq;
+package org.inwc3.jmpq;
 
 /**
  * One file in an archive: what it is called, where it lives, and how it is

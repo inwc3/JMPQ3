@@ -1,4 +1,4 @@
-package systems.crigges.jmpq;
+package org.inwc3.jmpq;
 
 import systems.crigges.jmpq3.JMpqException;
 import systems.crigges.jmpq3.MpqNames;
