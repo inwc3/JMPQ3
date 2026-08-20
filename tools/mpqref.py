@@ -667,16 +667,26 @@ def cmd_selftest(_args):
 
 
 def _expand(patterns):
+    """Resolve arguments to a list of files in a platform-independent order.
+
+    Sorted by name as a string, never by Path: Path comparison folds case on
+    Windows and does not on POSIX, so sorting Paths put the archives in a
+    different order on each platform and made the manifest unreproducible.
+    """
     paths = []
     for pattern in patterns:
         path = Path(pattern)
         if path.is_dir():
-            paths.extend(sorted(p for p in path.iterdir() if p.is_file()))
+            paths.extend(_sorted_by_name(p for p in path.iterdir() if p.is_file()))
         elif any(ch in pattern for ch in "*?"):
-            paths.extend(sorted(Path().glob(pattern)))
+            paths.extend(_sorted_by_name(Path().glob(pattern)))
         else:
             paths.append(path)
     return paths
+
+
+def _sorted_by_name(paths):
+    return sorted(paths, key=lambda p: p.name)
 
 
 def main(argv=None):
