@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/inwc3/JMPQ3.svg?style=svg)](https://circleci.com/gh/inwc3/JMPQ3) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master) [![codebeat badge](https://codebeat.co/badges/5ccfd060-8d57-4a51-9c6b-2688482f857e)](https://codebeat.co/projects/github-com-inwc3-jmpq3-master)
+[![Build](https://github.com/inwc3/JMPQ3/actions/workflows/build.yml/badge.svg)](https://github.com/inwc3/JMPQ3/actions/workflows/build.yml) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master) [![codebeat badge](https://codebeat.co/badges/5ccfd060-8d57-4a51-9c6b-2688482f857e)](https://codebeat.co/projects/github-com-inwc3-jmpq3-master)
 
 # JMPQ3
 
@@ -14,9 +14,8 @@ http://www.zezula.net/en/mpq/main.html
 
 ## Requirements
 
-JMPQ3 1.9.0 and newer requires Java 11 or newer at runtime.
-
-The project currently builds with a Java 17 toolchain while compiling Java 11-compatible bytecode.
+JMPQ3 2.0.0 and newer requires Java 25 or newer at runtime.
+JMPQ3 1.9.x requires Java 11.
 
 ## Installation
 
@@ -31,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.inwc3:JMPQ3:1.9.8'
+    implementation 'com.github.inwc3:JMPQ3:2.0.0'
 }
 ```
 
