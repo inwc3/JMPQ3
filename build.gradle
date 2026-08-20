@@ -5,7 +5,7 @@ plugins {
     id 'maven-publish'
 }
 
-group 'systems.crigges'
+group 'org.inwc3'
 version '2.0.0-SNAPSHOT'
 
 java {
@@ -69,7 +69,7 @@ jacocoTestReport {
 publishing {
     publications {
         maven(MavenPublication) {
-            groupId = 'systems.crigges'
+            groupId = 'org.inwc3'
             artifactId = 'jmpq3'
 
             from components.java

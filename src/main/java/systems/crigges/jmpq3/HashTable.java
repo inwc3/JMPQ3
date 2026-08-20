@@ -347,6 +347,38 @@ public class HashTable {
     }
 
     /**
+     * One live mapping in the table.
+     *
+     * @param key        the 64-bit MPQ file key the mapping is for.
+     * @param locale     Windows Language ID of this variant.
+     * @param blockIndex block table row holding the data.
+     */
+    public record Mapping(long key, short locale, int blockIndex) {
+    }
+
+    /**
+     * Every live mapping, in bucket order.
+     * <p>
+     * The table stores hashes rather than names, so a caller correlates these
+     * with names it already knows by comparing {@link Mapping#key()} against
+     * {@code MpqNames.fileKey(name)}. That is the only way to discover all
+     * locale variants of a path: a lookup resolves one variant by the format's
+     * preference order and cannot report the others.
+     *
+     * @return the live mappings.
+     */
+    public java.util.List<Mapping> mappings() {
+        final java.util.List<Mapping> live = new java.util.ArrayList<>(mappingNumber);
+        for (Bucket bucket : buckets) {
+            if (bucket.blockTableIndex != ENTRY_UNUSED && bucket.blockTableIndex != ENTRY_DELETED
+                && bucket.blockTableIndex < blockTableSize) {
+                live.add(new Mapping(bucket.key, bucket.locale, bucket.blockTableIndex));
+            }
+        }
+        return live;
+    }
+
+    /**
      * Maps a bucket-offset hash to a starting bucket, using StormLib's rule.
      * <p>
      * StormLib indexes with {@code hash & (dwHashTableSize - 1)}
