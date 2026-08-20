@@ -22,3 +22,6 @@ src/test/resources/mpqs/War3x.w3x
 src/test/resources/War3x.w3x
 
 .scannerwork
+# Python bytecode from tools/
+__pycache__/
+*.pyc

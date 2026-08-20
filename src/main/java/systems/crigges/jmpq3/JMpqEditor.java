@@ -1209,7 +1209,11 @@ public class JMpqEditor implements AutoCloseable {
         currentPos = copyExistingFiles(out, existingFiles, newFiles, newBlocks, currentPos, base, options);
         currentPos = writePendingFiles(out, newFiles, newBlocks, currentPos, base, options);
 
-        if (buildListfile && !listFile.getFiles().isEmpty()) {
+        // Written even when empty. Skipping it for an archive with no known
+        // names dropped the (listfile) altogether, and an archive without one
+        // is downgraded to read-only the next time it is opened, so a single
+        // rebuild used to make such an archive permanently unrebuildable.
+        if (buildListfile) {
             currentPos = writeListfile(out, newFiles, newBlocks, currentPos, base, options);
         }
 
@@ -1293,8 +1297,20 @@ public class JMpqEditor implements AutoCloseable {
     private long copyExistingFiles(GrowingBuffer out, List<String> existingFiles, List<String> newFiles,
                                    List<Block> newBlocks, long currentPos, long base, RecompressOptions options)
         throws IOException {
+        // A file can only be copied with its stored bytes intact if the target
+        // archive keeps the same sector geometry: a sector offset table is
+        // expressed in the archive's sector size, and an archive has exactly one
+        // of those. Recompressing into a different sector size therefore has to
+        // re-encode everything, including the .wav files that are otherwise left
+        // alone. Copying them regardless is what corrupted them before: the
+        // rebuilt header advertised the new sector size while their offset
+        // tables still described the old one, so they could no longer be read.
+        final boolean canCopyVerbatim = newDiscBlockSize == discBlockSize;
+
         for (String existingName : existingFiles) {
-            if (options.recompress && !existingName.toLowerCase(java.util.Locale.ROOT).endsWith(".wav")) {
+            final boolean skipRecompression =
+                canCopyVerbatim && existingName.toLowerCase(java.util.Locale.ROOT).endsWith(".wav");
+            if (options.recompress && !skipRecompression) {
                 // Recompressing means decoding and re-encoding, so route the
                 // file through the pending-file path instead of copying it.
                 pendingFiles.put(MpqNames.canonical(existingName),

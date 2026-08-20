@@ -663,7 +663,7 @@ public class Phase0RegressionTests {
                 }
                 final RecompressOptions options = new RecompressOptions(recompress);
                 options.useZopfli = zopfli;
-                options.iterations = 4;
+                options.iterations = 1;
 
                 Path mpq = TestResources.mpqCopy("normalMap");
                 try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {

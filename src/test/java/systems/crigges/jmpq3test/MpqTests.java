@@ -208,6 +208,10 @@ public class MpqTests {
     public void testRecompressBuild() throws IOException {
         RecompressOptions options = new RecompressOptions(true);
         options.newSectorSizeShift = 15;
+        // Zopfli's iteration count trades time for compression ratio, not
+        // correctness, and the default of 16 over 16 MiB sectors dominated the
+        // whole suite's runtime. One iteration exercises the same code paths.
+        options.iterations = 1;
         for (Path mpq : getMpqs()) {
             log.info("recompress: {}", mpq.getFileName());
             options.useZopfli = !options.useZopfli;
