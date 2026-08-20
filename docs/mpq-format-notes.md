@@ -107,19 +107,40 @@ carries **no** leading type byte at all. It is handled by `SCompExplode`, not
 
 ---
 
-## 3. Name normalisation
+## 3. Name normalisation: case folds, separators do not
 
-MPQ paths are case insensitive and `\`-separated, which falls directly out of
-the hash: every generator upper-cases its input, and `/` and `\` hash to
-different values.
+MPQ paths are case insensitive, which falls directly out of the hash: every
+generator upper-cases its input.
 
-*Decision:* one function, `MpqNames.canonical`, produces the form used for all
-keying, lookup and deduplication. Case folding uses `Locale.ROOT`, because
-`String.toUpperCase()` under a Turkish default locale maps `i` to `İ` (U+0130)
-and would produce archives no other MPQ implementation can read.
+Separators are a different matter, and it is easy to get backwards. StormLib has
+two hash functions:
 
-The `(listfile)` keeps the caller's original casing for display; only identity
-is folded.
+| Function | Slash handling |
+|---|---|
+| `HashString` | folds `/` (0x2F) to `\` (0x5C) |
+| `HashStringSlash` | "DON'T convert slash (0x2F) to backslash (0x5C)" |
+
+`OpenArchiveFromStream` sets `ha->pfnHashString = HashStringSlash`
+(`SFileOpenArchive.cpp:268`), so **every hash table lookup on an opened archive
+uses the non-folding variant**. `HashString` is used for the file encryption key
+(`DecryptFileKey`), and only after `GetPlainFileName` has stripped the directory
+part — where a separator can no longer appear, making the folding moot.
+
+*Decision:* `MpqNames.canonical` folds case only. `"dir/file"` and `"dirile"`
+are different files and neither resolves under the other's name. An earlier
+revision of this document claimed StormLib folds slashes and the code did so
+unconditionally; that was wrong, and it silently renamed any archive entry
+containing a forward slash, so the entry stopped resolving and a writable
+rebuild dropped the file as a stale list file entry.
+
+`MpqNames.baseFileKey` strips the directory at the last `\` *or* `/`, matching
+`GetPlainFileName`, which treats both as separators for that purpose.
+
+Case folding uses `Locale.ROOT`, because `String.toUpperCase()` under a Turkish
+default locale maps `i` to `İ` (U+0130) and would produce archives no other MPQ
+implementation can read.
+
+The `(listfile)` stores names exactly as supplied; only identity is folded.
 
 ---
 

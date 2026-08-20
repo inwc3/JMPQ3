@@ -66,10 +66,17 @@ HASH_FILE_KEY = 0x300
 
 
 def hash_string(text, hash_type):
-    """MPQ string hash. Paths are upper-cased and '/' is folded to '\\'."""
+    """MPQ string hash: upper-cased, separators left alone.
+
+    Mirrors StormLib's HashStringSlash, which is what an opened archive uses
+    (pfnHashString is set to it in OpenArchiveFromStream) and which
+    deliberately does not convert a forward slash to a backslash. Folding
+    would rename any entry containing a forward slash, so it would stop
+    resolving.
+    """
     seed1 = 0x7FED7FED
     seed2 = 0xEEEEEEEE
-    for char in text.replace("/", "\\").upper().encode("cp1252", "replace"):
+    for char in text.upper().encode("cp1252", "replace"):
         seed1 = CRYPT_TABLE[hash_type + char] ^ ((seed1 + seed2) & MASK32)
         seed2 = (char + seed1 + seed2 + (seed2 << 5) + 3) & MASK32
     return seed1 & MASK32
@@ -485,7 +492,7 @@ class Archive:
         # machines and made the manifest non-reproducible.
         chosen = {}
         for name in names:
-            key = name.replace("/", "\\").upper()
+            key = name.upper()
             if key not in chosen or name < chosen[key]:
                 chosen[key] = name
 
@@ -640,9 +647,12 @@ def cmd_selftest(_args):
             failures.append("file key for %s: expected 0x%08X, got 0x%08X"
                             % (name, expected, actual))
 
-    # Case and separator folding.
-    if hash_string("Units/Test.txt", HASH_NAME_A) != hash_string("UNITS" + chr(92) + "test.txt", HASH_NAME_A):
-        failures.append("path folding is inconsistent")
+    # Case folds, separators do not: '/' and a backslash are different
+    # characters to the hash, matching StormLib's HashStringSlash.
+    if hash_string("Units/Test.txt", HASH_NAME_A) != hash_string("UNITS/TEST.TXT", HASH_NAME_A):
+        failures.append("case folding is inconsistent")
+    if hash_string("Units/Test.txt", HASH_NAME_A) == hash_string("UNITS" + chr(92) + "TEST.TXT", HASH_NAME_A):
+        failures.append("separators must not be folded")
 
     # Sanity only; the file-key answers above are what really pin the crypt
     # table, and every manifest run exercises decrypt against real tables.

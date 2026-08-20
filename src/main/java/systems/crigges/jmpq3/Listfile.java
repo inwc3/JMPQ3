@@ -90,12 +90,12 @@ public class Listfile {
             return;
         }
         final String key = MpqNames.canonical(name);
-        final String display = MpqNames.display(name);
-        final String previous = files.putIfAbsent(key, display);
-        if (previous != null && !previous.equals(display)) {
+        // Stored exactly as given: separators are part of a name's identity.
+        final String previous = files.putIfAbsent(key, name);
+        if (previous != null && !previous.equals(name)) {
             // Same file, different spelling. Harmless, but worth knowing about
             // when diffing archives.
-            log.debug("Listfile already contains {} as {}; keeping the first spelling.", display, previous);
+            log.debug("Listfile already contains {} as {}; keeping the first spelling.", name, previous);
         }
     }
 

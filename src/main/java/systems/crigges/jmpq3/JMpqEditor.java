@@ -165,14 +165,14 @@ public class JMpqEditor implements AutoCloseable {
      */
     private record PendingFile(String displayName, Path path, byte[] data) {
         static PendingFile of(String name, Path path) {
-            return new PendingFile(MpqNames.display(name), path, null);
+            return new PendingFile(name, path, null);
         }
 
         static PendingFile of(String name, byte[] data) {
             // Copy on insert: the caller is free to mutate its array
             // afterwards, and the old implementation would then write the
             // mutated content.
-            return new PendingFile(MpqNames.display(name), null, data.clone());
+            return new PendingFile(name, null, data.clone());
         }
 
         byte[] read() throws IOException {

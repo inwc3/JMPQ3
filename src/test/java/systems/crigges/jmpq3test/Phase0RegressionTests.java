@@ -302,8 +302,14 @@ public class Phase0RegressionTests {
      */
     @Test
     public void p0_5_nameNormalisationIsConsistentAcrossStructures() throws IOException {
-        Assert.assertEquals(MpqNames.canonical("Units/Test.txt"), MpqNames.canonical("units\\TEST.TXT"));
-        Assert.assertEquals(MpqNames.fileKey("Units/Test.txt"), MpqNames.fileKey("UNITS\\test.txt"));
+        // Case folds...
+        Assert.assertEquals(MpqNames.canonical("Units\\Test.txt"), MpqNames.canonical("units\\TEST.TXT"));
+        Assert.assertEquals(MpqNames.fileKey("Units\\Test.txt"), MpqNames.fileKey("UNITS\\test.txt"));
+
+        // ...separators do not. '/' is an ordinary character to the MPQ hash,
+        // so these name two different files, exactly as StormLib treats them.
+        Assert.assertNotEquals(MpqNames.canonical("Units/Test.txt"), MpqNames.canonical("Units\\Test.txt"));
+        Assert.assertNotEquals(MpqNames.fileKey("Units/Test.txt"), MpqNames.fileKey("Units\\Test.txt"));
 
         Path mpq = TestResources.mpqCopy("normalMap");
         try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
@@ -311,7 +317,7 @@ public class Phase0RegressionTests {
             // Same file by MPQ rules, so a non-overriding insert must be refused
             // and a delete must find it.
             Assert.expectThrows(IllegalArgumentException.class,
-                () -> editor.insertByteArray("units/CASE.TXT", "b".getBytes(StandardCharsets.UTF_8)));
+                () -> editor.insertByteArray("UNITS\\CASE.TXT", "b".getBytes(StandardCharsets.UTF_8)));
             editor.deleteFile("UNITS\\case.txt");
             Assert.assertFalse(editor.getListfileEntries().contains("Units\\Case.txt"));
         }
@@ -801,6 +807,31 @@ public class Phase0RegressionTests {
         Assert.expectThrows(IllegalArgumentException.class, () -> MpqFile.sectorCount(-1, fourKiB));
         Assert.expectThrows(IllegalArgumentException.class, () -> MpqFile.sectorCount(1, 0));
     }
+
+    /**
+     * A name containing a forward slash is a distinct file and must survive a
+     * rebuild. Folding it to a backslash renamed the entry, so it no longer
+     * resolved and a writable rebuild discarded it as a stale list file entry.
+     */
+    @Test
+    public void forwardSlashNamesAreDistinctAndSurviveRebuild() throws IOException {
+        final String slash = "dir/file.txt";
+        final String backslash = "dir\\file.txt";
+        Path mpq = TestResources.mpqCopy("normalMap");
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray(slash, "forward".getBytes(StandardCharsets.UTF_8));
+            editor.insertByteArray(backslash, "back".getBytes(StandardCharsets.UTF_8));
+        }
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(editor.hasFile(slash), "forward slash name lost on rebuild");
+            Assert.assertTrue(editor.hasFile(backslash), "backslash name lost on rebuild");
+            Assert.assertEquals(new String(editor.extractFileAsBytes(slash), StandardCharsets.UTF_8), "forward");
+            Assert.assertEquals(new String(editor.extractFileAsBytes(backslash), StandardCharsets.UTF_8), "back");
+        }
+    }
+
 
     /**
      * Every class of the library, discovered from the compiled output rather

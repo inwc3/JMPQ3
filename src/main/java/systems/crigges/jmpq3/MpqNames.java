@@ -7,18 +7,36 @@ import java.util.Locale;
 /**
  * The single place that decides what an MPQ file path <em>is</em>.
  * <p>
- * MPQ paths are case insensitive and directory separated by {@code '\'}, which
- * follows directly from how the format hashes them: every hash generator
- * upper-cases its input, so {@code "Units\Test.txt"},
- * {@code "units\test.txt"} and {@code "UNITS\TEST.TXT"} are the same file, and
- * {@code "Units/Test.txt"} is a <em>different</em> one because {@code '/'} and
- * {@code '\'} hash differently.
+ * MPQ paths are case insensitive, which follows directly from how the format
+ * hashes them: every hash generator upper-cases its input, so
+ * {@code "Units\Test.txt"} and {@code "units\test.txt"} are the same file.
  * <p>
  * Before this class existed the library compared raw strings in some places
  * (the pending-insert map) and MPQ hash keys in others (the list file), so
  * {@code "Test"} and {@code "teST"} could disagree about whether a file
  * existed. Everything that keys, looks up, or deduplicates a file path now goes
  * through {@link #canonical(String)}.
+ *
+ * <h2>Separators are not interchangeable</h2>
+ * {@code '\'} is the MPQ path separator, and {@code '/'} is an ordinary
+ * character that hashes differently. A file stored as {@code "dir/file"} is a
+ * different file from {@code "dir\file"} and neither can be found by the
+ * other's name.
+ * <p>
+ * This mirrors StormLib exactly, which is subtler than it looks. StormLib has
+ * two hash functions: {@code HashString} folds {@code '/'} to {@code '\'},
+ * while {@code HashStringSlash} deliberately does not
+ * ("DON'T convert slash (0x2F) to backslash (0x5C)"). Archives opened through
+ * {@code OpenArchiveFromStream} get {@code pfnHashString = HashStringSlash}, so
+ * every hash table lookup uses the <em>non</em>-folding variant. Folding here
+ * would silently rename any archive entry containing a forward slash: the
+ * renamed entry no longer resolves, so a writable rebuild would drop the file
+ * as a stale list file entry.
+ * <p>
+ * The one place StormLib does fold is the file encryption key
+ * ({@code DecryptFileKey} calls {@code HashString}), and it does so after
+ * stripping the directory part, where a separator can no longer appear. See
+ * {@link #baseFileKey(String)}.
  *
  * <h2>Case folding</h2>
  * Folding uses {@link Locale#ROOT} deliberately. {@link String#toUpperCase()}
@@ -33,37 +51,22 @@ public final class MpqNames {
     /**
      * Normalises a path to the form used for hashing, keying and comparison.
      * <p>
-     * Forward slashes are folded to backslashes: MPQ stores backslashes, and
-     * callers on POSIX systems routinely pass the platform separator.
+     * Case only. Separators are left exactly as given, because they are part of
+     * the name's identity; see the class documentation.
      *
      * @param name file path as supplied by a caller.
-     * @return the canonical form: upper case, backslash separated.
+     * @return the canonical form: upper case, separators untouched.
      * @throws NullPointerException if {@code name} is {@code null}.
      */
     public static String canonical(String name) {
-        return name.replace('/', '\\').toUpperCase(Locale.ROOT);
-    }
-
-    /**
-     * Normalises a path for storage in a list file, preserving the caller's
-     * casing but fixing separators.
-     * <p>
-     * The {@code (listfile)} of a real archive keeps human readable casing, and
-     * Warcraft III displays those names, so casing is not folded here. Identity
-     * is still decided by {@link #canonical(String)}.
-     *
-     * @param name file path as supplied by a caller.
-     * @return the path with backslash separators.
-     */
-    public static String display(String name) {
-        return name.replace('/', '\\');
+        return name.toUpperCase(Locale.ROOT);
     }
 
     /**
      * The 64-bit content key MPQ uses to identify a path independently of the
      * hash table's capacity.
      *
-     * @param name file path; normalised internally.
+     * @param name file path; case folded internally.
      * @return the combined key1/key2 pair.
      */
     public static long fileKey(String name) {
@@ -78,7 +81,7 @@ public final class MpqNames {
     /**
      * The hash used to pick a starting bucket in the hash table.
      *
-     * @param name file path; normalised internally.
+     * @param name file path; case folded internally.
      * @return the bucket offset hash.
      */
     public static int tableOffset(String name) {
@@ -92,14 +95,18 @@ public final class MpqNames {
      * <p>
      * MPQ derives it from the <em>file name only</em>, with the directory part
      * stripped, which is why two files with the same name in different
-     * directories share a base key.
+     * directories share a base key. Stripping happens at the last {@code '\'}
+     * <em>or</em> {@code '/'}, matching StormLib's {@code GetPlainFileName},
+     * which treats both as separators for this purpose even though only
+     * {@code '\'} is significant to the hash table.
      *
      * @param name full file path.
      * @return the base key, before any {@code ADJUSTED_ENCRYPTED} offsetting.
      */
     public static int baseFileKey(String name) {
         final String canonical = canonical(name);
-        final String pathless = canonical.substring(canonical.lastIndexOf('\\') + 1);
+        final int separator = Math.max(canonical.lastIndexOf('\\'), canonical.lastIndexOf('/'));
+        final String pathless = canonical.substring(separator + 1);
         final MPQHashGenerator gen = MPQHashGenerator.getFileKeyGenerator();
         gen.process(pathless);
         return gen.getHash();
