@@ -406,6 +406,62 @@ public class MpqArchiveWriterTests {
         }
     }
 
+    /**
+     * Exports archives built by the new writer, plus the content digests they
+     * should hold, so {@code tools/mpqref.py verify} can confirm that something
+     * other than this library can read them. CI runs that step; see
+     * {@code .github/workflows/build.yml}.
+     * <p>
+     * Re-encoding everything means every sector is deflate or stored, which is
+     * exactly the set the reference implements, so coverage of the write path is
+     * complete.
+     */
+    @Test
+    public void exportForReferenceVerification() throws IOException {
+        final Path out = Path.of("build", "roundtrip-newcore");
+        final Path archives = out.resolve("archives");
+        Files.createDirectories(archives);
+
+        final RecompressOptions recompress = new RecompressOptions(true);
+        recompress.iterations = 1;
+        final MpqWriteOptions options = MpqWriteOptions.defaults().withRecompression(recompress);
+
+        final StringBuilder expected = new StringBuilder("# archive\tname\tsize\tmd5\n");
+        int exported = 0;
+
+        for (String fixture : manifest.byArchive().keySet()) {
+            final Path source = TestResources.mpqCopy(fixture);
+            final Map<String, String> contents = new LinkedHashMap<>();
+            final byte[] image;
+
+            try (MpqArchive archive = MpqArchive.open(source, MpqOpenOptions.warcraft3())) {
+                for (String name : archive.names()) {
+                    try {
+                        final byte[] content = archive.read(name);
+                        contents.put(name, content.length + "\t" + TestHelper.md5(content));
+                    } catch (IOException e) {
+                        log.debug("cannot decode {} in {}", name, fixture, e);
+                    }
+                }
+                if (contents.isEmpty()) {
+                    continue;
+                }
+                image = MpqArchiveWriter.from(archive, options).toByteArray();
+            }
+
+            Files.write(archives.resolve(fixture), image);
+            for (Map.Entry<String, String> entry : contents.entrySet()) {
+                expected.append(fixture).append('\t').append(entry.getKey())
+                    .append('\t').append(entry.getValue()).append('\n');
+            }
+            exported++;
+        }
+
+        Assert.assertTrue(exported >= 10, "exported only " + exported + " archives");
+        Files.writeString(out.resolve("expected.tsv"), expected.toString(), StandardCharsets.UTF_8);
+        log.info("exported {} writer-built archives for independent verification", exported);
+    }
+
     /** A missing source file must be reported when saving, not silently skipped. */
     @Test
     public void missingSourceFileIsReported() {
