@@ -204,6 +204,17 @@ public class JMpqEditor implements AutoCloseable {
     private int newBlockSize;
 
     /**
+     * Whether the caller asked for a writable archive.
+     * <p>
+     * Distinct from {@link #canWrite}, which is the <em>effective</em> mode and
+     * gets downgraded when the archive has no usable list file. Without the
+     * distinction, {@link #setExternalListfile(File)} could never help: it
+     * refuses to run on a read-only editor, so the very archives it exists for
+     * were the ones it turned away.
+     */
+    private final boolean writeRequested;
+
+    /**
      * If write operations are supported on the archive.
      */
     private boolean canWrite;
@@ -227,7 +238,8 @@ public class JMpqEditor implements AutoCloseable {
      * @throws JMpqException if the archive is missing, damaged or unsupported.
      */
     public JMpqEditor(Path mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
-        canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
+        writeRequested = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
+        canWrite = writeRequested;
         legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
         log.debug("Opening {}", mpqArchive);
 
@@ -276,7 +288,8 @@ public class JMpqEditor implements AutoCloseable {
      * @throws JMpqException if the archive is damaged or unsupported.
      */
     public JMpqEditor(byte[] mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
-        canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
+        writeRequested = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
+        canWrite = writeRequested;
         legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
 
         SeekableByteChannel channel = null;
@@ -450,7 +463,11 @@ public class JMpqEditor implements AutoCloseable {
      * @param externalListfilePath Path to a file containing listfile entries
      */
     public void setExternalListfile(File externalListfilePath) {
-        if (!canWrite) {
+        // Gate on what the caller asked for, not on the effective mode: an
+        // archive whose own list file is missing or unreadable has already been
+        // downgraded to read-only, and that is exactly the case this method
+        // exists to repair.
+        if (!writeRequested) {
             log.warn("The mpq was opened as readonly, setting an external listfile will have no effect.");
             return;
         }
@@ -461,10 +478,15 @@ public class JMpqEditor implements AutoCloseable {
         }
         try {
             listFile = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
+            // Restore writability before checking completeness, so the entries
+            // that do not resolve are pruned as they are for a built-in list
+            // file.
+            canWrite = true;
             checkListfileEntries();
+            log.debug("Applied external listfile with {} entries; archive is writable.", listFile.size());
         } catch (IOException | RuntimeException e) {
             log.warn("Could not apply external listfile: {}", externalListfilePath.getAbsolutePath(), e);
-            // The value of canWrite is not changed intentionally.
+            canWrite = false;
         }
     }
 

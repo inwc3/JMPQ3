@@ -834,6 +834,69 @@ public class Phase0RegressionTests {
 
 
     /**
+     * An archive with no usable list file is downgraded to read-only, and
+     * supplying an external list file is the documented way to recover it. That
+     * flow was dead: setExternalListfile refused to run on a read-only editor,
+     * so it turned away exactly the archives it exists for.
+     */
+    @Test
+    public void externalListfileRestoresWritability() throws IOException {
+        Path mpq = TestResources.mpqCopy("listfilelessMap");
+        Path listfile = TestResources.file("listfile.txt");
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            Assert.assertFalse(editor.isCanWrite(), "an archive with no listfile should not be writable");
+
+            editor.setExternalListfile(listfile.toFile());
+            Assert.assertTrue(editor.isCanWrite(), "external listfile did not restore writability");
+            Assert.assertFalse(editor.getListfileEntries().isEmpty(), "no entries were applied");
+
+            editor.insertByteArray("recovered.txt", "yes".getBytes(StandardCharsets.UTF_8));
+        }
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(editor.hasFile("recovered.txt"));
+            Assert.assertEquals(new String(editor.extractFileAsBytes("recovered.txt"), StandardCharsets.UTF_8),
+                "yes");
+        }
+    }
+
+    /**
+     * A READ_ONLY editor must stay read-only whatever list file it is handed.
+     */
+    @Test
+    public void externalListfileCannotOverrideReadOnly() throws IOException {
+        Path mpq = TestResources.mpqCopy("listfilelessMap");
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            editor.setExternalListfile(TestResources.file("listfile.txt").toFile());
+            Assert.assertFalse(editor.isCanWrite(), "READ_ONLY was overridden by an external listfile");
+        }
+    }
+
+    /**
+     * A list file name made only of whitespace is still a representable MPQ
+     * name, so the parser must keep it rather than filter it as blank. A
+     * spurious whitespace line is harmless: it does not resolve in the hash
+     * table, so completeness checking prunes it.
+     */
+    @Test
+    public void whitespaceOnlyListfileNamesAreKept() {
+        final byte[] raw = ("real.txt" + System.lineSeparator()
+            + "   " + System.lineSeparator()
+            + System.lineSeparator()
+            + "other.txt" + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
+
+        final systems.crigges.jmpq3.Listfile listfile = new systems.crigges.jmpq3.Listfile(raw);
+
+        Assert.assertTrue(listfile.containsFile("real.txt"));
+        Assert.assertTrue(listfile.containsFile("other.txt"));
+        Assert.assertTrue(listfile.containsFile("   "), "whitespace-only name was dropped");
+        // The genuinely empty line must not become an entry.
+        Assert.assertEquals(listfile.size(), 3, listfile.getFiles().toString());
+    }
+
+
+    /**
      * Every class of the library, discovered from the compiled output rather
      * than a hand-maintained list, so a newly added class cannot slip past the
      * global-state check.

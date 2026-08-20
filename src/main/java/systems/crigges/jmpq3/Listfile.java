@@ -48,14 +48,15 @@ public class Listfile {
      * @param file raw {@code (listfile)} content; interpreted as UTF-8.
      */
     public Listfile(byte[] file) {
-        // Only the line terminator is removed: MPQ names may legitimately
-        // carry leading or trailing whitespace, and protected archives use
-        // exactly that to make two entries look alike. Trimming would change
-        // the name, so it would no longer hash to its hash-table entry and a
-        // rebuild would discard the file.
-        new String(file, StandardCharsets.UTF_8).lines()
-            .filter(line -> !line.isBlank())
-            .forEach(this::addFile);
+        // Only the line terminator is removed. MPQ names may legitimately
+        // carry leading or trailing whitespace -- protected archives use
+        // exactly that to make two entries look alike -- so trimming would
+        // change the name, it would no longer hash to its hash-table entry, and
+        // a rebuild would discard the file. Even an entirely-whitespace name is
+        // representable, and addFile drops only genuinely empty lines. A
+        // spurious whitespace line costs nothing: it will not resolve in the
+        // hash table, so checkListfileCompleteness prunes it.
+        new String(file, StandardCharsets.UTF_8).lines().forEach(this::addFile);
     }
 
     /**
