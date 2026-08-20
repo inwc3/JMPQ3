@@ -30,7 +30,7 @@ public class DebugHelper {
             if (secondObject!=null && secondObject.length!=0)
                 outputStream.write(secondObject);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new java.io.UncheckedIOException("Cannot append byte arrays.", e);
         }
         return outputStream.toByteArray();
     }

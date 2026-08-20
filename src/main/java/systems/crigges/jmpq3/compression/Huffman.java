@@ -120,7 +120,7 @@ class Huffman {
 
         int result = bitBuffer & ((1 << bits) - 1);
         bitBuffer >>>= bits;
-        bitNumber -= bits;
+        bitNumber = (byte) (bitNumber - bits);
 
         return result;
     }
@@ -268,7 +268,7 @@ class Huffman {
         root.parent = null;
     }
 
-    void Decompress(ByteBuffer in, ByteBuffer out) {
+    void decompress(ByteBuffer in, ByteBuffer out) {
         setSource(in);
         byte type = (byte) getBits(8);
         buildTree(type);

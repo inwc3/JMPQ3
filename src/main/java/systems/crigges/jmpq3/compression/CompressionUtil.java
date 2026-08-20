@@ -1,202 +1,314 @@
 package systems.crigges.jmpq3.compression;
 
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
+import org.tukaani.xz.LZMAInputStream;
 import systems.crigges.jmpq3.JMpqException;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
 
 /**
- * Created by Frotty on 30.04.2017.
+ * Sector level compression and decompression.
+ * <p>
+ * <b>Thread safety:</b> all methods on this class are stateless and safe to call
+ * concurrently. Every codec that carries state ({@link Huffman},
+ * {@link ADPCM}, the deflater and inflater in {@link JzLibHelper}) is
+ * instantiated per call. Sharing those instances across archives was silently
+ * corrupting data when two archives were processed at the same time.
+ *
+ * <h2>Dispatch model</h2>
+ * MPQ has two mutually incompatible interpretations of a sector's leading
+ * compression-type byte, and StormLib picks between them by format version
+ * ({@code SCompDecompressX}):
+ * <ul>
+ * <li><b>Format version 0 and 1</b> use {@code SCompDecompressInternal}: the
+ * byte is a <em>bit mask</em>. Every set bit must correspond to a known
+ * algorithm, and the algorithms are applied in {@link CompressionType}
+ * declaration order. LZMA is not reachable here, so {@code 0x12} legitimately
+ * means {@code BZIP2 | ZLIB}.</li>
+ * <li><b>Format version 2 and above</b> use {@code SCompDecompress2}: the byte
+ * is matched <em>exactly</em> against a small fixed set of values, one of which
+ * is {@code 0x12} for standalone LZMA.</li>
+ * </ul>
+ * The previous implementation tested {@code (type & 0x12) != 0} for LZMA, which
+ * fires for plain deflate ({@code 0x02}) and plain BZIP2 ({@code 0x10}) and so
+ * rejected sectors it could actually read.
  */
-public class CompressionUtil {
-    private static ADPCM ADPCM;
-    private static Huffman huffman;
-    private static ZopfliHelper zopfli;
-    /* Masks for Decompression Type 2 */
-    private static final byte FLAG_HUFFMAN = 0x01;
-    public static final byte FLAG_DEFLATE = 0x02;
-    // 0x04 is unknown
-    private static final byte FLAG_IMPLODE = 0x08;
-    private static final byte FLAG_BZIP2 = 0x10;
-    private static final byte FLAG_SPARSE = 0x20;
-    private static final byte FLAG_ADPCM1C = 0x40;
-    private static final byte FLAG_ADPCM2C = -0x80;
-    private static final byte FLAG_LMZA = 0x12;
-    private static final ThreadLocal<ByteBuffer> STORE_BUFFER =
-        ThreadLocal.withInitial(() -> ByteBuffer.allocate(70000));
+public final class CompressionUtil {
+    /**
+     * Size of the MPQ-specific LZMA blob header: one filter byte, five LZMA
+     * property bytes, and an eight byte uncompressed size. Matches StormLib's
+     * {@code LZMA_HEADER_SIZE}.
+     */
+    private static final int LZMA_HEADER_SIZE = 1 + 5 + 8;
+
+    private CompressionUtil() {
+    }
 
     /**
-     * Optimized level-0 zlib compression (stored blocks only).
-     * Uses direct ByteBuffer for better performance and reduces allocations.
+     * Compresses one sector's worth of data.
+     *
+     * @param data       raw sector content.
+     * @param recompress compression strategy.
+     * @return the compressed bytes <em>without</em> the leading
+     *         compression-type byte, which the caller prepends.
      */
-    private static byte[] zlibStoreLevel0(byte[] in) {
-        int len = in.length;
-        int blocks = (len + 65534) / 65535;
-        int outCap = 2 + len + blocks * 5 + 4;
+    public static byte[] compress(byte[] data, RecompressOptions recompress) {
+        if (!recompress.recompress) {
+            return ZlibStore.storeLevel0(data);
+        }
+        if (recompress.useZopfli) {
+            return new ZopfliHelper().deflate(data, recompress.iterations);
+        }
+        return JzLibHelper.deflate(data, true);
+    }
 
-        // Get thread-local buffer and ensure capacity
-        ByteBuffer buffer = STORE_BUFFER.get();
-        if (buffer.capacity() < outCap) {
-            buffer = ByteBuffer.allocate(Math.max(outCap, buffer.capacity() * 2));
-            STORE_BUFFER.set(buffer);
+    /**
+     * Decompresses a sector of a format version 0 or 1 archive.
+     *
+     * @param sector           sector bytes, starting with the compression-type
+     *                         byte.
+     * @param compressedSize   number of valid bytes in {@code sector}.
+     * @param uncompressedSize expected size of the decompressed sector.
+     * @return the decompressed sector.
+     * @throws JMpqException if the compression-type byte names an algorithm this
+     *                       library cannot apply, or the data is corrupt.
+     */
+    public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
+        return decompress(sector, compressedSize, uncompressedSize, 0);
+    }
+
+    /**
+     * Decompresses a sector.
+     *
+     * @param sector           sector bytes, starting with the compression-type
+     *                         byte.
+     * @param compressedSize   number of valid bytes in {@code sector}.
+     * @param uncompressedSize expected size of the decompressed sector.
+     * @param formatVersion    MPQ format version of the containing archive;
+     *                         selects the dispatch model, see class docs.
+     * @return the decompressed sector.
+     * @throws JMpqException if the compression-type byte names an algorithm this
+     *                       library cannot apply, or the data is corrupt.
+     */
+    public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize, int formatVersion)
+        throws JMpqException {
+        // A sector whose stored size equals its natural size was never
+        // compressed and carries no type byte at all.
+        if (compressedSize == uncompressedSize) {
+            return sector;
+        }
+        if (compressedSize < 1) {
+            throw new JMpqException("Compressed sector is empty.");
         }
 
-        buffer.clear();
-        buffer.limit(outCap);
+        final int type = sector[0] & 0xFF;
+        final byte[] result = formatVersion >= 2
+            ? decompressExact(type, sector, compressedSize, uncompressedSize)
+            : decompressMasked(type, sector, compressedSize, uncompressedSize);
 
-        // Pre-compute Adler-32 in a single pass (optimized modulo operations)
-        int s1 = 1, s2 = 0;
-        int i = 0;
+        if (result.length == uncompressedSize) {
+            return result;
+        }
+        // Sector sizes are exact in MPQ; a short result means the sector is
+        // damaged. Report it rather than silently handing back zero padding.
+        throw new JMpqException("Sector decompressed to " + result.length
+            + " bytes, expected " + uncompressedSize + " (compression type 0x"
+            + Integer.toHexString(type) + ").");
+    }
 
-        // Process in chunks to reduce modulo operations (major optimization)
-        while (i < len) {
-            int chunk = Math.min(5552, len - i); // 5552 is max before overflow
-            int end = i + chunk;
-
-            while (i < end) {
-                s1 += (in[i++] & 0xFF);
-                s2 += s1;
+    /**
+     * Format version 0/1 dispatch: mask driven, StormLib
+     * {@code SCompDecompressInternal}.
+     */
+    private static byte[] decompressMasked(int type, byte[] sector, int compressedSize, int uncompressedSize)
+        throws JMpqException {
+        final List<CompressionType> stages = new ArrayList<>(2);
+        int unclaimed = type;
+        for (CompressionType candidate : CompressionType.values()) {
+            if ((type & candidate.mask()) != 0) {
+                stages.add(candidate);
+                unclaimed &= ~candidate.mask();
             }
-
-            s1 %= 65521;
-            s2 %= 65521;
         }
-
-        int adler = (s2 << 16) | s1;
-
-        // Write zlib header (CMF and FLG)
-        buffer.put((byte) 0x78);
-        buffer.put((byte) 0x01);
-
-        // Write stored blocks
-        int off = 0;
-        while (off < len) {
-            int blockLen = Math.min(65535, len - off);
-            boolean finalBlock = (off + blockLen) == len;
-
-            // Block header
-            buffer.put((byte) (finalBlock ? 0x01 : 0x00));
-
-            // LEN (little-endian)
-            buffer.put((byte) (blockLen & 0xFF));
-            buffer.put((byte) ((blockLen >>> 8) & 0xFF));
-
-            // NLEN (one's complement of LEN, little-endian)
-            int nlen = (~blockLen) & 0xFFFF;
-            buffer.put((byte) (nlen & 0xFF));
-            buffer.put((byte) ((nlen >>> 8) & 0xFF));
-
-            // Block data
-            buffer.put(in, off, blockLen);
-            off += blockLen;
+        if (stages.isEmpty() || unclaimed != 0) {
+            throw new JMpqException("Unsupported sector compression mask 0x" + Integer.toHexString(type) + ".");
         }
+        return applyAll(stages, sector, 1, compressedSize - 1, uncompressedSize);
+    }
 
-        // Write Adler-32 checksum (big-endian)
-        buffer.put((byte) ((adler >>> 24) & 0xFF));
-        buffer.put((byte) ((adler >>> 16) & 0xFF));
-        buffer.put((byte) ((adler >>> 8) & 0xFF));
-        buffer.put((byte) (adler & 0xFF));
+    /**
+     * Format version 2+ dispatch: exact match, StormLib
+     * {@code SCompDecompress2}.
+     */
+    private static byte[] decompressExact(int type, byte[] sector, int compressedSize, int uncompressedSize)
+        throws JMpqException {
+        final int payloadOffset = 1;
+        final int payloadLength = compressedSize - 1;
 
-        // Copy to output array
-        buffer.flip();
-        byte[] out = new byte[buffer.remaining()];
-        buffer.get(out);
+        // Pattern matching over the fixed set StormLib recognises. Anything
+        // else is a corrupt sector, not an unsupported feature.
+        final List<CompressionType> stages = switch (type) {
+            case 0x02 -> List.of(CompressionType.ZLIB);
+            case 0x08 -> List.of(CompressionType.PKWARE);
+            case 0x10 -> List.of(CompressionType.BZIP2);
+            case 0x20 -> List.of(CompressionType.SPARSE);
+            case 0x22 -> List.of(CompressionType.ZLIB, CompressionType.SPARSE);
+            case 0x30 -> List.of(CompressionType.BZIP2, CompressionType.SPARSE);
+            case 0x41 -> List.of(CompressionType.HUFFMAN, CompressionType.ADPCM_MONO);
+            case 0x81 -> List.of(CompressionType.HUFFMAN, CompressionType.ADPCM_STEREO);
+            case CompressionType.MASK_LZMA -> null; // handled below
+            default -> throw new JMpqException(
+                "Unsupported sector compression type 0x" + Integer.toHexString(type) + " for format version 2+.");
+        };
 
+        if (stages == null) {
+            return lzma(sector, payloadOffset, payloadLength, uncompressedSize);
+        }
+        return applyAll(stages, sector, payloadOffset, payloadLength, uncompressedSize);
+    }
+
+    private static byte[] applyAll(List<CompressionType> stages, byte[] sector, int offset, int length,
+                                   int uncompressedSize) throws JMpqException {
+        byte[] current = null;
+        int currentOffset = offset;
+        int currentLength = length;
+
+        for (CompressionType stage : stages) {
+            final byte[] produced = apply(stage, current == null ? sector : current,
+                currentOffset, currentLength, uncompressedSize);
+            current = produced;
+            currentOffset = 0;
+            currentLength = produced.length;
+        }
+        // stages is never empty, so current is never null here.
+        return current;
+    }
+
+    private static byte[] apply(CompressionType stage, byte[] in, int offset, int length, int uncompressedSize)
+        throws JMpqException {
+        return switch (stage) {
+            case ZLIB -> JzLibHelper.inflate(in, offset, length, uncompressedSize);
+            case PKWARE -> pkware(in, offset, length, uncompressedSize);
+            case BZIP2 -> bzip2(in, offset, length, uncompressedSize);
+            case SPARSE -> Sparse.decompress(in, offset, length, uncompressedSize);
+            case HUFFMAN -> huffman(in, offset, length, uncompressedSize);
+            case ADPCM_MONO -> adpcm(in, offset, length, uncompressedSize, 1);
+            case ADPCM_STEREO -> adpcm(in, offset, length, uncompressedSize, 2);
+        };
+    }
+
+    private static byte[] pkware(byte[] in, int offset, int length, int uncompressedSize) {
+        final byte[] out = new byte[uncompressedSize];
+        // Exploder reads from an absolute index, so the slice bounds are
+        // expressed through the offset rather than by copying.
+        Exploder.pkexplode(sliceIfNeeded(in, offset, length), out, 0);
         return out;
     }
 
-    // Update your compress method to use the optimized version:
-    public static byte[] compress(byte[] temp, RecompressOptions recompress) {
-        if (!recompress.recompress) {
-            return zlibStoreLevel0(temp); // Use the fastest version
-        }
-        if (recompress.recompress && recompress.useZopfli && zopfli == null) {
-            zopfli = new ZopfliHelper();
-        }
-        return recompress.useZopfli ? zopfli.deflate(temp, recompress.iterations)
-            : JzLibHelper.deflate(temp, recompress.recompress);
-    }
-
-    public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
-        if (compressedSize == uncompressedSize) {
-            return sector;
-        } else {
-            byte compressionType = sector[0];
-            ByteBuffer out = ByteBuffer.wrap(new byte[uncompressedSize]);
-            ByteBuffer in = ByteBuffer.wrap(sector);
-            in.position(1);
-
-            boolean flip = false;
-            boolean isLZMACompressed = (compressionType & FLAG_LMZA) != 0;
-            boolean isBzip2Compressed = (compressionType & FLAG_BZIP2) != 0;
-            boolean isImploded = (compressionType & FLAG_IMPLODE) != 0;
-            boolean isSparseCompressed = (compressionType & FLAG_SPARSE) != 0;
-            boolean isDeflated = (compressionType & FLAG_DEFLATE) != 0;
-            boolean isHuffmanCompressed = (compressionType & FLAG_HUFFMAN) != 0;
-
-            if (isDeflated) {
-                out.put(JzLibHelper.inflate(sector, 1, uncompressedSize));
-                out.position(0);
-                flip = !flip;
-            } else if (isLZMACompressed) {
-                throw new JMpqException("Unsupported compression LZMA");
-            } else if (isBzip2Compressed) {
-                throw new JMpqException("Unsupported compression Bzip2");
-            } else if (isImploded) {
-                byte[] output = new byte[uncompressedSize];
-                Exploder.pkexplode(sector, output, 1);
-                out.put(output);
-                out.position(0);
-                flip = !flip;
-            }
-            if (isSparseCompressed) {
-                throw new JMpqException("Unsupported compression sparse");
-            }
-
-            if (isHuffmanCompressed) {
-                if (huffman == null) {
-                    huffman = new Huffman();
-                }
-                (flip ? in : out).clear();
-                huffman.Decompress(flip ? out : in, flip ? in : out);
-                out.limit(out.position());
-                in.position(0);
-                out.position(0);
-                flip = !flip;
-            }
-            if (((compressionType & FLAG_ADPCM2C) != 0)) {
-                if (ADPCM == null) {
-                    ADPCM = new ADPCM(2);
-                }
-                ByteBuffer newOut = ByteBuffer.wrap(new byte[uncompressedSize]);
-                ADPCM.decompress(flip ? out : in, newOut, 2);
-                (flip ? out : in).position(0);
-                return newOut.array();
-            }
-            if (((compressionType & FLAG_ADPCM1C) != 0)) {
-                if (ADPCM == null) {
-                    ADPCM = new ADPCM(2);
-                }
-                ByteBuffer newOut = ByteBuffer.wrap(new byte[uncompressedSize]);
-                ADPCM.decompress(flip ? out : in, newOut, 1);
-                (flip ? out : in).position(0);
-                return newOut.array();
-            }
-            return (flip ? out : in).array();
+    private static byte[] bzip2(byte[] in, int offset, int length, int uncompressedSize) throws JMpqException {
+        try (InputStream stream = new BZip2CompressorInputStream(new ByteArrayInputStream(in, offset, length))) {
+            return readExactly(stream, uncompressedSize);
+        } catch (IOException e) {
+            throw new JMpqException("Cannot decompress BZIP2 sector.", e);
         }
     }
 
-    public static byte[] explode(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
+    private static byte[] lzma(byte[] in, int offset, int length, int uncompressedSize) throws JMpqException {
+        if (length <= LZMA_HEADER_SIZE) {
+            throw new JMpqException("LZMA sector too short: " + length + " bytes.");
+        }
+        if (in[offset] != 0) {
+            throw new JMpqException("LZMA sector uses filter " + in[offset] + ", only 0 is supported.");
+        }
+        // Skipping the filter byte leaves exactly the 13 byte "lzma alone"
+        // header (5 property bytes plus an 8 byte size) followed by the raw
+        // stream, which is what LZMAInputStream expects.
+        try (InputStream stream = new LZMAInputStream(
+            new ByteArrayInputStream(in, offset + 1, length - 1))) {
+            return readExactly(stream, uncompressedSize);
+        } catch (IOException e) {
+            throw new JMpqException("Cannot decompress LZMA sector.", e);
+        }
+    }
+
+    private static byte[] huffman(byte[] in, int offset, int length, int uncompressedSize) {
+        final ByteBuffer source = ByteBuffer.wrap(in, offset, length).slice();
+        final ByteBuffer target = ByteBuffer.allocate(uncompressedSize);
+        new Huffman().decompress(source, target);
+        return trimmed(target);
+    }
+
+    private static byte[] adpcm(byte[] in, int offset, int length, int uncompressedSize, int channels) {
+        final ByteBuffer source = ByteBuffer.wrap(in, offset, length).slice();
+        final ByteBuffer target = ByteBuffer.allocate(uncompressedSize);
+        new ADPCM(channels).decompress(source, target, channels);
+        return trimmed(target);
+    }
+
+    private static byte[] trimmed(ByteBuffer target) {
+        final byte[] out = new byte[target.position()];
+        target.flip();
+        target.get(out);
+        return out;
+    }
+
+    private static byte[] sliceIfNeeded(byte[] in, int offset, int length) {
+        if (offset == 0 && length == in.length) {
+            return in;
+        }
+        final byte[] slice = new byte[length];
+        System.arraycopy(in, offset, slice, 0, length);
+        return slice;
+    }
+
+    private static byte[] readExactly(InputStream stream, int expected) throws IOException {
+        final byte[] out = new byte[expected];
+        int read = 0;
+        while (read < expected) {
+            final int n = stream.read(out, read, expected - read);
+            if (n < 0) {
+                break;
+            }
+            read += n;
+        }
+        return read == expected ? out : java.util.Arrays.copyOf(out, read);
+    }
+
+    /**
+     * Decompresses a sector of a file carrying the whole-file
+     * {@code MPQ_FILE_IMPLODE} flag.
+     * <p>
+     * Such sectors are always PKWARE imploded and carry <em>no</em> leading
+     * compression-type byte, so they bypass the dispatch entirely.
+     *
+     * @param sector           sector bytes.
+     * @param compressedSize   number of valid bytes in {@code sector}.
+     * @param uncompressedSize expected size of the decompressed sector.
+     * @return the decompressed sector.
+     */
+    public static byte[] explode(byte[] sector, int compressedSize, int uncompressedSize) {
         if (compressedSize == uncompressedSize) {
             return sector;
-        } else {
-            ByteBuffer out = ByteBuffer.wrap(new byte[uncompressedSize]);
-
-            byte[] output = new byte[uncompressedSize];
-            Exploder.pkexplode(sector, output, 0);
-            out.put(output);
-            out.position(0);
-            return out.array();
         }
+        final byte[] out = new byte[uncompressedSize];
+        Exploder.pkexplode(sector, out, 0);
+        return out;
+    }
+
+    /** Kept for source compatibility with the pre-2.0 flag constant. */
+    public static final byte FLAG_DEFLATE = 0x02;
+
+    /**
+     * Set of algorithms this build can decompress. Exposed for diagnostics and
+     * for the format-support matrix in the README.
+     */
+    public static EnumSet<CompressionType> supportedDecompressions() {
+        return EnumSet.allOf(CompressionType.class);
     }
 }
