@@ -212,7 +212,16 @@ public class MpqFile {
         }
     }
 
-    /** Stored verbatim: no sector table, no compression. */
+    /**
+     * Stored verbatim: no offset table, no compression, but still sectored.
+     * <p>
+     * The absence of a compression flag removes the offset table, not the
+     * sectors, and an encrypted file still encrypts each sector with its own
+     * {@code key + index}. StormLib's {@code ReadMpqSectors} decrypts inside
+     * the per-sector loop regardless of the compression flags. Decrypting the
+     * whole file with the base key decoded the first sector and corrupted every
+     * one after it; no test fixture has such a file, so this went unnoticed.
+     */
     private void extractStored(OutputStream writer) throws IOException {
         // Nothing encodes this file, so its two sizes must agree. Checking says
         // so explicitly instead of silently returning short content.
@@ -222,9 +231,14 @@ public class MpqFile {
             throw new JMpqException("Uncompressed <" + name + "> stores " + compressedSize
                 + " bytes but declares " + normalSize + ".");
         }
-        final byte[] data = readAt(0, compressedSize);
-        decrypt(data, baseKey);
-        writer.write(data);
+        int remaining = normalSize;
+        for (int i = 0; remaining > 0; i++) {
+            final int length = Math.min(sectorSize, remaining);
+            final byte[] sector = readAt((long) i * sectorSize, length);
+            decrypt(sector, baseKey + i);
+            writer.write(sector);
+            remaining -= length;
+        }
     }
 
     /**
@@ -317,13 +331,13 @@ public class MpqFile {
         }
     }
 
-    private byte[] readAt(int offset, int length) throws JMpqException {
+    private byte[] readAt(long offset, int length) throws JMpqException {
         if (offset < 0 || length < 0 || offset + length > buf.limit()) {
             throw new JMpqException("Read of " + length + " bytes at " + offset + " in <" + name
                 + "> exceeds its " + buf.limit() + " stored bytes.");
         }
         final byte[] out = new byte[length];
-        buf.position(offset);
+        buf.position((int) offset);
         buf.get(out);
         return out;
     }

@@ -423,7 +423,9 @@ class Archive:
         encrypted = block.has(FLAG_ENCRYPTED)
         key = self._sector_key(name, block) if encrypted else 0
 
-        if not block.has_sector_table():
+        if block.has(FLAG_SINGLE_UNIT):
+            # One contiguous blob: a single key for the whole thing, matching
+            # StormLib's ReadMpqFileSingleUnit.
             unit = decrypt(raw, key) if encrypted else raw
             if block.has(FLAG_IMPLODE):
                 raise Unsupported("pkware")
@@ -436,6 +438,29 @@ class Archive:
                 raise Corrupt("%s decoded to %d bytes, expected %d"
                               % (name, len(content), block.normal_size))
             return content, codec
+
+        if not block.has_sector_table():
+            # Stored without compression: no offset table, but still sectored,
+            # and an encrypted file encrypts each sector with its own key +
+            # index. StormLib's ReadMpqSectors decrypts inside the per-sector
+            # loop whatever the compression flags say; those only decide whether
+            # an offset table is consulted. Decrypting the whole file with the
+            # base key decodes sector 0 and corrupts the rest.
+            if block.has(FLAG_IMPLODE):
+                raise Unsupported("pkware")
+            if len(raw) != block.normal_size:
+                raise Corrupt("%s stores %d bytes but declares %d"
+                              % (name, len(raw), block.normal_size))
+            out = bytearray()
+            index = 0
+            while len(out) < block.normal_size:
+                length = min(self.sector_size, block.normal_size - len(out))
+                sector = raw[len(out): len(out) + length]
+                if encrypted:
+                    sector = decrypt(sector, (key + index) & MASK32)
+                out += sector
+                index += 1
+            return bytes(out), "stored"
 
         data_sectors = -(-block.normal_size // self.sector_size)
         entries = data_sectors + 1 + (1 if block.has(FLAG_SECTOR_CRC) else 0)

@@ -87,11 +87,28 @@ final class MpqFileReader {
             target.write(CompressionUtil.decompress(unit, entry.compressedSize(), entry.normalSize(),
                 header.formatVersion()));
         } else {
+            // Nothing encodes it, so the same size invariant applies as for a
+            // stored file; without this a damaged block table silently yields
+            // the wrong number of bytes.
+            if (entry.compressedSize() != entry.normalSize()) {
+                throw new JMpqException("Uncompressed single-unit <" + entry.name() + "> stores "
+                    + entry.compressedSize() + " bytes but declares " + entry.normalSize() + ".");
+            }
             target.write(unit);
         }
     }
 
-    /** Stored verbatim: no sector table, no encoding. */
+    /**
+     * Stored verbatim: no offset table, no encoding, but still sectored.
+     * <p>
+     * The absence of a compression flag removes the offset table, not the
+     * sectors: the file still occupies fixed-size sectors and, when encrypted,
+     * each is encrypted with its own {@code key + index}. StormLib's
+     * {@code ReadMpqSectors} decrypts inside the per-sector loop regardless of
+     * the compression flags, which only decide whether an offset table is
+     * consulted. Decrypting the whole file with the base key therefore decodes
+     * the first sector and corrupts every one after it.
+     */
     private void readStored(MpqFileEntry entry, OutputStream target, long base, int key)
         throws IOException {
         // Nothing encodes this file, so its two sizes must agree. A SECTOR_CRC
@@ -100,9 +117,16 @@ final class MpqFileReader {
             throw new JMpqException("Uncompressed <" + entry.name() + "> stores "
                 + entry.compressedSize() + " bytes but declares " + entry.normalSize() + ".");
         }
-        final byte[] data = source.bytes(base, entry.normalSize());
-        decrypt(entry, data, key);
-        target.write(data);
+
+        final int sectorSize = header.sectorSize();
+        int remaining = entry.normalSize();
+        for (int i = 0; remaining > 0; i++) {
+            final int length = Math.min(sectorSize, remaining);
+            final byte[] sector = source.bytes(base + (long) i * sectorSize, length);
+            decrypt(entry, sector, key + i);
+            target.write(sector);
+            remaining -= length;
+        }
     }
 
     /** Sectored content preceded by a sector offset table. */
