@@ -392,7 +392,7 @@ class Archive:
             # Only the terminator is stripped: MPQ names may carry meaningful
             # leading or trailing whitespace, and trimming would change what
             # they hash to.
-            if line.strip():
+            if line:
                 names.append(line)
         return names
 
