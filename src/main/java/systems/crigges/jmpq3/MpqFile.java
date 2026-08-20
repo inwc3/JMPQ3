@@ -39,6 +39,13 @@ public class MpqFile {
     /** Flags describing encryption, cleared when a file is stored plain. */
     private static final int ENCRYPTION_FLAGS = ENCRYPTED | ADJUSTED_ENCRYPTED;
 
+    /**
+     * Largest buffer to reserve up front from a size the archive claims. Beyond
+     * this the buffer grows as content actually arrives, so a malformed block
+     * cannot turn into a huge allocation.
+     */
+    private static final int MAX_PREALLOCATION = 64 * 1024;
+
     private final ByteBuffer buf;
     private final Block block;
     private final String name;
@@ -154,7 +161,11 @@ public class MpqFile {
      * @throws IOException on any decoding failure.
      */
     public byte[] extractToBytes() throws IOException {
-        final ByteArrayOutputStream out = new ByteArrayOutputStream(Math.max(32, normalSize));
+        // normalSize comes from the block table and is not trusted: a crafted
+        // archive can declare gigabytes for a block holding a handful of bytes.
+        // Cap the initial capacity and let the stream grow with real output.
+        final ByteArrayOutputStream out =
+            new ByteArrayOutputStream(Math.min(Math.max(32, normalSize), MAX_PREALLOCATION));
         extractToOutputStream(out);
         return out.toByteArray();
     }
@@ -203,6 +214,12 @@ public class MpqFile {
 
     /** Stored verbatim: no sector table, no compression. */
     private void extractStored(OutputStream writer) throws IOException {
+        // Nothing encodes this file, so its two sizes must agree. Checking says
+        // so explicitly instead of silently returning short content.
+        if (compressedSize != normalSize) {
+            throw new JMpqException("Uncompressed <" + name + "> stores " + compressedSize
+                + " bytes but declares " + normalSize + ".");
+        }
         final byte[] data = readAt(0, compressedSize);
         decrypt(data, baseKey);
         writer.write(data);

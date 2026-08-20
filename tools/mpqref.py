@@ -550,8 +550,11 @@ def cmd_inspect(args):
 def _load_names(path):
     if not path:
         return []
-    return [line.strip() for line in Path(path).read_text(encoding="utf-8").splitlines()
-            if line.strip() and not line.startswith("#")]
+    # splitlines() already drops the terminator; nothing else may be removed,
+    # because whitespace is part of what an MPQ name hashes to. Only genuinely
+    # empty lines and comments are skipped.
+    return [line for line in Path(path).read_text(encoding="utf-8").splitlines()
+            if line and not line.startswith("#")]
 
 
 def cmd_manifest(args):

@@ -476,17 +476,31 @@ public class JMpqEditor implements AutoCloseable {
                 externalListfilePath.getAbsolutePath());
             return;
         }
+        // Applied all-or-nothing. A malformed replacement must leave the
+        // archive exactly as it was: an archive that already had a usable list
+        // file would otherwise be downgraded to read-only, and close() then
+        // silently discards whatever the caller had already queued.
+        final Listfile replacement;
         try {
-            listFile = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
-            // Restore writability before checking completeness, so the entries
-            // that do not resolve are pruned as they are for a built-in list
-            // file.
-            canWrite = true;
+            replacement = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
+        } catch (IOException | RuntimeException e) {
+            log.warn("Could not read external listfile: {}", externalListfilePath.getAbsolutePath(), e);
+            return;
+        }
+
+        final Listfile previousListFile = listFile;
+        final boolean previousCanWrite = canWrite;
+        listFile = replacement;
+        // Restore writability before checking completeness, so entries that do
+        // not resolve are pruned as they are for a built-in list file.
+        canWrite = true;
+        try {
             checkListfileEntries();
             log.debug("Applied external listfile with {} entries; archive is writable.", listFile.size());
         } catch (IOException | RuntimeException e) {
+            listFile = previousListFile;
+            canWrite = previousCanWrite;
             log.warn("Could not apply external listfile: {}", externalListfilePath.getAbsolutePath(), e);
-            canWrite = false;
         }
     }
 
