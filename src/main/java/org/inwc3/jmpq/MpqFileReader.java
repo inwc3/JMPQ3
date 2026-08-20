@@ -157,6 +157,57 @@ final class MpqFileReader {
         return offsets;
     }
 
+    /**
+     * The file's stored bytes with any encryption removed, ready to be copied
+     * into another archive verbatim.
+     * <p>
+     * Only valid when the target archive keeps this archive's sector size: a
+     * sector offset table is expressed in the archive's sector size, so copying
+     * these bytes into an archive with a different one produces a file no
+     * reader can decode. {@code MpqArchiveWriter} enforces that.
+     *
+     * @param entry the file to copy.
+     * @return exactly {@link MpqFileEntry#compressedSize()} bytes, decrypted.
+     * @throws IOException if the data is damaged.
+     */
+    byte[] storedBytesDecrypted(MpqFileEntry entry) throws IOException {
+        final long base = header.headerOffset() + entry.filePosition();
+        final byte[] stored = source.bytes(base, entry.compressedSize());
+        if (!entry.isEncrypted() || stored.length == 0) {
+            return stored;
+        }
+
+        final int key = MpqNames.sectorKey(entry.name(), entry.flags(),
+            entry.filePosition(), entry.normalSize());
+
+        if (!entry.hasSectorOffsetTable()) {
+            new MPQEncryption(key, true).processSingle(ByteBuffer.wrap(stored));
+            return stored;
+        }
+
+        // Each chunk has its own key, so decrypt chunk by chunk using the
+        // offset table's own boundaries. Iterating every gap rather than only
+        // the data sectors also covers the checksum chunk of a SECTOR_CRC file.
+        final int[] offsets = readSectorOffsets(entry, base, key);
+        final byte[] table = source.bytes(base, offsets.length * 4);
+        new MPQEncryption(key - 1, true).processSingle(ByteBuffer.wrap(table));
+        System.arraycopy(table, 0, stored, 0, table.length);
+
+        for (int i = 0; i < offsets.length - 1; i++) {
+            final int start = offsets[i];
+            final int end = offsets[i + 1];
+            if (start < 0 || end < start || end > stored.length) {
+                throw new JMpqException("Sector " + i + " of <" + entry.name() + "> spans ["
+                    + start + ", " + end + "), outside its " + stored.length + " stored bytes.");
+            }
+            final byte[] chunk = new byte[end - start];
+            System.arraycopy(stored, start, chunk, 0, chunk.length);
+            new MPQEncryption(key + i, true).processSingle(ByteBuffer.wrap(chunk));
+            System.arraycopy(chunk, 0, stored, start, chunk.length);
+        }
+        return stored;
+    }
+
     /** Number of sectors holding file content. */
     private int dataSectorCount(MpqFileEntry entry) {
         return sectorCount(entry.normalSize(), header.sectorSize());

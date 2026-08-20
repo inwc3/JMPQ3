@@ -388,6 +388,39 @@ public final class MpqArchive implements AutoCloseable {
     }
 
     /**
+     * The bytes preceding the archive header.
+     * <p>
+     * Warcraft III maps carry a 512-byte prefix before the archive proper, and
+     * a rebuild that means to stay loadable has to keep it.
+     *
+     * @return the prefix, empty when the archive starts at offset 0.
+     * @throws IOException if the prefix cannot be read.
+     */
+    byte[] prefixBytes() throws IOException {
+        final long length = header.headerOffset();
+        if (length <= 0) {
+            return new byte[0];
+        }
+        if (length > Integer.MAX_VALUE - 8) {
+            throw new JMpqException("Archive is preceded by " + length
+                + " bytes, too many to carry over.");
+        }
+        return source.bytes(0, (int) length);
+    }
+
+    /**
+     * The stored bytes of a file with any encryption removed, for a verbatim
+     * copy into another archive of the same sector size.
+     *
+     * @param entry the file to copy.
+     * @return exactly {@link MpqFileEntry#compressedSize()} bytes.
+     * @throws IOException if the data is damaged.
+     */
+    byte[] storedBytesDecrypted(MpqFileEntry entry) throws IOException {
+        return reader.storedBytesDecrypted(entry);
+    }
+
+    /**
      * Releases the archive. For a file-backed archive the file is fully
      * released by the time this returns.
      */
