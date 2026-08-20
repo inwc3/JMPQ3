@@ -475,7 +475,20 @@ class Archive:
             if self.has_file(internal):
                 names.append(internal)
 
-        for name in sorted(set(names), key=lambda n: n.replace("/", "\\").upper()):
+        # MPQ identity is case and separator insensitive, so two spellings of
+        # one path are the same file and must not both appear. Collapse them and
+        # pick the lexicographically smallest spelling, which keeps the output
+        # byte-identical across platforms. Sorting on the folded key alone left
+        # ties to be broken by set iteration order, which differs between
+        # machines and made the manifest non-reproducible.
+        chosen = {}
+        for name in names:
+            key = name.replace("/", "\\").upper()
+            if key not in chosen or name < chosen[key]:
+                chosen[key] = name
+
+        for key in sorted(chosen):
+            name = chosen[key]
             index = self.block_index_of(name)
             if index is None:
                 continue
