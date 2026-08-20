@@ -742,6 +742,31 @@ public class Phase0RegressionTests {
     }
 
     /**
+     * A writable in-memory archive must not write back into the caller's array.
+     * The channel wraps the array it is given and grows it only when it must,
+     * so a rebuilt image that fits inside the original would otherwise be
+     * written in place.
+     */
+    @Test
+    public void inMemoryRebuildLeavesTheCallersArrayAlone() throws IOException {
+        final byte[] caller = Files.readAllBytes(TestResources.mpqCopy("normalMap"));
+        final byte[] pristine = caller.clone();
+
+        JMpqEditor editor = new JMpqEditor(caller, MPQOpenOption.FORCE_V0);
+        // Delete files so the rebuilt image is smaller than the original and
+        // therefore fits inside the array the caller handed over.
+        for (String name : new ArrayList<>(editor.getFileNames())) {
+            editor.deleteFile(name);
+        }
+        editor.close();
+
+        Assert.assertEquals(caller, pristine, "rebuild wrote into the caller's array");
+        Assert.assertNotNull(editor.getOutputByteArray());
+        Assert.assertTrue(editor.getOutputByteArray().length < pristine.length,
+            "expected the rebuilt image to be smaller, so the in-place case is exercised");
+    }
+
+    /**
      * Every class of the library, discovered from the compiled output rather
      * than a hand-maintained list, so a newly added class cannot slip past the
      * global-state check.

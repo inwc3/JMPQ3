@@ -265,7 +265,11 @@ public class JMpqEditor implements AutoCloseable {
      * <p>
      * A writable in-memory archive does not write anything back to the caller's
      * array; retrieve the rebuilt image with {@link #getOutputByteArray()}
-     * after closing.
+     * after closing. To hold that promise the array is copied when the archive
+     * is opened for writing, because the rebuild writes the finished image
+     * through the channel and the channel would otherwise write straight into
+     * the caller's array whenever the new image is no larger than the old one.
+     * A read-only open never writes, so it wraps the array as it is.
      *
      * @param mpqArchive  the archive bytes.
      * @param openOptions options to use when opening the archive.
@@ -277,7 +281,8 @@ public class JMpqEditor implements AutoCloseable {
 
         SeekableByteChannel channel = null;
         try {
-            channel = new SeekableInMemoryByteChannel(mpqArchive);
+            // See the constructor docs: only a writable archive needs the copy.
+            channel = new SeekableInMemoryByteChannel(canWrite ? mpqArchive.clone() : mpqArchive);
             fc = channel;
             ownsChannel = true;
             readMpq();
