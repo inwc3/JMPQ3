@@ -417,9 +417,24 @@ public class MpqFile {
                 System.arraycopy(tail, 0, plain, described, tail.length);
             }
             writeBuffer.put(plain);
-        } else {
+        } else if (block.hasFlag(SINGLE_UNIT)) {
+            // One contiguous blob: a single key for the whole thing.
             final byte[] data = readAt(0, compressedSize);
             decrypt(data, baseKey);
+            writeBuffer.put(data);
+        } else {
+            // Stored without compression: no offset table, but still sectored,
+            // so each sector has its own key. Decrypting the whole block wrote
+            // a correct first sector and corrupt ones after it, and the new
+            // flags then claim the data is plain, making it permanent.
+            final byte[] data = readAt(0, compressedSize);
+            for (int i = 0, offset = 0; offset < data.length; i++, offset += sectorSize) {
+                final int length = Math.min(sectorSize, data.length - offset);
+                final byte[] sector = new byte[length];
+                System.arraycopy(data, offset, sector, 0, length);
+                decrypt(sector, baseKey + i);
+                System.arraycopy(sector, 0, data, offset, length);
+            }
             writeBuffer.put(data);
         }
     }

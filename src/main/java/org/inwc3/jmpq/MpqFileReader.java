@@ -204,8 +204,26 @@ final class MpqFileReader {
         final int key = MpqNames.sectorKey(entry.name(), entry.flags(),
             entry.filePosition(), entry.normalSize());
 
-        if (!entry.hasSectorOffsetTable()) {
+        if (entry.has(MpqFileEntry.FLAG_SINGLE_UNIT)) {
+            // One contiguous blob: a single key for the whole thing.
             new MPQEncryption(key, true).processSingle(ByteBuffer.wrap(stored));
+            return stored;
+        }
+
+        if (!entry.hasSectorOffsetTable()) {
+            // Stored without compression: no offset table, but still sectored,
+            // so each sector has its own key. Decrypting the whole block here
+            // wrote a correct first sector and corrupt ones after it, and the
+            // caller then clears the encryption flags, which made the
+            // corruption permanent in the rebuilt archive.
+            final int sectorSize = header.sectorSize();
+            for (int i = 0, offset = 0; offset < stored.length; i++, offset += sectorSize) {
+                final int length = Math.min(sectorSize, stored.length - offset);
+                final byte[] sector = new byte[length];
+                System.arraycopy(stored, offset, sector, 0, length);
+                new MPQEncryption(key + i, true).processSingle(ByteBuffer.wrap(sector));
+                System.arraycopy(sector, 0, stored, offset, length);
+            }
             return stored;
         }
 

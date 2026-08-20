@@ -73,6 +73,14 @@ public final class MpqArchive implements AutoCloseable {
         this.source = source;
         this.defaultLocale = options.defaultLocale();
         this.header = MpqHeader.parse(source, options.forceV0());
+        if (header.hiBlockTablePosition() != 0) {
+            // A hi-block table holds the upper 16 bits of each file position,
+            // for archives whose data passes 4 GiB. Reading only the low word
+            // would seek to the wrong place, so refuse rather than silently
+            // misread. Supporting it belongs with the v2-v4 read work (P2-2).
+            throw new JMpqException("This archive uses a hi-block table, for file positions"
+                + " beyond 4 GiB, which is not supported yet.");
+        }
         this.reader = new MpqFileReader(source, header);
         this.blocks = readBlockTable();
         this.hashTable = readHashTable();

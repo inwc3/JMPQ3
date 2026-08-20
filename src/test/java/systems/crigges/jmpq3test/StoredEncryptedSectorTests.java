@@ -107,6 +107,54 @@ public class StoredEncryptedSectorTests {
     }
 
     /**
+     * The verbatim-copy path is separate from the read path and had the same
+     * whole-block decryption bug. It is worse there: the writer clears the
+     * encryption flags afterwards, so corrupt sectors become permanent in the
+     * rebuilt archive rather than being a bad read of intact data.
+     */
+    @Test
+    public void rebuildPreservesStoredEncryptedSectors() throws IOException {
+        final byte[] content = payload(SECTOR_SIZE * 3 + 17);
+        final byte[] rebuilt;
+
+        try (MpqArchive source = MpqArchive.open(buildArchive(content), MpqOpenOptions.defaults())) {
+            Assert.assertEquals(source.read(NAME), content, "the read path is wrong, not the copy");
+            rebuilt = org.inwc3.jmpq.MpqArchiveWriter
+                .from(source, org.inwc3.jmpq.MpqWriteOptions.defaults())
+                .toByteArray();
+        }
+
+        try (MpqArchive archive = MpqArchive.open(rebuilt, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.read(NAME), content,
+                "the rebuild corrupted the stored encrypted sectors");
+        }
+    }
+
+    /** The compatibility layer's copy path had the same defect. */
+    @Test
+    public void compatibilityRebuildPreservesStoredEncryptedSectors() throws IOException {
+        final byte[] content = payload(SECTOR_SIZE * 2 + 9);
+        final Path path = TestResources.scratchDir("stored-rebuild").resolve("built.mpq");
+        Files.write(path, buildArchive(content));
+
+        try (JMpqEditor editor = new JMpqEditor(path, MPQOpenOption.FORCE_V0)) {
+            Assert.assertEquals(editor.extractFileAsBytes(NAME), content);
+            editor.setExternalListfile(listfileFor(NAME).toFile());
+        }
+
+        try (JMpqEditor editor = new JMpqEditor(path, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            Assert.assertEquals(editor.extractFileAsBytes(NAME), content,
+                "the compat rebuild corrupted the stored encrypted sectors");
+        }
+    }
+
+    private static Path listfileFor(String name) throws IOException {
+        final Path listfile = TestResources.scratchDir("listfile").resolve("listfile.txt");
+        Files.writeString(listfile, name + System.lineSeparator());
+        return listfile;
+    }
+
+    /**
      * Exports the hand-built archive plus its expected content so
      * {@code tools/mpqref.py} can confirm it independently. The reference had
      * the identical whole-block decryption bug, so it would have agreed with the
@@ -159,7 +207,7 @@ public class StoredEncryptedSectorTests {
     private static byte[] buildArchive(byte[] content) throws IOException {
         final int flags = systems.crigges.jmpq3.MpqFile.EXISTS
             | systems.crigges.jmpq3.MpqFile.ENCRYPTED;
-        final int hashEntries = 4;
+        final int hashEntries = 8;
         final int dataOffset = MpqHeader.SIZE_BY_VERSION[0];
 
         // Encrypt sector by sector, exactly as the format requires.
@@ -175,9 +223,15 @@ public class StoredEncryptedSectorTests {
             remaining -= length;
         }
 
-        final int hashOffset = dataOffset + stored.length;
+        // A plain, unencrypted list file so the archive can be enumerated and
+        // therefore rebuilt; without one a writer has nothing to carry over.
+        final byte[] listfile = (NAME + "\r\n")
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        final int listfileOffset = dataOffset + stored.length;
+
+        final int hashOffset = listfileOffset + listfile.length;
         final int blockOffset = hashOffset + hashEntries * 16;
-        final int total = blockOffset + 16;
+        final int total = blockOffset + 2 * 16;
 
         final ByteBuffer image = ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN);
         image.putInt(MpqHeader.ARCHIVE_SIGNATURE);
@@ -188,11 +242,13 @@ public class StoredEncryptedSectorTests {
         image.putInt(hashOffset);
         image.putInt(blockOffset);
         image.putInt(hashEntries);
-        image.putInt(1);
+        image.putInt(2);
         image.put(stored);
+        image.put(listfile);
 
         final HashTable hashTable = new HashTable(hashEntries);
         hashTable.setFileBlockIndex(NAME, HashTable.DEFAULT_LOCALE, 0);
+        hashTable.setFileBlockIndex("(listfile)", HashTable.DEFAULT_LOCALE, 1);
         final ByteBuffer hash = ByteBuffer.allocate(hashEntries * 16).order(ByteOrder.LITTLE_ENDIAN);
         hashTable.writeToBuffer(hash);
         hash.flip();
@@ -200,11 +256,15 @@ public class StoredEncryptedSectorTests {
         hash.flip();
         image.put(hash);
 
-        final ByteBuffer block = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
+        final ByteBuffer block = ByteBuffer.allocate(2 * 16).order(ByteOrder.LITTLE_ENDIAN);
         block.putInt(dataOffset);
         block.putInt(stored.length);
         block.putInt(content.length);
         block.putInt(flags);
+        block.putInt(listfileOffset);
+        block.putInt(listfile.length);
+        block.putInt(listfile.length);
+        block.putInt(systems.crigges.jmpq3.MpqFile.EXISTS);
         block.flip();
         new MPQEncryption(tableKey("(block table)"), false).processSingle(block);
         block.flip();
