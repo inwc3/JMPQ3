@@ -348,7 +348,11 @@ class Archive:
         """Locate a name, mirroring StormLib's probe and BLOCK_INDEX_MASK."""
         if not self.hash_count:
             return None
-        start = hash_string(name, HASH_TABLE_INDEX) % self.hash_count
+        # StormLib's HASH_INDEX_MASK: hash & (capacity - 1), not a remainder.
+        # For a non-power-of-two capacity the two disagree, and this reader is
+        # the oracle the Java implementation is checked against, so it has to
+        # probe from the same bucket.
+        start = hash_string(name, HASH_TABLE_INDEX) & (self.hash_count - 1)
         key_a = hash_string(name, HASH_NAME_A)
         key_b = hash_string(name, HASH_NAME_B)
         index = start

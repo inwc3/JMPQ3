@@ -845,9 +845,13 @@ public class JMpqEditor implements AutoCloseable {
                 if (!hasFile(name)) {
                     continue;
                 }
-                final Path target = resolveExtractionTarget(root, name);
                 log.debug("extracting: {}", name);
                 try {
+                    // Resolved inside the guard: an entry that would escape the
+                    // destination is refused, and refusing it must cost the
+                    // caller only that entry. Archives carrying a traversal
+                    // name are exactly the ones where the rest still matters.
+                    final Path target = resolveExtractionTarget(root, name);
                     Files.createDirectories(target.getParent());
                     getMpqFile(name).extractToPath(target);
                 } catch (IOException | RuntimeException e) {

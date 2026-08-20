@@ -951,6 +951,37 @@ public class Phase0RegressionTests {
 
 
     /**
+     * An archive naming a file outside the destination must have that entry
+     * refused, without costing the caller the rest of the archive. Refusing it
+     * used to throw before the per-file guard, so a single traversal entry
+     * denied extraction of everything -- and archives carrying one are exactly
+     * the archives where the rest still matters.
+     */
+    @Test
+    public void traversalEntryIsSkippedNotFatal() throws IOException {
+        Path mpq = TestResources.mpqCopy("normalMap");
+        final String escaping = "..\\evil.txt";
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray(escaping, "pwned".getBytes(StandardCharsets.UTF_8));
+            editor.insertByteArray("safe.txt", "fine".getBytes(StandardCharsets.UTF_8));
+        }
+
+        Path out = TestResources.scratchDir("traversal");
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(editor.hasFile(escaping), "fixture setup failed");
+            // Must not throw despite the hostile entry.
+            editor.extractAllFiles(out.toFile());
+        }
+
+        Assert.assertTrue(Files.exists(out.resolve("safe.txt")),
+            "the traversal entry aborted extraction of the safe files");
+        Assert.assertFalse(Files.exists(out.getParent().resolve("evil.txt")),
+            "a file escaped the destination directory");
+    }
+
+
+    /**
      * Every class of the library, discovered from the compiled output rather
      * than a hand-maintained list, so a newly added class cannot slip past the
      * global-state check.
