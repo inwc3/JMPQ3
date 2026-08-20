@@ -71,11 +71,11 @@ public class HashTable {
     /**
      * Construct an empty hash table with the specified capacity.
      * <p>
-     * MPQ hash table capacities are powers of two: StormLib indexes with
-     * {@code hash & (capacity - 1)}. A non-power-of-two capacity is accepted so
-     * that deliberately malformed archives can still be opened, but it is a
-     * deviation and is logged; this implementation then indexes with unsigned
-     * remainder, which agrees with StormLib for every valid capacity.
+     * MPQ hash table capacities are powers of two. A non-power-of-two capacity
+     * is accepted so that deliberately malformed archives can still be opened,
+     * and is logged; StormLib's {@code hash & (capacity - 1)} indexing is used
+     * either way, so lookups agree with the reference implementation whatever
+     * the capacity.
      *
      * @param capacity capacity for the underlying bucket array.
      */
@@ -85,7 +85,7 @@ public class HashTable {
         }
         if ((capacity & (capacity - 1)) != 0) {
             LOG.warn("Hash table capacity {} is not a power of two; StormLib assumes it is. "
-                + "Falling back to modulo indexing.", capacity);
+                + "Indexing still follows StormLib's mask rule.", capacity);
         }
 
         buckets = new Bucket[capacity];
@@ -347,14 +347,19 @@ public class HashTable {
     }
 
     /**
-     * Maps a bucket-offset hash to a starting bucket.
+     * Maps a bucket-offset hash to a starting bucket, using StormLib's rule.
      * <p>
-     * For the power-of-two capacities MPQ actually uses this is identical to
-     * StormLib's {@code hash & (capacity - 1)}; unsigned remainder additionally
-     * keeps malformed capacities in range.
+     * StormLib indexes with {@code hash & (dwHashTableSize - 1)}
+     * ({@code HASH_INDEX_MASK}), which for a power-of-two capacity is the
+     * unsigned remainder. It is kept even for the non-power-of-two capacities
+     * this class tolerates: whatever wrote such a table did so with the mask
+     * rule, so probing from a remainder-derived bucket would start in the wrong
+     * place and, because the probe stops at the first unused bucket, could
+     * report present files as missing. The mask can never exceed
+     * {@code capacity - 1}, so the result is always in range.
      */
     private int startIndex(int offsetHash) {
-        return Integer.remainderUnsigned(offsetHash, buckets.length);
+        return offsetHash & (buckets.length - 1);
     }
 
     private int nextIndex(int index) {

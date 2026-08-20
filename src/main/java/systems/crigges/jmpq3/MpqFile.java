@@ -50,6 +50,16 @@ public class MpqFile {
     private final int baseKey;
 
     /**
+     * The containing archive's {@code wFormatVersion}.
+     * <p>
+     * Decides how a sector's compression-type byte is interpreted: version 0
+     * and 1 read it as a bit mask, version 2 and above match it exactly against
+     * a closed set in which {@code 0x12} means standalone LZMA. See
+     * {@link CompressionUtil}.
+     */
+    private final int formatVersion;
+
+    /**
      * @param buf        the file's raw bytes, exactly
      *                   {@link Block#getCompressedSize()} of them.
      * @param b          the file's block table entry.
@@ -58,8 +68,26 @@ public class MpqFile {
      *                   may be empty for an unnamed block, in which case
      *                   encrypted content cannot be decoded.
      * @throws IOException if the file cannot be prepared for reading.
+     * @deprecated assumes format version 0, so a version 2+ archive's LZMA
+     *             sectors are misread as {@code BZIP2 | ZLIB}. Use
+     *             {@link #MpqFile(ByteBuffer, Block, int, String, int)}.
      */
+    @Deprecated
     public MpqFile(ByteBuffer buf, Block b, int sectorSize, String name) throws IOException {
+        this(buf, b, sectorSize, name, 0);
+    }
+
+    /**
+     * @param buf           the file's raw bytes, exactly
+     *                      {@link Block#getCompressedSize()} of them.
+     * @param b             the file's block table entry.
+     * @param sectorSize    the archive's sector size in bytes.
+     * @param name          the file's path, needed to derive its encryption
+     *                      key; may be empty for an unnamed block.
+     * @param formatVersion the containing archive's {@code wFormatVersion}.
+     * @throws IOException if the file cannot be prepared for reading.
+     */
+    public MpqFile(ByteBuffer buf, Block b, int sectorSize, String name, int formatVersion) throws IOException {
         if (sectorSize <= 0) {
             throw new JMpqException("Archive sector size must be positive, was " + sectorSize + ".");
         }
@@ -71,6 +99,7 @@ public class MpqFile {
         this.normalSize = b.getNormalSize();
         this.flags = b.getFlags();
         this.isEncrypted = b.hasFlag(ENCRYPTED);
+        this.formatVersion = formatVersion;
         this.baseKey = MpqNames.sectorKey(name, flags, b.getFilePosition(), normalSize);
     }
 
@@ -166,7 +195,7 @@ public class MpqFile {
         if (block.hasFlag(IMPLODED)) {
             writer.write(CompressionUtil.explode(unit, compressedSize, normalSize));
         } else if (block.hasFlag(COMPRESSED)) {
-            writer.write(CompressionUtil.decompress(unit, compressedSize, normalSize));
+            writer.write(CompressionUtil.decompress(unit, compressedSize, normalSize, formatVersion));
         } else {
             writer.write(unit);
         }
@@ -200,7 +229,7 @@ public class MpqFile {
             final int expected = Math.min(remaining, sectorSize);
             final byte[] decoded = imploded
                 ? CompressionUtil.explode(sector, end - start, expected)
-                : CompressionUtil.decompress(sector, end - start, expected);
+                : CompressionUtil.decompress(sector, end - start, expected, formatVersion);
             writer.write(decoded, 0, expected);
             remaining -= expected;
         }

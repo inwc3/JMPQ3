@@ -48,11 +48,14 @@ public class Listfile {
      * @param file raw {@code (listfile)} content; interpreted as UTF-8.
      */
     public Listfile(byte[] file) {
-        // Split on either line ending, and drop the empty trailing element a
-        // final CRLF produces.
-        for (String line : new String(file, StandardCharsets.UTF_8).split("\r\n|\r|\n")) {
-            addFile(line.strip());
-        }
+        // Only the line terminator is removed: MPQ names may legitimately
+        // carry leading or trailing whitespace, and protected archives use
+        // exactly that to make two entries look alike. Trimming would change
+        // the name, so it would no longer hash to its hash-table entry and a
+        // rebuild would discard the file.
+        new String(file, StandardCharsets.UTF_8).lines()
+            .filter(line -> !line.isBlank())
+            .forEach(this::addFile);
     }
 
     /**

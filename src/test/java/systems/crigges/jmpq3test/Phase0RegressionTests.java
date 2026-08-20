@@ -5,6 +5,7 @@ import org.testng.annotations.Test;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.JMpqException;
 import systems.crigges.jmpq3.MPQOpenOption;
+import systems.crigges.jmpq3.HashTable;
 import systems.crigges.jmpq3.MpqNames;
 import systems.crigges.jmpq3.compression.CompressionUtil;
 import systems.crigges.jmpq3.compression.JzLibHelper;
@@ -676,6 +677,68 @@ public class Phase0RegressionTests {
                 }
             }
         }
+    }
+
+    // -------------------------------------------------- review follow-ups
+
+    /**
+     * A sparse stream whose control runs stop short of its declared length must
+     * be rejected. Returning the buffer anyway hands back the missing tail as
+     * zeros at exactly the length the caller expects, so the corruption would
+     * pass every downstream check.
+     */
+    @Test
+    public void truncatedSparseStreamIsRejected() {
+        // Declares 64 bytes but only describes a 4 byte zero run.
+        final byte[] sparse = new byte[]{0, 0, 0, 64, 0x01};
+        final byte[] sector = withTypeByte(0x20, sparse);
+
+        JMpqException thrown = Assert.expectThrows(JMpqException.class,
+            () -> CompressionUtil.decompress(sector, sector.length, 64));
+        Assert.assertTrue(thrown.getMessage().contains("produced"), thrown.getMessage());
+    }
+
+    /**
+     * List file entries keep their leading and trailing whitespace: it is part
+     * of what the name hashes to, so trimming produces a name that no longer
+     * resolves and a rebuild would discard the file. Protected archives rely on
+     * this to plant near-duplicate entries.
+     */
+    @Test
+    public void listfileEntriesKeepSignificantWhitespace() throws IOException {
+        final String padded = "war3mapImported\trailing .txt";
+        Path mpq = TestResources.mpqCopy("normalMap");
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray(padded, "kept".getBytes(StandardCharsets.UTF_8));
+        }
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            Assert.assertTrue(editor.hasFile(padded), "name with whitespace did not survive the rebuild");
+            Assert.assertEquals(new String(editor.extractFileAsBytes(padded), StandardCharsets.UTF_8), "kept");
+            Assert.assertTrue(editor.getListfileEntries().contains(padded),
+                "listfile lost the whitespace: " + editor.getListfileEntries());
+        }
+    }
+
+    /**
+     * The hash table must index the way StormLib does, {@code hash & (capacity
+     * - 1)}, so that a name written by StormLib is found at the bucket StormLib
+     * would probe from.
+     */
+    @Test
+    public void hashTableIndexingMatchesStormlib() throws IOException {
+        // A capacity that is not a power of two: mask and remainder disagree,
+        // and the mask rule is the one the format uses.
+        final HashTable table = new HashTable(3);
+        table.setFileBlockIndex("war3map.j", HashTable.DEFAULT_LOCALE, 0);
+        Assert.assertTrue(table.hasFile("war3map.j"));
+        Assert.assertEquals(table.getBlockIndexOfFile("war3map.j"), 0);
+
+        // And the ordinary power-of-two case still round trips.
+        final HashTable normal = new HashTable(16);
+        normal.setFileBlockIndex("war3map.w3i", HashTable.DEFAULT_LOCALE, 5);
+        Assert.assertEquals(normal.getBlockIndexOfFile("war3map.w3i"), 5);
     }
 
     /**

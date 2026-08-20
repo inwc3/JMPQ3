@@ -149,3 +149,46 @@ encrypted file decrypts its sectors and stores them **plain**, clearing
 position would be equally valid; storing plain is what JMPQ3 has always done and
 what Warcraft III accepts. The behaviour was previously undocumented, and the
 old code left the flags describing the sectors incorrectly in some paths.
+
+---
+
+## 6. Hash table indexing for malformed capacities
+
+StormLib indexes the hash table with `hash & (dwHashTableSize - 1)`
+(`HASH_INDEX_MASK`, `SBaseCommon.cpp:210`), which assumes a power-of-two
+capacity. Real archives always have one; protected archives sometimes do not.
+
+*Decision:* non-power-of-two capacities are accepted so such archives can be
+opened, but the mask rule is used regardless rather than an unsigned remainder.
+Whatever wrote such a table did so with the mask, so starting the probe from a
+remainder-derived bucket would begin in the wrong place — and because probing
+stops at the first unused bucket, files that are present could be reported
+missing. `x & (n - 1) <= n - 1` for any positive `n`, so the mask is always in
+range even when `n` is not a power of two.
+
+---
+
+## 7. Whitespace in list file entries is significant
+
+*Decision:* parsing `(listfile)` removes the line terminator and nothing else.
+A name's leading or trailing whitespace is part of what it hashes to, so
+trimming it produces a name that no longer resolves to its hash table entry;
+a writable rebuild would then discard the file as a stale list file entry.
+Protected archives rely on this, planting entries that differ from a real name
+only by a trailing space or a zero-width space.
+
+Lines that are entirely whitespace are skipped, since they cannot name a file.
+
+---
+
+## 8. Truncated sparse streams are rejected
+
+A sparse stream carries its decompressed length in its header. StormLib reports
+that declared length as the output size regardless of how much the control runs
+actually produced (`sparse.cpp` `DecompressSparse`).
+
+*Decision:* JMPQ3 is stricter and rejects a stream whose control runs stop
+short. Accepting it would hand back the missing tail as zeros at exactly the
+length the caller expected, so the corruption would pass every downstream
+check. Nothing is lost by being strict here: JMPQ3 never writes sparse sectors,
+so the only streams affected are genuinely damaged.

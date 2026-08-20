@@ -1002,7 +1002,7 @@ public class JMpqEditor implements AutoCloseable {
         readFully(buffer, fc);
         buffer.rewind();
 
-        return new MpqFile(buffer, block, discBlockSize, name);
+        return new MpqFile(buffer, block, discBlockSize, name, formatVersion);
     }
 
     /**

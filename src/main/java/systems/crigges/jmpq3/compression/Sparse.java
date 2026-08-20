@@ -71,6 +71,14 @@ public final class Sparse {
             }
         }
 
+        if (outPos != out.length) {
+            // The control runs stopped short of the declared length. Returning
+            // the buffer anyway would hand back the missing tail as zeros, and
+            // because its length still matches what the caller expected, the
+            // corruption would be accepted silently.
+            throw new JMpqException("Sparse stream declared " + out.length
+                + " bytes but its control runs produced " + outPos + ".");
+        }
         return out;
     }
 }

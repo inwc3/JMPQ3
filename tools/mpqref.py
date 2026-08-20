@@ -378,8 +378,10 @@ class Archive:
             return []
         names = []
         for line in raw.decode("utf-8", "replace").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-            line = line.strip()
-            if line:
+            # Only the terminator is stripped: MPQ names may carry meaningful
+            # leading or trailing whitespace, and trimming would change what
+            # they hash to.
+            if line.strip():
                 names.append(line)
         return names
 
