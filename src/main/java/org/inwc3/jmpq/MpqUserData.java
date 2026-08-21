@@ -23,16 +23,34 @@ package org.inwc3.jmpq;
  * caller can read the user data area, and — more importantly — a rebuild can
  * preserve it instead of silently dropping a map's metadata.
  *
+ * <h2>Which field is the payload length</h2>
+ * Neither of the size fields, as it turns out. StormLib documents
+ * {@code cbUserDataSize} as the <em>maximum</em> size of the user data — a
+ * capacity, not a length — and its comment on {@code cbUserDataHeader} is openly
+ * unsure: "Appears to be size of user data header (Starcraft II maps)". What
+ * StormLib actually hands a caller asking for the user data is the span between
+ * the two headers:
+ * <pre>
+ * // SFileGetFileInfo.cpp, case SFileMpqUserData
+ * ha->UserDataPos + sizeof(TMPQUserData),
+ * ha->pUserData->dwHeaderOffs - sizeof(TMPQUserData)
+ * </pre>
+ * So the redirect offset defines the payload, and both size fields are carried
+ * here for inspection without being trusted to bound anything.
+ *
  * @param offset         where this header sits in the file.
- * @param userDataSize   declared size of the user data area that follows.
- * @param headerOffset   archive header offset, relative to {@link #offset}.
- * @param headerSize     declared size of this user data header.
+ * @param userDataSize   {@code cbUserDataSize}: the capacity of the user data
+ *                       area, which is advisory and may exceed what is there.
+ * @param headerOffset   {@code dwHeaderOffs}: archive header offset, relative to
+ *                       {@link #offset}. This is what bounds the payload.
+ * @param userDataHeaderSize {@code cbUserDataHeader}, whose meaning StormLib
+ *                       itself hedges on. Recorded, not relied upon.
  */
 public record MpqUserData(
     long offset,
     int userDataSize,
     int headerOffset,
-    int headerSize) {
+    int userDataHeaderSize) {
 
     /** Size of the fixed part of a user data header. */
     public static final int SIZE = 16;
@@ -76,25 +94,25 @@ public record MpqUserData(
      * The user data payload, which is whatever the producing tool put there.
      *
      * @param source the archive bytes.
-     * @return the payload, truncated to what the file actually holds.
+     * @return everything between this header and the archive header, truncated
+     *         to what the file actually holds.
      * @throws systems.crigges.jmpq3.JMpqException if the bytes cannot be read.
      */
     public byte[] payload(MpqSource source) throws systems.crigges.jmpq3.JMpqException {
         final long start = offset + SIZE;
-        final long declared = Integer.toUnsignedLong(userDataSize);
 
-        // The declared size is not trustworthy: it is a plain u32 written by
-        // another tool. Two bounds apply, and the tighter one is the archive
-        // header this block redirects to -- the user data area ends where the
-        // archive begins. Clamping only to the file returned the archive itself
-        // as though it were metadata.
+        // The span between the two headers, which is what StormLib returns, and
+        // then clamped to the file because the redirect offset is a plain u32
+        // written by another tool. Neither size field takes part: one is a
+        // capacity and the other has no agreed meaning, so an archive reserving
+        // more area than it filled, or declaring less than it holds, is read the
+        // same way StormLib reads it.
         final long limit = Math.min(source.size(), Math.max(start, archiveHeaderOffset()));
-        final long available = Math.max(0, limit - start);
-        final long length = Math.min(declared, available);
+        final long length = Math.max(0, limit - start);
 
         if (length > MAX_PAYLOAD) {
             throw new systems.crigges.jmpq3.JMpqException("A user data header at " + offset
-                + " describes " + length + " bytes of payload, more than can be returned"
+                + " spans " + length + " bytes before the archive, more than can be returned"
                 + " in one array.");
         }
         return source.bytes(start, (int) length);

@@ -674,7 +674,7 @@ public class Phase2FormatTests {
         try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
             final MpqUserData userData = archive.userData().orElseThrow();
             Assert.assertEquals(userData.offset(), 0);
-            Assert.assertEquals(userData.headerSize(), MpqUserData.SIZE);
+            Assert.assertEquals(userData.userDataHeaderSize(), MpqUserData.SIZE);
             Assert.assertEquals(userData.archiveHeaderOffset(), MpqHeader.ALIGNMENT);
             Assert.assertEquals(archive.header().headerOffset(), MpqHeader.ALIGNMENT);
             Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
@@ -721,6 +721,36 @@ public class Phase2FormatTests {
                 Assert.assertNotEquals(scan.getInt(at), MpqHeader.ARCHIVE_SIGNATURE,
                     "archive bytes leaked into the payload at " + at);
             }
+        }
+    }
+
+    /**
+     * A declared user data size smaller than the gap does not shorten the
+     * payload either.
+     * <p>
+     * {@code cbUserDataSize} is documented as the <em>maximum</em> size of the
+     * area — a capacity, not a length — and StormLib ignores it when handing back
+     * the user data, using the span to the archive header instead. An archive
+     * that reserved a 512-byte area and filled five bytes of it still has 496
+     * bytes of user data area, and that is what a caller gets.
+     */
+    @Test
+    public void theDeclaredUserDataSizeDoesNotBoundThePayload() throws IOException {
+        final byte[] inner = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+        final byte[] image = withUserData(inner, "five!".getBytes(StandardCharsets.UTF_8));
+
+        // Declare far less than the area actually spans.
+        ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).putInt(0x04, 5);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.userData().orElseThrow().userDataSize(), 5);
+            Assert.assertEquals(archive.userDataPayload().orElseThrow().length,
+                MpqHeader.ALIGNMENT - MpqUserData.SIZE,
+                "the span to the archive header is what defines the payload");
+            Assert.assertEquals(archive.read("a.txt"),
+                "content".getBytes(StandardCharsets.UTF_8));
         }
     }
 

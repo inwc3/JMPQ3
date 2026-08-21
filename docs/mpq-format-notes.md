@@ -431,3 +431,35 @@ Two properties keep this safe to have strengthened:
   header where a naive scan found one — never fewer.
 - The test only rejects on things that make an archive unreadable regardless, so
   a candidate it rejects would have failed at table-parse time in any case.
+
+
+## 15. The user data payload is bounded by the redirect, not by either size field
+
+A user data header carries two size fields and neither is the payload length.
+StormLib documents them as:
+
+```c
+DWORD cbUserDataSize;      // Maximum size of the user data
+DWORD dwHeaderOffs;        // Offset of the MPQ header, relative to the begin of this header
+DWORD cbUserDataHeader;    // Appears to be size of user data header (Starcraft II maps)
+```
+
+`cbUserDataSize` is a capacity, so an archive may reserve more area than it
+filled. `cbUserDataHeader` has no agreed meaning — note that StormLib's own
+comment says "appears to be".
+
+What StormLib hands a caller asking for the user data is neither:
+
+```c
+// SFileGetFileInfo.cpp, case SFileMpqUserData
+ha->UserDataPos + sizeof(TMPQUserData),
+ha->pUserData->dwHeaderOffs - sizeof(TMPQUserData)
+```
+
+**Decision.** `MpqUserData.payload` returns the span between the end of the user
+data header and the archive header, clamped to the file because the redirect is
+an untrusted `u32`. Both size fields are exposed for inspection and neither
+bounds anything. Reading `cbUserDataSize` as a length truncates an archive that
+reserved generously; reading it as the only bound returned the archive itself as
+metadata when it was garbage.
+
