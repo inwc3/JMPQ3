@@ -25,17 +25,41 @@ genuinely ambiguous, the interpretation chosen is recorded with its citation in
 
 ## Installation
 
-Available through [JitPack](https://jitpack.io/#inwc3/JMPQ3/):
+Available through [JitPack](https://jitpack.io/#inwc3/JMPQ3/), which builds
+tagged commits on demand:
 
 ```gradle
 repositories {
-    maven { url 'https://jitpack.io' }
+    mavenCentral()
+    maven { url = uri('https://jitpack.io') }
 }
 
 dependencies {
-    implementation 'com.github.inwc3:JMPQ3:2.0.0'
+    implementation 'com.github.inwc3:JMPQ3:v2.0.0'
 }
 ```
+
+A commit hash or branch name works in place of the tag while testing unreleased
+changes.
+
+Tags are also published to GitHub Packages as `org.inwc3:jmpq3` by the release
+workflow. That route needs a token with `read:packages` even for public
+artifacts — a property of GitHub Packages, not of this library — so JitPack is
+the simpler option and the one above is the recommended form.
+
+### Optional: Zopfli
+
+`RecompressOptions.useZopfli` needs one extra dependency, deliberately not
+declared by this library so that consumers who never use it do not pull it in:
+
+```gradle
+dependencies {
+    runtimeOnly 'com.github.eustas:CafeUndZopfli:5cdf283e67'
+}
+```
+
+Asking for Zopfli without it on the classpath says so, rather than failing with
+`NoClassDefFoundError`.
 
 ## Format support
 
@@ -74,6 +98,13 @@ a bitmask. See format note 2.
 
 Compression on write is deflate, with an optional [Zopfli](https://github.com/google/zopfli)
 mode for smaller output at much greater cost.
+
+**The default stores rather than compresses.** `MpqWriteOptions.defaults()` does
+not deflate, and a file carried over from another archive keeps whatever encoding
+it already had. That is the right trade for a development loop over a large map,
+and `MpqWriteOptions.fast()` says so explicitly rather than relying on a default
+staying put. Ask for `recompressed()` when the archive is a deliverable and its
+size matters.
 
 ## Quick start
 
@@ -185,6 +216,41 @@ A format version 3 archive may record MD5 digests of its own tables.
 `archive.integrity()` reports `VERIFIED`, `MISMATCHED` or `UNRECORDED`; a
 mismatch is reported rather than fatal, because the tables may still decode every
 file.
+
+## Performance
+
+Archives are assembled in memory, so peak heap is roughly the size of the
+archive being written. That is the main thing to plan for with a large map.
+
+The image buffer is sized up front from what is known about the files going into
+it, so it does not reallocate while assembling — which matters more than it
+sounds: a buffer that grows by doubling copies roughly the whole archive again on
+the way up and peaks near 1.5 times its final size. `WriteBudgetTests` asserts
+that reallocation count stays at zero and that the buffer is not oversized, so
+the property is checked rather than hoped for. Those budgets are counter-based
+on purpose: a wall-clock budget tight enough to catch a regression also flakes on
+shared CI.
+
+Two things cost real time and are opt-in, so neither is paid by accident:
+
+- **Compression.** See above; the default stores.
+- **`(attributes)` generation.** The checksums it records are taken over decoded
+  content, so asking for it forces every file to be decoded — including files
+  that would otherwise have been copied verbatim, which is the fast path for a
+  rebuild.
+
+Measured on Warcraft III 1.31's `War3.mpq` — 539 MB, 10,888 blocks — on a
+developer machine:
+
+| operation | time |
+|---|---|
+| open, parse tables, read the list file | 137 ms |
+| extract all 10,887 files (1.05 GB decoded) | 18.7 s |
+| rebuild the whole archive with one file replaced | 4.7 s |
+
+Opening is near-instant because the archive is memory-mapped and only its tables
+are parsed. The rebuild needed about 608 MB of heap for a 539 MB archive, which
+is the memory profile to plan for: peak is roughly the archive's size.
 
 ## Thread safety
 

@@ -139,6 +139,29 @@ public record MpqWriteOptions(
     }
 
     /**
+     * Store everything, compress nothing: the quickest way to assemble an
+     * archive, at the cost of its size.
+     * <p>
+     * Worth being explicit that this is what {@link #defaults()} already does.
+     * The default has never compressed — {@code RecompressOptions(false)} means
+     * "do not compress", and a file copied from another archive keeps whatever
+     * encoding it already had. This exists so a build tool can say so in its own
+     * code rather than relying on a default staying put, and so the opposite
+     * choice has a name to contrast with: {@link #recompressed()}.
+     * <p>
+     * For a development loop over a large map this is the right setting.
+     * Compressing is what costs time, and an intermediate artefact does not need
+     * to be small.
+     *
+     * @return options that store every file uncompressed.
+     */
+    public static MpqWriteOptions fast() {
+        return defaults()
+            .withRecompression(new RecompressOptions(false))
+            .withMetadata(Metadata.NONE);
+    }
+
+    /**
      * @return the sector size in bytes.
      */
     public int sectorSize() {

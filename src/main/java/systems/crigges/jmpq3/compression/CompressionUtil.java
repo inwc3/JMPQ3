@@ -71,9 +71,34 @@ public final class CompressionUtil {
             return null;
         }
         if (recompress.useZopfli) {
-            return new ZopfliHelper().deflate(data, recompress.iterations);
+            return zopfli(data, recompress.iterations);
         }
         return JzLibHelper.deflate(data, true);
+    }
+
+    /**
+     * Zopfli deflate, which is an optional dependency.
+     * <p>
+     * It is not a published dependency of this library: it is reachable only
+     * through {@link RecompressOptions#useZopfli}, and it is distributed through
+     * JitPack rather than Maven Central, so depending on it normally would force
+     * every consumer to add that repository for a codec most will never call.
+     * Asking for it without it on the classpath is a configuration mistake, and
+     * saying so beats a bare {@link NoClassDefFoundError}.
+     *
+     * @param data       data to compress.
+     * @param iterations zopfli iteration count.
+     * @return a zlib stream.
+     */
+    private static byte[] zopfli(byte[] data, int iterations) {
+        try {
+            return new ZopfliHelper().deflate(data, iterations);
+        } catch (NoClassDefFoundError missing) {
+            throw new IllegalStateException("RecompressOptions.useZopfli needs the optional"
+                + " Zopfli dependency on the classpath. Add"
+                + " com.github.eustas:CafeUndZopfli (from https://jitpack.io) or leave"
+                + " useZopfli off to compress with the JDK deflater.", missing);
+        }
     }
 
     /**

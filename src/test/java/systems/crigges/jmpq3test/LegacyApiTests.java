@@ -188,6 +188,91 @@ public class LegacyApiTests {
         }
     }
 
+    /**
+     * The {@code buildAttributes} flag is honoured now, and off by default.
+     * <p>
+     * It used to be accepted and dropped with a warning. Turning it on by
+     * default once generation worked would have been a silent performance cliff:
+     * the checksums are taken over decoded content, so it forces a decode of
+     * every file precisely where the verbatim copy path would otherwise avoid
+     * one. So the plain {@code close()} keeps producing what it always produced,
+     * and asking explicitly now works.
+     */
+    @Test
+    public void legacyCloseHonoursTheAttributesFlag() throws IOException {
+        final Path without = TestResources.mpqCopy("normalMap");
+        try (JMpqEditor editor = new JMpqEditor(without, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray("a.txt", "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        try (org.inwc3.jmpq.MpqArchive archive = org.inwc3.jmpq.MpqArchive.open(without,
+            org.inwc3.jmpq.MpqOpenOptions.warcraft3())) {
+            Assert.assertTrue(archive.attributes().isEmpty(),
+                "the default close has never produced attributes");
+        }
+
+        final Path with = TestResources.mpqCopy("normalMap");
+        try (JMpqEditor editor = new JMpqEditor(with, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray("a.txt", "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            editor.close(true, true, false);
+        }
+        try (org.inwc3.jmpq.MpqArchive archive = org.inwc3.jmpq.MpqArchive.open(with,
+            org.inwc3.jmpq.MpqOpenOptions.warcraft3())) {
+            final var attributes = archive.attributes().orElseThrow(
+                () -> new AssertionError("asked for attributes and did not get them"));
+            Assert.assertEquals(attributes.entries(), archive.header().blockTableEntries());
+            Assert.assertEquals(archive.read("a.txt"),
+                "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * A recovered {@code (attributes)} must not collide with a generated one.
+     * <p>
+     * An archive that cannot enumerate itself can be given an external list
+     * file, and if that list names the archive's existing {@code (attributes)}
+     * the rebuild recovers it. Asking to generate attributes in the same breath
+     * then put two entries under one name, which the writer refuses -- so the
+     * close failed instead of rebuilding, which is worse than either outcome the
+     * caller asked for.
+     */
+    @Test
+    public void recoveredAttributesDoNotCollideWithGeneratedOnes() throws IOException {
+        final byte[] attributes = org.inwc3.jmpq.MpqAttributes.build(new int[2], new long[2]);
+
+        // An archive with no list file, so nothing is enumerable, holding an
+        // (attributes) that only an external list can name.
+        final Path map = TestResources.scratchDir("recovered-attrs").resolve("map.w3x");
+        org.inwc3.jmpq.MpqArchiveWriter
+            .create(org.inwc3.jmpq.MpqWriteOptions.defaults().withListfile(false))
+            .put(org.inwc3.jmpq.MpqAttributes.NAME, attributes)
+            .put("war3map.j", "script".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .save(map);
+
+        final Path listfile = TestResources.scratchDir("recovered-attrs-list").resolve("list.txt");
+        java.nio.file.Files.writeString(listfile,
+            org.inwc3.jmpq.MpqAttributes.NAME + "\r\nwar3map.j\r\n");
+
+        try (JMpqEditor editor = new JMpqEditor(map, MPQOpenOption.FORCE_V0)) {
+            editor.setExternalListfile(listfile.toFile());
+            editor.insertByteArray("added.txt",
+                "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            // Generation requested while the recovered one is also in play.
+            editor.close(true, true, false);
+        }
+
+        try (org.inwc3.jmpq.MpqArchive rebuilt = org.inwc3.jmpq.MpqArchive.open(map,
+            org.inwc3.jmpq.MpqOpenOptions.warcraft3())) {
+            final var generated = rebuilt.attributes().orElseThrow(
+                () -> new AssertionError("attributes were requested and not produced"));
+            Assert.assertEquals(generated.entries(), rebuilt.header().blockTableEntries(),
+                "the generated attributes should describe this archive, not the old one");
+            Assert.assertEquals(rebuilt.read("war3map.j"),
+                "script".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            Assert.assertEquals(rebuilt.read("added.txt"),
+                "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
     /** The CRC32 helper must match java.util.zip for the same bytes. */
     @Test
     public void attributesCrcMatchesTheJdk() {

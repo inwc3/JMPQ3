@@ -45,6 +45,34 @@ public class IssueSampleTests {
     /** Directory holding the sample maps, if the runner supplied one. */
     private static final String PROPERTY = "jmpq3.issueSamples";
 
+    /**
+     * Samples that need protection-specific handling this library does not do.
+     * <p>
+     * Green TD Pro Deathmatch, from issue #47, is the case the audit had in mind
+     * when it marked fake-header resilience best-effort and said to skip it if it
+     * destabilised normal parsing. It needs four behaviours, none of them
+     * general:
+     * <ol>
+     *   <li>Two decoy user data headers whose redirects point at bytes that are
+     *       not archive headers.</li>
+     *   <li>A header declaring format version 2 whose hi-word fields are junk,
+     *       so it is only readable if the declared version is ignored.</li>
+     *   <li>Table offsets relying on 32-bit wraparound: the block table is
+     *       declared at {@code 0xFFFFF220}, landing inside the file only because
+     *       Storm.dll adds it to the header offset in 32-bit arithmetic
+     *       ({@code 0x1400 - 3552 = 0x620}).</li>
+     *   <li>Every block declaring a compressed size of {@code 0xFFFFFFFF}, so
+     *       stored sizes have to be inferred from neighbouring positions.</li>
+     * </ol>
+     * Diagnosed rather than guessed: at those wrapped offsets the tables do
+     * decode, every known Warcraft III path resolves in the hash table, and the
+     * block positions ascend sensibly. Supporting it is a deliberate non-goal.
+     * <p>
+     * What is still required of such a sample is that it fails cleanly, with
+     * this library's own exception rather than a crash or silently wrong data.
+     */
+    private static final List<String> NEEDS_PROTECTION_SUPPORT = List.of("greentd");
+
     private static List<Path> samples() {
         final String configured = System.getProperty(PROPERTY);
         if (configured == null || configured.isBlank()) {
@@ -84,7 +112,7 @@ public class IssueSampleTests {
      */
     @Test
     public void everySampleOpensWithoutForcingVersion0() throws IOException {
-        for (Path sample : samples()) {
+        for (Path sample : supported()) {
             try (MpqArchive archive = MpqArchive.open(sample, MpqOpenOptions.defaults())) {
                 Assert.assertTrue(archive.blockCount() > 0,
                     sample.getFileName() + " opened but has no blocks");
@@ -107,7 +135,7 @@ public class IssueSampleTests {
             "war3map.j", "war3map.w3i", "war3map.w3e", "war3map.wts", "war3map.doo",
             "war3map.shd", "war3map.wpm", "war3mapMap.blp", "war3mapExtra.txt");
 
-        for (Path sample : samples()) {
+        for (Path sample : supported()) {
             final List<String> recovered = new ArrayList<>();
             try (MpqArchive trusted = MpqArchive.open(sample, MpqOpenOptions.defaults());
                  MpqArchive forced = MpqArchive.open(sample, MpqOpenOptions.warcraft3())) {
@@ -135,6 +163,43 @@ public class IssueSampleTests {
                     sample.getFileName() + " yielded no files at all, by name or by list file");
             }
         }
+    }
+
+    /**
+     * A sample this library cannot read must say so, not misbehave.
+     * <p>
+     * The distinction matters more than the support does: a protected map that
+     * throws is one a caller can handle, while one returning plausible rubbish
+     * corrupts whatever is built from it.
+     */
+    @Test
+    public void unsupportedSamplesFailCleanly() {
+        for (Path sample : samples()) {
+            if (!needsProtectionSupport(sample)) {
+                continue;
+            }
+            final systems.crigges.jmpq3.JMpqException thrown = Assert.expectThrows(
+                systems.crigges.jmpq3.JMpqException.class,
+                () -> MpqArchive.open(sample, MpqOpenOptions.defaults()).close());
+            Assert.assertNotNull(thrown.getMessage(),
+                sample.getFileName() + " failed without saying why");
+        }
+    }
+
+    private static boolean needsProtectionSupport(Path sample) {
+        final String name = sample.getFileName().toString().toLowerCase();
+        return NEEDS_PROTECTION_SUPPORT.stream().anyMatch(name::contains);
+    }
+
+    /** The samples this library claims to handle. */
+    private static List<Path> supported() {
+        final List<Path> usable = samples().stream()
+            .filter(sample -> !needsProtectionSupport(sample))
+            .toList();
+        if (usable.isEmpty()) {
+            throw new SkipException("every sample present needs protection-specific handling");
+        }
+        return usable;
     }
 
     /**
