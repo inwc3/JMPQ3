@@ -98,10 +98,16 @@ These are real bugs or hazards in behaviour that must not be carried into the ne
 ## Phase 3 — Code hygiene & dependencies
 
 - **P3-1 Logging.** `logback-classic` + `logback.xml` ship in the library's runtime deps/resources and hijack consumers' logging config. Keep `slf4j-api` only; move logback + config to `testRuntimeOnly`. Remove `DebugHelper.appendData`'s `printStackTrace`.
+  - Done. `logback-classic` is `testRuntimeOnly`, no `logback.xml` ships, and `DebugHelper.appendData` raises `UncheckedIOException` instead of printing a stack trace.
 - **P3-2 Dependency audit.** `commons-compress` used only for `SeekableInMemoryByteChannel` (trivially self-implemented) — and will be needed for BZIP2 (P2-6), so decide once. Evaluate replacing unmaintained `jzlib` with `java.util.zip` (`Deflater`/`Inflater`) — the hand-rolled `zlibStoreLevel0` in CompressionUtil duplicates jzlib level-0 anyway; benchmark before/after. `xz` currently unused (see P2-6).
+  - Done. `jzlib` removed: `java.util.zip.Deflater`/`Inflater` do the same job through the JDK's bundled zlib, which is native and maintained. Verified byte-identical output on the same inputs before removing the dependency, so archives are unchanged. `commons-compress` stays -- it is what decodes BZIP2 sectors, so the P2-6 question the audit wanted decided once is decided: keep. `xz` is now used, by LZMA.
+  - Also removed `ZlibStore`, whose only caller discarded its output. `compress` with no recompression built a zlib stream of stored blocks -- necessarily larger than its input -- so every sector paid for a copy and an Adler-32 to produce something the caller always rejected by its own "did it shrink" test. It returns `null` now and the caller stores raw, byte for byte as before. Its hand-rolled Adler-32 also carried the signed-overflow bug found in P2-3.
 - **P3-3 Delete dead/duplicated code.** Commented-out `loadDefaultListFile` and attributes block; near-identical sector loops `extractCompressedBlock` vs `extractImplodedBlock` (MpqFile.java:94,150); triple keygen duplication (P1-4); `Either` union class → sealed interface or two-field record; unused `DefaultListfile.txt` decision (resource shipped but load path commented out).
+  - Done. `LinkedIdentityHashMap`, `GrowingBuffer`, `Either` and `ZlibStore` are gone; the commented-out listfile and attributes blocks with them. `DefaultListfile.txt` was decided rather than left: it is test-only, so it moved to `src/test/resources` and stopped adding a megabyte to the published jar.
 - **P3-4 Java 25 modernisation.** Records for `Block`/header/bucket models, sealed types where useful, **pattern matching for switch + record patterns** (final since 21) for compression dispatch and per-version header handling, `SequencedCollection` for the ordered file maps, FFM `MemorySegment`/`Arena` in the read layer (P1-3). Replace the `ThreadLocal` `STORE_BUFFER` in CompressionUtil with per-call allocation or a `ScopedValue`. The Vector API stays **out** (still incubator in 25 — not acceptable for a library). Set toolchain and `options.release` to 25.
+  - Done across the phases: records for the header, entry and options models, sealed `Content` hierarchy, pattern-matched switches for compression dispatch, `SequencedMap` for the ordered name maps, FFM `MemorySegment`/`Arena` in the read layer, and the `ThreadLocal` scratch buffer gone. Toolchain and `options.release` are 25. The Vector API stays out, as the audit requires.
 - **P3-5 Naming/typos sweep.** `getAllVaildBlocks`, "Invaild block position", `DegugHelperTests`, `FLAG_LMZA`, javadoc stubs like "the fc" / "the b" / auto-generated noise. Full javadoc on the new public API.
+  - Done. `getAllVaildBlocks` is deprecated in favour of `getAllValidBlocks`, kept for binary compatibility; `DegugHelperTests` renamed; `FLAG_LMZA` survives only as prose describing the old bug. Full javadoc on the new public API.
 
 ## Phase 4 — Tests & CI
 
@@ -114,8 +120,11 @@ These are real bugs or hazards in behaviour that must not be carried into the ne
 ## Phase 5 — Docs & packaging
 
 - **P5-1 README.** There is none. Cover: what/why, quick-start for new API, migration table `JMpqEditor` → new API, supported format matrix (read/write per version/feature), thread-safety statement.
+  - Done. Covers the format and feature matrix, the new API, integrity, thread safety and the limitations. `ReadmeExampleTests` compiles and runs every snippet in it, because the previous readme had drifted into claiming sparse and bzip2 were unsupported and that `(attributes)` could not be generated.
 - **P5-2 Publishing coordinates.** `group 'systems.crigges'` vs publication `groupId 'inwc3'` inconsistency; version bump to 2.0.0 with the new API; verify jitpack.yml still matches the Java 25 toolchain.
+  - Done. `group` and the publication `groupId` agree on `org.inwc3`, the version is `2.0.0-SNAPSHOT`, and `jitpack.yml` documents why `openjdk17` is still correct there: it only has to run Gradle, and the Java 25 toolchain is resolved by foojay.
 - **P5-3 Format notes doc.** Short `docs/mpq-format-notes.md` recording the spec interpretations chosen (with StormLib source references) — this is what makes it a *reference* library.
+  - Done, 15 sections with StormLib citations.
 - **P5-4 CLI tool — optional** *(issue [#10](https://github.com/inwc3/JMPQ3/issues/10))*. Small separate module/jar (list/extract/insert/rebuild, listfile + input/output dir options) wrapping the new API, per the consensus in the issue thread to keep it out of the library artifact. Do last; drop if time-constrained.
 
 ---

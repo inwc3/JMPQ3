@@ -53,7 +53,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           python tools/mpqref.py manifest src/test/resources/mpqs \
-            --names src/main/resources/DefaultListfile.txt \
+            --names src/test/resources/DefaultListfile.txt \
             -o /tmp/fixtures.tsv
           diff -u src/test/resources/golden/fixtures.tsv /tmp/fixtures.tsv
 

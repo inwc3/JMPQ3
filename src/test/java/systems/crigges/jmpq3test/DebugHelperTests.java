@@ -7,7 +7,7 @@ import systems.crigges.jmpq3.DebugHelper;
 /**
  * Created by Frotty on 09.03.2017.
  */
-public class DegugHelperTests {
+public class DebugHelperTests {
 
     @Test
     public void testDebugHelper() {
