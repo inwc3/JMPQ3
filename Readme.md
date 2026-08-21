@@ -1,28 +1,31 @@
-[![Build](https://github.com/inwc3/JMPQ3/actions/workflows/build.yml/badge.svg)](https://github.com/inwc3/JMPQ3/actions/workflows/build.yml) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master) [![codebeat badge](https://codebeat.co/badges/5ccfd060-8d57-4a51-9c6b-2688482f857e)](https://codebeat.co/projects/github-com-inwc3-jmpq3-master)
+[![Build](https://github.com/inwc3/JMPQ3/actions/workflows/build.yml/badge.svg)](https://github.com/inwc3/JMPQ3/actions/workflows/build.yml) [![Jit](https://jitpack.io/v/inwc3/JMPQ3.svg)](https://jitpack.io/#inwc3/JMPQ3) [![Coverage Status](https://coveralls.io/repos/github/inwc3/JMPQ3/badge.svg?branch=master)](https://coveralls.io/github/inwc3/JMPQ3?branch=master)
 
 # JMPQ3
 
-JMPQ3 is a small Java library for reading and modifying MPQ (MoPaQ) archives.
-Common file endings are `.mpq`, `.w3m`, and `.w3x`.
+JMPQ3 is a Java library for reading and writing MPQ (MoPaQ) archives. Common
+file endings are `.mpq`, `.w3m`, and `.w3x`.
 
-MoPaQ is Blizzard's older proprietary archive format for game data. It is used by Warcraft III maps and was later replaced by CASC in newer Blizzard games.
+MoPaQ is Blizzard's older proprietary archive format for game data. It is used
+by Warcraft III maps and was later replaced by CASC in newer Blizzard games.
 
-JMPQ3 is primarily tested with Warcraft III maps and MPQs. Archives from other games may work, but Warcraft III compatibility is the main target.
+JMPQ3 is primarily tested against Warcraft III maps. Archives from other games
+may work, but Warcraft III compatibility is the main target.
 
-For MPQ format background and a graphical editor, see Ladislav Zezula's MPQ tools:
-http://www.zezula.net/en/mpq/main.html
+Format behaviour is validated against [StormLib](https://github.com/ladislav-zezula/StormLib)
+source rather than against circulating format documents. Where the format is
+genuinely ambiguous, the interpretation chosen is recorded with its citation in
+[`docs/mpq-format-notes.md`](docs/mpq-format-notes.md).
 
 ## Requirements
 
-JMPQ3 2.0.0 and newer requires Java 25 or newer at runtime.
-JMPQ3 1.9.x requires Java 11.
+| JMPQ3 | Java |
+|---|---|
+| 2.0.0 and newer | 25 |
+| 1.9.x | 11 |
 
 ## Installation
 
-JMPQ3 is available through JitPack:
-https://jitpack.io/#inwc3/JMPQ3/
-
-Gradle:
+Available through [JitPack](https://jitpack.io/#inwc3/JMPQ3/):
 
 ```gradle
 repositories {
@@ -34,119 +37,192 @@ dependencies {
 }
 ```
 
-You can also depend on a Git commit or branch through JitPack while testing unreleased changes.
+## Format support
 
-## Opening Archives
+| Version | Read | Write |
+|---|---|---|
+| v0 (32-byte header) | yes | yes |
+| v1 (44-byte header, 64-bit offsets, hi-block table) | yes | yes |
+| v2 (68-byte header) | yes | no |
+| v3 (208-byte header, compressed tables, MD5 digests) | yes | no |
 
-Use try-with-resources so the editor is closed correctly. Writable archives are rebuilt when the editor is closed.
+Versions 2 and 3 are read through the classic hash and block tables, which
+StormLib writes alongside HET/BET. **HET/BET tables themselves are not
+implemented**, so an archive that omits the classic tables cannot be opened. See
+P2-2a in [`AUDIT.md`](AUDIT.md) for why that is deferred rather than guessed at.
+
+### Features
+
+| | Read | Write |
+|---|---|---|
+| Sector checksums (`SECTOR_CRC`) | verified by default | optional |
+| `(attributes)` | parsed per its own bytemask | optional, generated |
+| `(listfile)` | yes | generated |
+| Locale variants of one path | yes | yes |
+| User data header (`MPQ\x1B`) | parsed, payload readable | not written |
+| Encrypted files, including `MPQ_FILE_KEY_V2` | yes | internal files only |
+| Signature verification / signing | no | no |
+| Patch (PTCH) archives | no | no |
+
+### Compression
+
+Decompression: zlib, PKWARE implode, BZIP2, sparse, LZMA (v2+ only), Huffman +
+ADPCM mono/stereo, and the multi-codec combinations StormLib defines. Dispatch is
+table-driven from StormLib's `dcmp_table` — note that the type byte `0x12` means
+different things depending on format version, which is why it cannot be tested as
+a bitmask. See format note 2.
+
+Compression on write is deflate, with an optional [Zopfli](https://github.com/google/zopfli)
+mode for smaller output at much greater cost.
+
+## Quick start
+
+The 2.0 API separates reading from writing. `MpqArchive` opens an archive and
+never modifies it; `MpqArchiveWriter` builds one and writes it when you say so.
 
 ```java
-import systems.crigges.jmpq3.JMpqEditor;
-import systems.crigges.jmpq3.MPQOpenOption;
+import org.inwc3.jmpq.MpqArchive;
+import org.inwc3.jmpq.MpqOpenOptions;
 
-import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
-try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
-    if (mpq.hasFile("war3map.j")) {
-        byte[] script = mpq.extractFileAsBytes("war3map.j");
+try (MpqArchive archive = MpqArchive.open(Path.of("MyMap.w3x"), MpqOpenOptions.warcraft3())) {
+    if (archive.contains("war3map.j")) {
+        byte[] script = archive.read("war3map.j");
         System.out.println(new String(script, StandardCharsets.UTF_8));
     }
 
-    for (String fileName : mpq.getFileNames()) {
-        System.out.println(fileName);
+    for (String name : archive.names()) {
+        System.out.println(name);
     }
 }
 ```
 
-`MPQOpenOption.READ_ONLY` opens the archive without modifying it.
+`MpqOpenOptions.warcraft3()` reads the archive the way Warcraft III does: format
+version 0 is forced, so a corrupted header size or version cannot stop the
+archive opening, and user data headers are ignored. `MpqOpenOptions.defaults()`
+trusts the header instead.
 
-`MPQOpenOption.FORCE_V0` reads the archive like Warcraft III does, ignoring newer optional MPQ metadata where needed. This is useful for Warcraft III maps and some intentionally odd or damaged archives.
+### Writing
 
-## Modifying Archives
-
-Open without `READ_ONLY` to allow writes. Changes are applied when `close()` runs.
-
-```java
-import systems.crigges.jmpq3.JMpqEditor;
-import systems.crigges.jmpq3.MPQOpenOption;
-
-import java.io.File;
-
-try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.FORCE_V0)) {
-    if (mpq.hasFile("war3map.j")) {
-        mpq.deleteFile("war3map.j");
-    }
-
-    mpq.insertFile("war3map.j", new File("build/war3map.j"));
-    mpq.insertByteArray("war3mapImported/readme.txt", "generated by JMPQ3".getBytes());
-}
-```
-
-`insertFile` stores the file path and reads the file when the archive is rebuilt on close. Keep that source file alive until the editor is closed. If the data is temporary, use `insertByteArray` instead.
-
-To overwrite an existing file directly:
+Nothing is written until you ask. There is no rebuild-on-close.
 
 ```java
-mpq.insertFile("war3map.j", new File("build/war3map.j"), true);
-mpq.insertByteArray("war3mapImported/readme.txt", bytes, true);
-```
+import org.inwc3.jmpq.MpqArchiveWriter;
+import org.inwc3.jmpq.MpqWriteOptions;
 
-## Creating Archives From Scratch
-
-JMPQ3 can create a minimal empty archive and then rebuild it with inserted files. This is useful for Warcraft III "folder mode" maps, where a `.w3x` directory contains the files that should become a real MPQ archive.
-
-```java
-import systems.crigges.jmpq3.JMpqEditor;
-import systems.crigges.jmpq3.MPQOpenOption;
-
-import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-File outputMap = new File("build/MyMap.w3x");
-JMpqEditor.createEmptyArchive(outputMap);
+MpqArchiveWriter.create(MpqWriteOptions.defaults())
+    .put("war3map.j", Files.readAllBytes(Path.of("build/war3map.j")))
+    .put("war3mapImported/readme.txt", "generated by JMPQ3".getBytes(StandardCharsets.UTF_8))
+    .save(Path.of("build/MyMap.w3x"));
+```
 
-try (JMpqEditor mpq = new JMpqEditor(outputMap, MPQOpenOption.FORCE_V0)) {
-    mpq.insertFile("war3map.w3i", new File("folderMap/war3map.w3i"));
-    mpq.insertFile("war3map.j", new File("folderMap/war3map.j"));
-    mpq.insertFile("war3mapImported/icon.blp", new File("folderMap/war3mapImported/icon.blp"));
+To rebuild an existing archive, seed a writer from it. Files are copied with
+their stored bytes intact when the target keeps the source's sector size, and
+re-encoded otherwise — that is a correctness requirement, not an optimisation,
+because a sector offset table is expressed in the archive's sector size.
 
-    byte[] generatedScript = Files.readAllBytes(Path.of("build/war3map.j"));
-    mpq.insertByteArray("war3map.j", generatedScript, true);
+```java
+import org.inwc3.jmpq.MpqArchive;
+import org.inwc3.jmpq.MpqArchiveWriter;
+import org.inwc3.jmpq.MpqOpenOptions;
+import org.inwc3.jmpq.MpqWriteOptions;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+Path path = Path.of("MyMap.w3x");
+byte[] newScript = Files.readAllBytes(Path.of("build/war3map.j"));
+
+try (MpqArchive source = MpqArchive.open(path, MpqOpenOptions.warcraft3())) {
+    MpqArchiveWriter writer = MpqArchiveWriter.from(source, MpqWriteOptions.defaults());
+    writer.remove("war3mapImported/old.blp");
+    writer.put("war3map.j", newScript);
+    writer.save(path.resolveSibling("Rebuilt.w3x"));
 }
 ```
 
-You can also get the initial empty archive bytes without writing a file:
+### Options worth knowing
 
 ```java
-byte[] emptyArchive = JMpqEditor.createEmptyArchive();
+MpqWriteOptions.defaults()
+    .withFormatVersion(1)              // 0 or 1; 2 and above are read-only
+    .withSectorSizeShift(3)            // 512 << shift; 3 gives the 4 KiB Warcraft III uses
+    .withListfile(false)               // omit (listfile): not enumerable by name
+    .withPrefix(true)                  // keep bytes before the header, as Warcraft III maps have
+    .withSectorChecksums(true)         // record an Adler-32 per sector
+    .withAttributes(true)              // generate (attributes)
+    .withAttributesTimestamp(millis)   // pin it, or the build is not reproducible
+    .withHashTableCapacity(0x10000)    // explicit capacity
+    .withExtraBlockEntries(32);        // spare block slots
 ```
 
-Empty directories are not represented in MPQ archives, so only insert regular files.
-
-## Extracting All Known Files
-
-MPQs do not always contain a complete list of filenames. `extractAllFiles` extracts known files when a usable `(listfile)` is available. Archives without a complete listfile may still contain files that can only be accessed if you know their exact path.
+An archive with no `(listfile)` cannot be enumerated by name. Ask what a rebuild
+would cost before doing one:
 
 ```java
-try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.READ_ONLY, MPQOpenOption.FORCE_V0)) {
-    mpq.extractAllFiles(new File("extracted"));
+if (archive.filesLostOnRebuild() > 0) {
+    // These blocks exist but nothing names them, so a rebuild cannot carry them.
 }
 ```
 
-For writable archives with a missing or incomplete listfile, you can provide an external listfile before rebuilding:
+### Integrity
+
+Sector checksums are verified while decoding when an archive records them, and a
+mismatch fails the read rather than returning bytes known to be wrong. Turn it
+off to recover what is still intact from a damaged archive:
 
 ```java
-try (JMpqEditor mpq = new JMpqEditor(new File("MyMap.w3x"), MPQOpenOption.FORCE_V0)) {
-    mpq.setExternalListfile(new File("listfile.txt"));
-    mpq.insertByteArray("war3mapImported/generated.txt", "hello".getBytes());
-}
+MpqArchive.open(path, MpqOpenOptions.defaults().withSectorChecksumVerification(false));
 ```
 
-## Known Issues
+A format version 3 archive may record MD5 digests of its own tables.
+`archive.integrity()` reports `VERIFIED`, `MISMATCHED` or `UNRECORDED`; a
+mismatch is reported rather than fatal, because the tables may still decode every
+file.
 
-- Unsupported decompression algorithms: sparse and bzip2.
-- Supported compression is zlib/zopfli.
-- JMPQ3 does not currently build a valid `(attributes)` file. Warcraft III maps appear to work without it.
-- Empty directories are not stored in MPQ archives.
+## Thread safety
+
+An archive opened from a `Path` is confined to the thread that opened it, because
+its memory mapping is. Archives opened from a byte array are safe to read
+concurrently. Nothing in `MpqArchive` mutates the archive. A single
+`MpqArchiveWriter` belongs to one thread.
+
+## Migrating from 1.x
+
+`JMpqEditor` and the rest of `systems.crigges.jmpq3` still work and are
+deprecated, not removed. They are now a thin facade over the new core, so both
+paths decode identically.
+
+The coordinates changed: `org.inwc3:jmpq3`. See
+[`docs/migration-2.0.md`](docs/migration-2.0.md) for a method-by-method mapping
+and the behaviour differences worth knowing — the most important being that
+`close()` no longer rewrites the archive as a side effect.
+
+## Limitations
+
+- HET/BET tables are not implemented, so a v2–v4 archive without classic tables
+  cannot be opened.
+- Writing is limited to format versions 0 and 1.
+- No signature verification or signing, and no patch (PTCH) archive support.
+- Empty directories are not representable in MPQ, so only insert regular files.
+- Archives are built in memory, so an archive must fit in the heap.
+
+## Contributing
+
+`AUDIT.md` is the working task list, with each item's status and the reasoning
+behind anything deferred. `docs/mpq-format-notes.md` records format decisions
+with StormLib citations — if you change parsing behaviour, that is where the
+justification belongs.
+
+`tools/mpqref.py` is an independent MPQ reader written from StormLib source,
+sharing no code with the library. CI uses it to verify that archives JMPQ3 writes
+can be read by something other than JMPQ3. It has caught bugs that round-trip
+tests structurally cannot: when a reader and a writer share a misconception they
+agree with each other and with nothing else. Extend it when you add a format
+feature.

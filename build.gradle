@@ -38,7 +38,6 @@ jacoco {
 }
 
 dependencies {
-    implementation 'com.jcraft:jzlib:1.1.3'
     implementation group: 'org.apache.commons', name: 'commons-compress', version: '1.27.1'
     implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
     implementation group: 'org.tukaani', name: 'xz', version: '1.9'
@@ -54,6 +53,14 @@ test {
     useTestNG()
     // FFM mapped-segment access in the read layer.
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    // Opt-in path to the third-party maps named in issues #46 and #47, which
+    // are not committed here. IssueSampleTests skips when it is unset.
+    // Run with: ./gradlew test -PissueSamples=/path/to/maps
+    // Accepts either form, since -D is the reflex: a Gradle project property
+    // (-PissueSamples) or a system property on the Gradle JVM forwarded to the
+    // test JVM (-Djmpq3.issueSamples).
+    systemProperty 'jmpq3.issueSamples',
+        findProperty('issueSamples') ?: System.getProperty('jmpq3.issueSamples', '')
     testLogging {
         events "failed"
         exceptionFormat "full"

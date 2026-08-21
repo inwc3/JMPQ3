@@ -11,7 +11,7 @@ Scope
 Fully decodes: stored, zlib, bzip2, sparse, and the multi-stage combinations of
 those, applied in StormLib's ``dcmp_table`` order.
 
-Not decoded: PKWARE ("implode"), Huffman and ADPCM. Porting three more codecs
+Not decoded: PKWARE ("implode"). Porting one more codec
 here would buy little: JMPQ3's *writer* only ever emits zlib or stored sectors,
 so round-trip verification of anything JMPQ3 produces is fully covered. Files
 using the other codecs are reported with ``codec=unsupported`` and their
@@ -34,6 +34,8 @@ import struct
 import sys
 import zlib
 from pathlib import Path
+
+import mpqcodecs
 
 # --------------------------------------------------------------------------
 # Cryptography (StormLib InitializeMpqCryptography)
@@ -191,9 +193,9 @@ DCMP_TABLE = [
     (0x10, "bzip2", _bzip2),
     (0x08, "pkware", _unsupported("pkware")),
     (0x02, "zlib", _zlib),
-    (0x01, "huffman", _unsupported("huffman")),
-    (0x80, "adpcm_stereo", _unsupported("adpcm_stereo")),
-    (0x40, "adpcm_mono", _unsupported("adpcm_mono")),
+    (0x01, "huffman", lambda data, size: mpqcodecs.huffman_decompress(data, size)),
+    (0x80, "adpcm_stereo", lambda data, size: mpqcodecs.adpcm_decompress(data, 2, size)),
+    (0x40, "adpcm_mono", lambda data, size: mpqcodecs.adpcm_decompress(data, 1, size)),
     (0x20, "sparse", _sparse),
 ]
 

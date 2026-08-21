@@ -20,7 +20,7 @@ import java.util.SequencedMap;
  * Regenerate with:
  * <pre>
  * python tools/mpqref.py manifest src/test/resources/mpqs \
- *     --names src/main/resources/DefaultListfile.txt \
+ *     --names src/test/resources/DefaultListfile.txt \
  *     -o src/test/resources/golden/fixtures.tsv
  * </pre>
  * Any diff in that file during review is a change in observable behaviour and

@@ -56,11 +56,19 @@ public final class CompressionUtil {
      * @param data       raw sector content.
      * @param recompress compression strategy.
      * @return the compressed bytes <em>without</em> the leading
-     *         compression-type byte, which the caller prepends.
+     *         compression-type byte, which the caller prepends, or {@code null}
+     *         when no recompression was asked for and the caller should store
+     *         the data as it is.
      */
     public static byte[] compress(byte[] data, RecompressOptions recompress) {
         if (!recompress.recompress) {
-            return ZlibStore.storeLevel0(data);
+            // Nothing, and the caller stores the sector raw. This used to build
+            // a zlib stream of stored blocks, which is by construction larger
+            // than its input -- so every sector paid for a full copy and an
+            // Adler-32 to produce something the caller always discarded, because
+            // it applies a "did it actually shrink" test. The archives written
+            // are byte for byte identical without it.
+            return null;
         }
         if (recompress.useZopfli) {
             return new ZopfliHelper().deflate(data, recompress.iterations);

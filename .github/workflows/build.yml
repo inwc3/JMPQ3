@@ -53,7 +53,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           python tools/mpqref.py manifest src/test/resources/mpqs \
-            --names src/main/resources/DefaultListfile.txt \
+            --names src/test/resources/DefaultListfile.txt \
             -o /tmp/fixtures.tsv
           diff -u src/test/resources/golden/fixtures.tsv /tmp/fixtures.tsv
 
@@ -65,8 +65,15 @@ jobs:
           path: build/reports/tests/test
           retention-days: 7
 
+      # Telemetry, not a gate. continue-on-error as well as fail-on-error:
+      # the latter only covers the upload, so an outage while the action fetches
+      # its own reporter binary still failed the job -- which it did, with a 504
+      # from coveralls.io, on a commit whose build, tests, reference checks and
+      # manifest check had all passed. A third-party reporting service being
+      # down is not a reason to call this build broken.
       - name: Report coverage
         if: matrix.os == 'ubuntu-latest'
+        continue-on-error: true
         uses: coverallsapp/github-action@v2
         with:
           file: build/reports/jacoco/test/jacocoTestReport.xml
