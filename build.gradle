@@ -53,6 +53,10 @@ test {
     useTestNG()
     // FFM mapped-segment access in the read layer.
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    // Opt-in path to the third-party maps named in issues #46 and #47, which
+    // are not committed here. IssueSampleTests skips when it is unset.
+    // Run with: ./gradlew test -PissueSamples=/path/to/maps
+    systemProperty 'jmpq3.issueSamples', findProperty('issueSamples') ?: ''
     testLogging {
         events "failed"
         exceptionFormat "full"

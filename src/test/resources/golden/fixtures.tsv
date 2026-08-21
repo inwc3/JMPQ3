@@ -165,7 +165,7 @@ w3x2ini.w3x	war3mapMap.blp	7753	3ccc826ae481dae9945b577178f967af	COMPRESS|EXISTS
 w3x2ini.w3x	war3mapUnits.doo	238	549ce0ec6c6349232a9af8c6639fd541	COMPRESS|EXISTS	zlib
 wavTest.w3x	(attributes)	56	6f67bd124a4552ad1a3f68fcdb5d56bb	COMPRESS|ENCRYPTED|KEY_V2|EXISTS	zlib
 wavTest.w3x	(listfile)	73	484bc94f0099608c4aa070d87c27bce4	COMPRESS|ENCRYPTED|KEY_V2|EXISTS	zlib
-wavTest.w3x	Abilities\Spells\NightElf\ReviveNightElf\ReviveNightElf.wav	144464	-	COMPRESS|EXISTS	unsupported:huffman
+wavTest.w3x	Abilities\Spells\NightElf\ReviveNightElf\ReviveNightElf.wav	144464	6b131014f093fca5972bfc1a0477f1b1	COMPRESS|EXISTS	huffman+adpcm_mono,zlib
 wavTest.w3x	config.txt	1676	d1d06dc8889f16d72ee542570455f3f8	COMPRESS|EXISTS	zlib
 ydwe.w3x	(attributes)	512	af0e3e2caefe95ed6fa57dccde818556	EXISTS	stored
 ydwe.w3x	(listfile)	201	b7c1d68cef90ed06dd12ec26da82a2d8	EXISTS	stored
