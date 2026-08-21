@@ -47,14 +47,20 @@ public final class MpqSectorWriter {
         }
 
         final int dataSectors = MpqFileReader.sectorCount(content.length, sectorSize);
-        final int tableBytes = (dataSectors + 1) * 4;
+        final boolean checksums =
+            (flags & MpqFileEntry.FLAG_SECTOR_CRC) == MpqFileEntry.FLAG_SECTOR_CRC;
+        // A SECTOR_CRC file needs one more offset entry, delimiting the
+        // checksum chunk that follows the data sectors.
+        final int offsetEntries = dataSectors + 1 + (checksums ? 1 : 0);
+        final int tableBytes = offsetEntries * 4;
 
         // Worst case is the offset table plus every sector stored verbatim plus
-        // one type byte each. Nothing this encoder produces can exceed it,
-        // because a sector that does not shrink is stored raw. The pre-2.0
-        // writer guessed content.length * 2 and mapped that much file, which
-        // overflowed for incompressible input.
-        final long worstCase = (long) tableBytes + content.length + dataSectors;
+        // one type byte each, plus an uncompressed checksum chunk. Nothing this
+        // encoder produces can exceed it, because a sector that does not shrink
+        // is stored raw. The pre-2.0 writer guessed content.length * 2 and
+        // mapped that much file, which overflowed for incompressible input.
+        final long worstCase = (long) tableBytes + content.length + dataSectors
+            + (checksums ? 4L * dataSectors : 0);
         if (worstCase > MpqImageBuffer.MAX_SIZE) {
             throw new IllegalArgumentException("File <" + name + "> is too large for an in-memory"
                 + " build: " + content.length + " bytes would need " + worstCase + " of staging.");
@@ -64,7 +70,8 @@ public final class MpqSectorWriter {
         final int baseKey = MpqNames.sectorKey(name, flags, filePosition, content.length);
 
         final ByteBuffer region = image.reserve((int) worstCase);
-        final int[] offsets = new int[dataSectors + 1];
+        final int[] offsets = new int[offsetEntries];
+        final int[] adler = new int[checksums ? dataSectors : 0];
         offsets[0] = tableBytes;
 
         region.position(tableBytes);
@@ -75,6 +82,12 @@ public final class MpqSectorWriter {
             System.arraycopy(content, from, raw, 0, length);
 
             final byte[] payload = encodeSector(raw, recompress);
+            if (checksums) {
+                // Over the stored sector before encrypting it, which is the
+                // same bytes a reader sees after decrypting. StormLib takes the
+                // checksum at exactly these two points.
+                adler[i] = MpqChecksums.adler32(payload);
+            }
             if (encrypt) {
                 new MPQEncryption(baseKey + i, false).processSingle(ByteBuffer.wrap(payload));
             }
@@ -82,7 +95,15 @@ public final class MpqSectorWriter {
             offsets[i + 1] = offsets[i] + payload.length;
         }
 
-        final int compressedSize = offsets[dataSectors];
+        if (checksums) {
+            // Zlib compressed when that is smaller, and never encrypted: on the
+            // read side StormLib loads this chunk with key 0.
+            final byte[] chunk = encodeChecksums(adler, recompress);
+            region.put(chunk);
+            offsets[dataSectors + 1] = offsets[dataSectors] + chunk.length;
+        }
+
+        final int compressedSize = offsets[offsetEntries - 1];
 
         // Fill in the offset table now that the sizes are known.
         final ByteBuffer table = ByteBuffer.allocate(tableBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN);
@@ -99,6 +120,27 @@ public final class MpqSectorWriter {
 
         image.advance(compressedSize);
         return compressedSize;
+    }
+
+    /**
+     * Encodes the per-sector checksum chunk of a {@code SECTOR_CRC} file.
+     * <p>
+     * The chunk is a plain array of little-endian Adler-32 values, one per data
+     * sector, zlib compressed when that is smaller. A reader detects the
+     * compression the same way it does for a sector: by the stored length being
+     * shorter than the natural one.
+     *
+     * @param adler      one checksum per data sector.
+     * @param recompress compression strategy.
+     * @return the chunk as stored.
+     */
+    private static byte[] encodeChecksums(int[] adler, RecompressOptions recompress) {
+        final ByteBuffer plain = ByteBuffer.allocate(adler.length * 4)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        for (int value : adler) {
+            plain.putInt(value);
+        }
+        return encodeSector(plain.array(), recompress);
     }
 
     /**
@@ -149,11 +191,15 @@ public final class MpqSectorWriter {
 
     /**
      * @param contentLength the file's decoded size.
+     * @param checksums     whether to record a per-sector checksum.
      * @return the flags a newly encoded file should carry.
      */
-    static int flagsFor(int contentLength) {
-        return contentLength == 0
-            ? MpqFileEntry.FLAG_EXISTS
-            : MpqFileEntry.FLAG_EXISTS | MpqFileEntry.FLAG_COMPRESSED;
+    static int flagsFor(int contentLength, boolean checksums) {
+        if (contentLength == 0) {
+            // An empty file has no sectors, so it can carry no checksums.
+            return MpqFileEntry.FLAG_EXISTS;
+        }
+        return MpqFileEntry.FLAG_EXISTS | MpqFileEntry.FLAG_COMPRESSED
+            | (checksums ? MpqFileEntry.FLAG_SECTOR_CRC : 0);
     }
 }

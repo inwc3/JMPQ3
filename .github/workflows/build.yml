@@ -46,6 +46,7 @@ jobs:
           python tools/mpqref.py verify build/roundtrip/archives --manifest build/roundtrip/expected.tsv
           python tools/mpqref.py verify build/roundtrip-newcore/archives --manifest build/roundtrip-newcore/expected.tsv
           python tools/mpqref.py verify build/stored-encrypted/archives --manifest build/stored-encrypted/expected.tsv
+          python tools/mpqref.py verify build/phase2/archives --manifest build/phase2/expected.tsv
 
       # Catches drift between the committed golden manifest and the fixtures.
       - name: Check the golden manifest is up to date

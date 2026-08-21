@@ -20,10 +20,12 @@ import java.nio.ByteBuffer;
 final class MpqFileReader {
     private final MpqSource source;
     private final MpqHeader header;
+    private final boolean verifyChecksums;
 
-    MpqFileReader(MpqSource source, MpqHeader header) {
+    MpqFileReader(MpqSource source, MpqHeader header, boolean verifyChecksums) {
         this.source = source;
         this.header = header;
+        this.verifyChecksums = verifyChecksums;
     }
 
     /**
@@ -135,6 +137,7 @@ final class MpqFileReader {
         final int[] offsets = readSectorOffsets(entry, base, key);
         final boolean imploded = entry.has(MpqFileEntry.FLAG_IMPLODED);
         final int sectorSize = header.sectorSize();
+        final int[] checksums = readSectorChecksums(entry, offsets, base);
         int remaining = entry.normalSize();
 
         for (int i = 0; i < dataSectorCount(entry); i++) {
@@ -148,6 +151,7 @@ final class MpqFileReader {
 
             final byte[] sector = source.bytes(base + start, end - start);
             decrypt(entry, sector, key + i);
+            verifyChecksum(entry, checksums, i, sector);
 
             final int expected = Math.min(remaining, sectorSize);
             final byte[] decoded = imploded
@@ -155,6 +159,80 @@ final class MpqFileReader {
                 : CompressionUtil.decompress(sector, end - start, expected, header.formatVersion());
             target.write(decoded, 0, expected);
             remaining -= expected;
+        }
+    }
+
+    /**
+     * P2-3: the per-sector checksum table of a {@code SECTOR_CRC} file.
+     * <p>
+     * Despite the flag's name the checksums are <em>Adler-32</em>, seeded 0,
+     * taken over each sector as stored minus its encryption — that is, after
+     * decrypting but before decompressing. StormLib's {@code ReadMpqSectors}
+     * computes {@code adler32(0, pbInSector, dwRawBytesInThisSector)} at exactly
+     * that point, and its writer takes the same value over the compressed
+     * buffer, so the two agree.
+     * <p>
+     * The chunk sits after the data sectors, delimited by the last two entries
+     * of the sector offset table, and is neither encrypted nor keyed even in an
+     * encrypted file: StormLib loads it with key 0. It <em>is</em> zlib
+     * compressed when that makes it smaller.
+     *
+     * @return one checksum per data sector, or an empty array when the file
+     *         carries none or verification is off.
+     */
+    private int[] readSectorChecksums(MpqFileEntry entry, int[] offsets, long base)
+        throws IOException {
+        if (!verifyChecksums || !entry.has(MpqFileEntry.FLAG_SECTOR_CRC)) {
+            return new int[0];
+        }
+        final int sectors = dataSectorCount(entry);
+        // The chunk is delimited by the two entries past the data sectors.
+        final int start = offsets[sectors];
+        final int end = offsets[sectors + 1];
+        final int plainSize = sectors * 4;
+        if (start < 0 || end < start || end > entry.compressedSize() || end == start) {
+            // A file can carry the flag and no checksums; StormLib treats that
+            // as "nothing to check" rather than as damage.
+            return new int[0];
+        }
+
+        byte[] chunk = source.bytes(base + start, end - start);
+        if (chunk.length < plainSize) {
+            chunk = CompressionUtil.decompress(chunk, chunk.length, plainSize,
+                header.formatVersion());
+        }
+        if (chunk.length < plainSize) {
+            return new int[0];
+        }
+
+        final ByteBuffer in = ByteBuffer.wrap(chunk).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        final int[] checksums = new int[sectors];
+        for (int i = 0; i < sectors; i++) {
+            checksums[i] = in.getInt();
+        }
+        return checksums;
+    }
+
+    /**
+     * Compares one sector against its recorded checksum.
+     * <p>
+     * Zero and {@code 0xFFFFFFFF} mean "not recorded" — StormLib skips both
+     * explicitly — so neither is a mismatch.
+     */
+    private void verifyChecksum(MpqFileEntry entry, int[] checksums, int index, byte[] sector)
+        throws JMpqException {
+        if (index >= checksums.length) {
+            return;
+        }
+        final int expected = checksums[index];
+        if (expected == 0 || expected == -1) {
+            return;
+        }
+        final int actual = MpqChecksums.adler32(sector);
+        if (actual != expected) {
+            throw new JMpqException("Sector " + index + " of <" + entry.name()
+                + "> has checksum 0x" + Integer.toHexString(actual) + " but the archive records 0x"
+                + Integer.toHexString(expected) + "; the file is damaged.");
         }
     }
 
@@ -228,14 +306,17 @@ final class MpqFileReader {
         }
 
         // Each chunk has its own key, so decrypt chunk by chunk using the
-        // offset table's own boundaries. Iterating every gap rather than only
-        // the data sectors also covers the checksum chunk of a SECTOR_CRC file.
+        // offset table's own boundaries. Only the data sectors: the checksum
+        // chunk of a SECTOR_CRC file is never encrypted — StormLib loads it
+        // with key 0 and writes it without encrypting — so "decrypting" it
+        // would corrupt it, and the caller then clears the encryption flags,
+        // which would make that permanent.
         final int[] offsets = readSectorOffsets(entry, base, key);
         final byte[] table = source.bytes(base, offsets.length * 4);
         new MPQEncryption(key - 1, true).processSingle(ByteBuffer.wrap(table));
         System.arraycopy(table, 0, stored, 0, table.length);
 
-        for (int i = 0; i < offsets.length - 1; i++) {
+        for (int i = 0; i < dataSectorCount(entry); i++) {
             final int start = offsets[i];
             final int end = offsets[i + 1];
             if (start < 0 || end < start || end > stored.length) {

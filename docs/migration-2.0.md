@@ -97,9 +97,45 @@ replaced by the version's real size and the archive opens with
 `header().malformed()` set, matching what Storm.dll does. 1.x refused unless you
 passed `FORCE_V0`.
 
-**Hi-block tables are refused.** Archives placing file data beyond 4 GiB are
-rejected explicitly rather than misread. Support arrives with the version 2 to 4
-read work.
+**Hi-block tables are read.** Archives placing file data beyond 4 GiB have their
+file positions extended from the hi-block table, as StormLib does. A hi-block
+table that falls outside the file is ignored and the archive flagged malformed,
+rather than refused.
+
+**Sector checksums are verified by default.** Where an archive records an
+Adler-32 per sector, a mismatch now fails the read instead of returning bytes
+known to be wrong. 1.x ignored the checksums entirely. If you would rather
+recover what is still intact from a damaged archive, turn it off:
+
+```java
+MpqArchive.open(path, MpqOpenOptions.defaults()
+    .withSectorChecksumVerification(false));
+```
+
+**Attributes are parsed properly.** `archive.attributes()` returns a
+`MpqAttributes` honouring the file's own bytemask, so archives carrying MD5
+digests or patch bits are read rather than misread. The 1.x `AttributesFile`
+assumed one fixed layout and reported one entry fewer than the file held.
+
+## Recording metadata on write
+
+Both are opt-in, because both change the bytes of every file written and
+neither is needed for a valid archive. Warcraft III wants neither; StormLib
+normally writes both.
+
+```java
+MpqWriteOptions.defaults()
+    .withSectorChecksums(true)                     // Adler-32 per sector
+    .withAttributes(true)                          // generate (attributes)
+    .withAttributesTimestamp(buildTimestampMillis) // pin it, or the build is not reproducible
+```
+
+Two things to know. Generating `(attributes)` requires a CRC32 over each file's
+decoded content, so it forces a decode of files that would otherwise have been
+copied verbatim — enabling it costs real time on a large rebuild. And supplying
+your own `(attributes)` while asking for generation is refused rather than
+producing two entries under one name; supplying it alone stays legal, which is
+how you preserved it before generation existed.
 
 ## Protection tooling
 

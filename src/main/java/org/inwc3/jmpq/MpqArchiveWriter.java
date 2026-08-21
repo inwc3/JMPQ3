@@ -54,13 +54,14 @@ public final class MpqArchiveWriter {
     private static final int KEY_BLOCK_TABLE = tableKey("(block table)");
 
     /**
-     * Internal files the writer generates itself, so a caller cannot supply
-     * them: doing so would put two entries under one name.
+     * Internal files the writer always generates itself, so a caller cannot
+     * supply them: doing so would put two entries under one name.
      * <p>
-     * Only {@code (listfile)} qualifies. {@code (attributes)} and
-     * {@code (signature)} are not generated, so a caller holding their bytes is
-     * free to write them as ordinary files -- which is the only way to preserve
-     * them until attributes generation lands.
+     * Only {@code (listfile)} is unconditional. {@code (attributes)} is
+     * generated only when asked for, so supplying it stays legal otherwise and
+     * is refused at build time when both are requested. {@code (signature)} is
+     * never generated, so a caller holding those bytes may write them as an
+     * ordinary file.
      */
     private static final List<String> GENERATED = List.of("(listfile)");
 
@@ -71,6 +72,16 @@ public final class MpqArchiveWriter {
      */
     private static final List<String> NOT_CARRIED_OVER =
         List.of("(listfile)", "(attributes)", "(signature)");
+
+    /**
+     * Flags the writer gives the internal files it generates, matching what
+     * StormLib gives them: compressed, encrypted, and with the key adjusted for
+     * position so moving the file invalidates it.
+     */
+    private static final int INTERNAL_FILE_FLAGS = MpqFileEntry.FLAG_EXISTS
+        | MpqFileEntry.FLAG_COMPRESSED
+        | MpqFileEntry.FLAG_ENCRYPTED
+        | MpqFileEntry.FLAG_ADJUSTED_KEY;
 
     private static int tableKey(String name) {
         final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
@@ -380,10 +391,23 @@ public final class MpqArchiveWriter {
 
         // Name plus locale, because the hash table needs both and a path
         // may appear once per locale.
-        final List<Written> written = new ArrayList<>(pending.size() + 1);
-        final List<BlockRow> blocks = new ArrayList<>(pending.size() + 1);
+        if (options.writeAttributes() && contains(MpqAttributes.NAME)) {
+            throw new JMpqException("Cannot both generate " + MpqAttributes.NAME
+                + " and write a supplied one: the archive would hold two entries under that"
+                + " name. Either drop the supplied file or turn attributes generation off.");
+        }
+
+        final List<Written> written = new ArrayList<>(pending.size() + 2);
+        final List<BlockRow> blocks = new ArrayList<>(pending.size() + 2);
+        // One CRC32 per block, in block order, for the (attributes) file. Left
+        // empty when attributes are not requested, so nothing is decoded for
+        // the sake of a checksum nobody asked for.
+        final List<Integer> checksums = new ArrayList<>(pending.size() + 2);
 
         for (Pending file : pending.values()) {
+            // Taken before writing, because a verbatim copy never decodes the
+            // file and the checksum is over its decoded content.
+            checksums.add(options.writeAttributes() ? crc32(contentOf(file)) : 0);
             blocks.add(writeFile(image, base, file, sectorSize));
             written.add(new Written(file.name(), file.locale()));
         }
@@ -393,9 +417,21 @@ public final class MpqArchiveWriter {
             // enumerated, so a later rebuild would lose every name.
             final byte[] listfile = buildListfile(written);
             written.add(new Written("(listfile)", MpqOpenOptions.NEUTRAL_LOCALE));
+            checksums.add(options.writeAttributes() ? crc32(listfile) : 0);
             blocks.add(writeEncoded(image, base, "(listfile)", listfile, sectorSize,
-                MpqFileEntry.FLAG_EXISTS | MpqFileEntry.FLAG_COMPRESSED
-                    | MpqFileEntry.FLAG_ENCRYPTED | MpqFileEntry.FLAG_ADJUSTED_KEY));
+                INTERNAL_FILE_FLAGS));
+        }
+
+        if (options.writeAttributes()) {
+            // Its own arrays have to be sized before it is written, and they
+            // cover every block table row -- including this file's own and any
+            // spare slots. Its own checksum stays 0, which cannot be computed
+            // without knowing it, and which readers treat as "not recorded".
+            final int rows = blocks.size() + 1 + options.extraBlockEntries();
+            final byte[] attributes = buildAttributes(checksums, rows);
+            written.add(new Written(MpqAttributes.NAME, MpqOpenOptions.NEUTRAL_LOCALE));
+            blocks.add(writeEncoded(image, base, MpqAttributes.NAME, attributes, sectorSize,
+                INTERNAL_FILE_FLAGS));
         }
 
         final int hashCapacity = hashTableCapacity(written.size());
@@ -466,10 +502,48 @@ public final class MpqArchiveWriter {
     private BlockRow writeEncoded(MpqImageBuffer image, int base, String name, byte[] content,
                                   int sectorSize, int requestedFlags) {
         final long position = (long) image.position() - base;
-        final int flags = requestedFlags == 0 ? MpqSectorWriter.flagsFor(content.length) : requestedFlags;
+        int flags = requestedFlags == 0
+            ? MpqSectorWriter.flagsFor(content.length, options.sectorChecksums())
+            : requestedFlags;
+        if (options.sectorChecksums() && content.length > 0) {
+            flags |= MpqFileEntry.FLAG_SECTOR_CRC;
+        }
         final int compressedSize = MpqSectorWriter.write(image, content, sectorSize, name,
             flags, position, options.recompression());
         return new BlockRow(position, compressedSize, content.length, flags);
+    }
+
+    /**
+     * Builds the {@code (attributes)} content.
+     * <p>
+     * The arrays are indexed by block table row and cover every row the archive
+     * will have, so spare slots get a zero checksum and a zero timestamp --
+     * which is what "not recorded" looks like to a reader.
+     *
+     * @param checksums one CRC32 per block written so far.
+     * @param rows      total block table rows the archive will declare.
+     * @return the attributes file content.
+     */
+    private byte[] buildAttributes(List<Integer> checksums, int rows) {
+        final int[] crc = new int[rows];
+        final long[] times = new long[rows];
+        final long now = options.metadata().fileTime();
+        for (int i = 0; i < rows; i++) {
+            final boolean real = i < checksums.size();
+            crc[i] = real ? checksums.get(i) : 0;
+            times[i] = real ? now : 0;
+        }
+        return MpqAttributes.build(crc, times);
+    }
+
+    /**
+     * @param content a file's decoded bytes.
+     * @return its zlib CRC32, the value {@code (attributes)} records.
+     */
+    private static int crc32(byte[] content) {
+        final java.util.zip.CRC32 digest = new java.util.zip.CRC32();
+        digest.update(content);
+        return (int) digest.getValue();
     }
 
     private byte[] contentOf(Pending file) throws IOException {

@@ -2,6 +2,10 @@ package org.inwc3.jmpq;
 
 import systems.crigges.jmpq3.JMpqException;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+
 /**
  * An MPQ archive header, parsed into an immutable model.
  *
@@ -55,6 +59,9 @@ import systems.crigges.jmpq3.JMpqException;
  * @param hiBlockTablePosition hi-block table offset, or 0 when absent.
  * @param hetTablePosition  HET table offset, or 0 when absent.
  * @param betTablePosition  BET table offset, or 0 when absent.
+ * @param extended          the version 3 additions, or {@link Extended#NONE}.
+ * @param userData          the user data header this archive sits behind, or
+ *                          {@code null} when it starts the file.
  * @param malformed         whether the header needed repair to be usable; the
  *                          archive is still readable, but its declared values
  *                          were not trustworthy.
@@ -72,6 +79,8 @@ public record MpqHeader(
     long hiBlockTablePosition,
     long hetTablePosition,
     long betTablePosition,
+    Extended extended,
+    MpqUserData userData,
     boolean malformed) {
 
     /** {@code 'MPQ\x1A'}, the archive header signature. */
@@ -104,6 +113,92 @@ public record MpqHeader(
     /** Size of one block table entry. */
     public static final int BLOCK_ENTRY_SIZE = 16;
 
+    /** Size of one hi-block table entry: the high word of a file position. */
+    public static final int HI_BLOCK_ENTRY_SIZE = 2;
+
+    /**
+     * The version 3 header additions: compressed table sizes and MD5 digests.
+     * <p>
+     * From version 3 the tables may be stored compressed, which the position
+     * fields alone cannot express — you need the stored length to know where a
+     * table ends, and comparing it against the uncompressed length is the only
+     * way to tell whether it is compressed at all. The digests let a reader
+     * detect a damaged table before trusting it, which StormLib reports rather
+     * than treating as fatal.
+     *
+     * @param hashTableCompressedSize   stored length of the hash table, or 0.
+     * @param blockTableCompressedSize  stored length of the block table, or 0.
+     * @param hiBlockTableCompressedSize stored length of the hi-block table.
+     * @param hetTableCompressedSize    stored length of the HET table, or 0.
+     * @param betTableCompressedSize    stored length of the BET table, or 0.
+     * @param rawChunkSize              chunk size the MD5s were taken over.
+     * @param md5BlockTable             expected digest of the block table.
+     * @param md5HashTable              expected digest of the hash table.
+     * @param md5HiBlockTable           expected digest of the hi-block table.
+     * @param md5BetTable               expected digest of the BET table.
+     * @param md5HetTable               expected digest of the HET table.
+     * @param md5Header                 expected digest of the header itself.
+     */
+    public record Extended(
+        long hashTableCompressedSize,
+        long blockTableCompressedSize,
+        long hiBlockTableCompressedSize,
+        long hetTableCompressedSize,
+        long betTableCompressedSize,
+        int rawChunkSize,
+        byte[] md5BlockTable,
+        byte[] md5HashTable,
+        byte[] md5HiBlockTable,
+        byte[] md5BetTable,
+        byte[] md5HetTable,
+        byte[] md5Header) {
+
+        /** Length of an MD5 digest. */
+        public static final int DIGEST_SIZE = 16;
+
+        /** What a header below version 3 carries: nothing. */
+        public static final Extended NONE = new Extended(0, 0, 0, 0, 0, 0,
+            new byte[0], new byte[0], new byte[0], new byte[0], new byte[0], new byte[0]);
+
+        /**
+         * @return whether any digest was recorded, and so whether validating
+         *         the tables against them is meaningful.
+         */
+        public boolean hasDigests() {
+            return md5HashTable.length == DIGEST_SIZE || md5BlockTable.length == DIGEST_SIZE;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (!(other instanceof Extended that)) {
+                return false;
+            }
+            return hashTableCompressedSize == that.hashTableCompressedSize
+                && blockTableCompressedSize == that.blockTableCompressedSize
+                && hiBlockTableCompressedSize == that.hiBlockTableCompressedSize
+                && hetTableCompressedSize == that.hetTableCompressedSize
+                && betTableCompressedSize == that.betTableCompressedSize
+                && rawChunkSize == that.rawChunkSize
+                && Arrays.equals(md5BlockTable, that.md5BlockTable)
+                && Arrays.equals(md5HashTable, that.md5HashTable)
+                && Arrays.equals(md5HiBlockTable, that.md5HiBlockTable)
+                && Arrays.equals(md5BetTable, that.md5BetTable)
+                && Arrays.equals(md5HetTable, that.md5HetTable)
+                && Arrays.equals(md5Header, that.md5Header);
+        }
+
+        @Override
+        public int hashCode() {
+            return Long.hashCode(hashTableCompressedSize) * 31 + rawChunkSize;
+        }
+
+        @Override
+        public String toString() {
+            return "Extended[rawChunkSize=" + rawChunkSize
+                + ", digests=" + (hasDigests() ? "present" : "absent") + "]";
+        }
+    }
+
     /**
      * @return the archive's sector size in bytes.
      */
@@ -112,11 +207,18 @@ public record MpqHeader(
     }
 
     /**
-     * @return whether this archive uses HET/BET tables, which this library
-     *         reads but does not write.
+     * @return whether this archive carries HET/BET tables in addition to, or
+     *         instead of, the classic hash and block tables.
      */
     public boolean hasExtendedTables() {
         return hetTablePosition != 0 || betTablePosition != 0;
+    }
+
+    /**
+     * @return whether a hi-block table extends file positions past 4 GiB.
+     */
+    public boolean hasHiBlockTable() {
+        return hiBlockTablePosition != 0;
     }
 
     /**
@@ -134,6 +236,98 @@ public record MpqHeader(
     }
 
     /**
+     * @return absolute file offset of the hi-block table.
+     */
+    public long hiBlockTableFileOffset() {
+        return headerOffset + hiBlockTablePosition;
+    }
+
+    /**
+     * Stored length of the hash table.
+     * <p>
+     * A version 3 archive may compress its tables, in which case the stored
+     * length is shorter than the entries imply. Below version 3, and whenever
+     * the field is absent or not shorter, the table is stored plain.
+     *
+     * @return bytes the hash table occupies in the file.
+     */
+    public long hashTableStoredSize() {
+        final long plain = (long) hashTableEntries * HASH_ENTRY_SIZE;
+        final long declared = extended.hashTableCompressedSize();
+        return declared > 0 && declared < plain ? declared : plain;
+    }
+
+    /**
+     * @return bytes the block table occupies in the file.
+     */
+    public long blockTableStoredSize() {
+        final long plain = (long) blockTableEntries * BLOCK_ENTRY_SIZE;
+        final long declared = extended.blockTableCompressedSize();
+        return declared > 0 && declared < plain ? declared : plain;
+    }
+
+    /**
+     * @return whether the hash table is stored compressed.
+     */
+    public boolean isHashTableCompressed() {
+        return hashTableStoredSize() < (long) hashTableEntries * HASH_ENTRY_SIZE;
+    }
+
+    /**
+     * @return whether the block table is stored compressed.
+     */
+    public boolean isBlockTableCompressed() {
+        return blockTableStoredSize() < (long) blockTableEntries * BLOCK_ENTRY_SIZE;
+    }
+
+    /**
+     * Checks the header against its own MD5 digest.
+     * <p>
+     * The digest covers the header up to but not including the digest field
+     * itself, which sits at the very end of a version 3 header.
+     *
+     * @param source the archive bytes.
+     * @return true when no digest was recorded, or when it matches.
+     * @throws JMpqException if the header cannot be read.
+     */
+    public boolean verifyHeaderDigest(MpqSource source) throws JMpqException {
+        if (extended.md5Header().length != Extended.DIGEST_SIZE) {
+            return true;
+        }
+        final int covered = SIZE_BY_VERSION[3] - Extended.DIGEST_SIZE;
+        return matchesDigest(source.bytes(headerOffset, covered), extended.md5Header());
+    }
+
+    /**
+     * @param data   the bytes to digest.
+     * @param digest the expected MD5, or an empty array to skip the check.
+     * @return whether the digest matches, or true when there is nothing to
+     *         compare against.
+     */
+    static boolean matchesDigest(byte[] data, byte[] digest) {
+        if (digest.length != Extended.DIGEST_SIZE || isAllZero(digest)) {
+            // StormLib treats an all-zero digest as "not recorded" rather than
+            // as the digest of these bytes.
+            return true;
+        }
+        try {
+            return Arrays.equals(MessageDigest.getInstance("MD5").digest(data), digest);
+        } catch (NoSuchAlgorithmException impossible) {
+            // Every Java runtime is required to provide MD5.
+            throw new IllegalStateException("MD5 unavailable", impossible);
+        }
+    }
+
+    private static boolean isAllZero(byte[] digest) {
+        for (byte value : digest) {
+            if (value != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Locates and parses the archive header.
      *
      * @param source  the archive bytes.
@@ -145,8 +339,12 @@ public record MpqHeader(
      * @throws JMpqException if no usable archive header can be found.
      */
     public static MpqHeader parse(MpqSource source, boolean forceV0) throws JMpqException {
-        final long offset = findHeader(source, forceV0);
-        return parseAt(source, offset, forceV0);
+        final Located located = findHeader(source, forceV0);
+        return parseAt(source, located, forceV0);
+    }
+
+    /** Where a header was found, and what preceded it. */
+    private record Located(long offset, MpqUserData userData) {
     }
 
     /**
@@ -156,30 +354,53 @@ public record MpqHeader(
      * ({@code MPQ\x1B}) redirects to the real one, and the redirect target is
      * validated before being followed: protected archives plant user data
      * headers pointing nowhere. In {@code forceV0} mode user data headers are
-     * ignored entirely, as Warcraft III ignores them, and candidate headers are
-     * checked for plausibility so a decoy does not win.
+     * ignored entirely, as Warcraft III ignores them.
+     * <p>
+     * P2-5b: a candidate that fails a cheap plausibility test does not end the
+     * scan. Protected archives plant decoy {@code MPQ\x1A} signatures precisely
+     * so that a reader commits to the first one it sees and then fails. Keeping
+     * the first candidate as a fallback means this can only ever find a header
+     * where the old scan found one, never fewer.
      */
-    private static long findHeader(MpqSource source, boolean forceV0) throws JMpqException {
+    private static Located findHeader(MpqSource source, boolean forceV0) throws JMpqException {
         final long size = source.size();
+        Located fallback = null;
 
         for (long position = 0; position + 4 <= size; position += ALIGNMENT) {
             final int signature = source.i32(position);
 
             if (signature == ARCHIVE_SIGNATURE) {
-                if (forceV0 && !isPlausible(source, position)) {
-                    continue;
+                final Located candidate = new Located(position, null);
+                if (isPlausible(source, position)) {
+                    return candidate;
                 }
-                return position;
+                if (fallback == null) {
+                    fallback = candidate;
+                }
+                continue;
             }
 
-            if (signature == USER_DATA_SIGNATURE && !forceV0 && source.contains(position + 8, 4)) {
-                final long redirected = position + source.u32(position + 8);
+            if (signature == USER_DATA_SIGNATURE && !forceV0) {
+                final MpqUserData userData = MpqUserData.readAt(source, position);
+                if (userData == null) {
+                    continue;
+                }
+                final long redirected = userData.archiveHeaderOffset();
                 if (source.contains(redirected, 4) && source.i32(redirected) == ARCHIVE_SIGNATURE) {
-                    return redirected;
+                    final Located candidate = new Located(redirected, userData);
+                    if (isPlausible(source, redirected)) {
+                        return candidate;
+                    }
+                    if (fallback == null) {
+                        fallback = candidate;
+                    }
                 }
             }
         }
 
+        if (fallback != null) {
+            return fallback;
+        }
         throw new JMpqException("No MPQ archive header in " + source.origin() + ".");
     }
 
@@ -201,7 +422,8 @@ public record MpqHeader(
             && blockTablePosition > 0
             && hashTableEntries > 0
             && sectorShift <= MAX_SECTOR_SIZE_SHIFT
-            && source.contains(position + hashTablePosition, 0)
+            && source.contains(position + hashTablePosition,
+                (long) hashTableEntries * HASH_ENTRY_SIZE)
             && source.contains(position + blockTablePosition, 0);
     }
 
@@ -214,7 +436,9 @@ public record MpqHeader(
      * ignores the field too. That is what makes the protected maps of issue #46
      * readable.
      */
-    private static MpqHeader parseAt(MpqSource source, long offset, boolean forceV0) throws JMpqException {
+    private static MpqHeader parseAt(MpqSource source, Located located, boolean forceV0)
+        throws JMpqException {
+        final long offset = located.offset();
         int declaredHeaderSize = source.i32(offset + 0x04);
         int formatVersion = source.u16(offset + 0x0C);
         boolean malformed = false;
@@ -261,6 +485,7 @@ public record MpqHeader(
         long hiBlockTablePosition = 0;
         long hetTablePosition = 0;
         long betTablePosition = 0;
+        Extended extended = Extended.NONE;
 
         if (formatVersion >= 1) {
             hiBlockTablePosition = source.i64(offset + 0x20);
@@ -272,6 +497,21 @@ public record MpqHeader(
             archiveSize = source.i64(offset + 0x2C);
             betTablePosition = source.i64(offset + 0x34);
             hetTablePosition = source.i64(offset + 0x3C);
+        }
+        if (formatVersion >= 3) {
+            extended = new Extended(
+                source.i64(offset + 0x44),
+                source.i64(offset + 0x4C),
+                source.i64(offset + 0x54),
+                source.i64(offset + 0x5C),
+                source.i64(offset + 0x64),
+                source.i32(offset + 0x6C),
+                source.bytes(offset + 0x70, Extended.DIGEST_SIZE),
+                source.bytes(offset + 0x80, Extended.DIGEST_SIZE),
+                source.bytes(offset + 0x90, Extended.DIGEST_SIZE),
+                source.bytes(offset + 0xA0, Extended.DIGEST_SIZE),
+                source.bytes(offset + 0xB0, Extended.DIGEST_SIZE),
+                source.bytes(offset + 0xC0, Extended.DIGEST_SIZE));
         }
 
         // The declared archive size is advisory: StormLib notes it "is ignored
@@ -289,7 +529,21 @@ public record MpqHeader(
             throw new JMpqException("Archive declares " + hashTableEntries
                 + " hash table entries, above the " + MAX_HASH_TABLE_ENTRIES + " StormLib accepts.");
         }
-        if (!source.contains(offset + hashTablePosition, (long) hashTableEntries * HASH_ENTRY_SIZE)) {
+
+        if (hiBlockTablePosition < 0
+            || (hiBlockTablePosition != 0 && !source.contains(offset + hiBlockTablePosition, 0))) {
+            // A position outside the file cannot be a table. Dropping it leaves
+            // the low words, which is what a version 0 reader would use.
+            hiBlockTablePosition = 0;
+            malformed = true;
+        }
+
+        final MpqHeader header = new MpqHeader(offset, headerSize, formatVersion, archiveSize,
+            sectorSizeShift, hashTablePosition, blockTablePosition, hashTableEntries,
+            blockTableEntries, hiBlockTablePosition, hetTablePosition, betTablePosition,
+            extended, located.userData(), malformed);
+
+        if (!source.contains(offset + hashTablePosition, header.hashTableStoredSize())) {
             throw new JMpqException("Hash table at " + (offset + hashTablePosition) + " spanning "
                 + hashTableEntries + " entries runs past the end of " + source.origin() + ".");
         }
@@ -302,11 +556,17 @@ public record MpqHeader(
             blockTableEntries = 0;
             malformed = true;
         }
-        final long blockTableBytes = (long) blockTableEntries * BLOCK_ENTRY_SIZE;
-        if (!source.contains(offset + blockTablePosition, blockTableBytes)) {
+        if (!source.contains(offset + blockTablePosition, header.blockTableStoredSize())) {
             // StormLib does exactly this: archives in the wild declare a block
             // table far larger than the file, and rejecting them would be
-            // stricter than the game.
+            // stricter than the game. A compressed table cannot be reinterpreted
+            // this way, because its entry count is not implied by its length.
+            if (header.isBlockTableCompressed()) {
+                throw new JMpqException("Compressed block table at "
+                    + (offset + blockTablePosition) + " spanning "
+                    + header.blockTableStoredSize() + " bytes runs past the end of "
+                    + source.origin() + ".");
+            }
             final long fits = (source.size() - offset - blockTablePosition) / BLOCK_ENTRY_SIZE;
             blockTableEntries = (int) Math.max(0, fits);
             malformed = true;
@@ -314,6 +574,7 @@ public record MpqHeader(
 
         return new MpqHeader(offset, headerSize, formatVersion, archiveSize, sectorSizeShift,
             hashTablePosition, blockTablePosition, hashTableEntries, blockTableEntries,
-            hiBlockTablePosition, hetTablePosition, betTablePosition, malformed);
+            hiBlockTablePosition, hetTablePosition, betTablePosition,
+            extended, located.userData(), malformed);
     }
 }

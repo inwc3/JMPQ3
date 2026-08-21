@@ -452,11 +452,16 @@ public class MpqFile {
             return stored;
         }
 
+        // Only the data sectors. The checksum chunk of a SECTOR_CRC file is
+        // never encrypted -- StormLib writes it plain and loads it with key 0 --
+        // so decrypting it here would corrupt it, and because the caller then
+        // clears the encryption flags while keeping SECTOR_CRC, that corruption
+        // would be written back as authoritative.
         final int[] offsets = readSectorOffsets();
         final byte[] table = readAt(0, offsets.length * 4);
         decrypt(table, baseKey - 1);
         System.arraycopy(table, 0, stored, 0, table.length);
-        for (int i = 0; i < offsets.length - 1; i++) {
+        for (int i = 0; i < dataSectorCount(); i++) {
             final int start = offsets[i];
             final int end = offsets[i + 1];
             validateSectorRange(i, start, end);

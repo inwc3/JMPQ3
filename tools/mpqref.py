@@ -476,6 +476,8 @@ class Archive:
                 raise Corrupt("%s sector %d spans [%d, %d) outside %d stored bytes"
                               % (name, i, offsets[i], offsets[i + 1], block.compressed_size))
 
+        checksums = self._sector_checksums(block, raw, offsets, data_sectors)
+
         out = bytearray()
         codecs = set()
         remaining = block.normal_size
@@ -483,6 +485,11 @@ class Archive:
             sector = raw[offsets[i]: offsets[i + 1]]
             if encrypted:
                 sector = decrypt(sector, (key + i) & MASK32)
+            if i < len(checksums) and checksums[i] not in (0, 0xFFFFFFFF):
+                actual = zlib.adler32(sector, 0) & MASK32
+                if actual != checksums[i]:
+                    raise Corrupt("%s sector %d has adler32 %08x but the archive records %08x"
+                                  % (name, i, actual, checksums[i]))
             expected = min(remaining, self.sector_size)
             if block.has(FLAG_IMPLODE):
                 raise Unsupported("pkware")
@@ -495,6 +502,29 @@ class Archive:
             remaining -= expected
 
         return bytes(out), ",".join(sorted(codecs))
+
+    def _sector_checksums(self, block, raw, offsets, data_sectors):
+        """Per-sector Adler-32 values of a SECTOR_CRC file.
+
+        StormLib names the flag after CRC but computes adler32(0, ...) over the
+        sector as stored minus its encryption, and the chunk holding the values
+        sits after the data sectors, delimited by the last two offset entries.
+        The chunk is zlib compressed when that is smaller, and is never
+        encrypted -- StormLib loads it with key 0 even for an encrypted file.
+        """
+        if not block.has(FLAG_SECTOR_CRC) or data_sectors == 0:
+            return []
+        start = offsets[data_sectors]
+        end = offsets[data_sectors + 1]
+        if end <= start:
+            return []
+        chunk = raw[start:end]
+        plain_size = data_sectors * 4
+        if len(chunk) < plain_size:
+            chunk, _ = decompress_sector(chunk, plain_size, self.format_version)
+        if len(chunk) < plain_size:
+            return []
+        return list(struct.unpack("<%dI" % data_sectors, chunk[:plain_size]))
 
     # -- reporting ------------------------------------------------------
 
