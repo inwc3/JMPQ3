@@ -269,6 +269,31 @@ public class MpqAttributesTests {
     }
 
     /**
+     * A version other than 100 means the body is not laid out the way this code
+     * reads it.
+     * <p>
+     * 100 is the only version the format has ever had, so a different one is
+     * either a future format or corruption. Parsing it anyway turns a
+     * same-length file into plausible-looking checksums and timestamps that
+     * describe nothing, which is worse than reporting it unreadable — the
+     * archive still opens either way, since attributes are advisory.
+     */
+    @Test
+    public void anUnknownVersionIsRejectedRatherThanReinterpreted() {
+        final byte[] file = MpqAttributes.build(new int[]{1, 2}, new long[]{3, 4});
+        file[0] = (byte) 200;
+
+        final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+            () -> MpqAttributes.parse(file, 2));
+        Assert.assertTrue(thrown.getMessage().contains("version 200"), thrown.getMessage());
+
+        // Version 0, which is what a zeroed or truncated file looks like.
+        final byte[] zeroed = MpqAttributes.build(new int[]{1, 2}, new long[]{3, 4});
+        zeroed[0] = 0;
+        Assert.expectThrows(JMpqException.class, () -> MpqAttributes.parse(zeroed, 2));
+    }
+
+    /**
      * A bytemask naming nothing this implementation knows describes no entries.
      * Worth its own test: the length-driven count only terminates because of
      * that, and without the guard the deprecated parser spins forever.

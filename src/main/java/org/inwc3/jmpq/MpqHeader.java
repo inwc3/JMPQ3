@@ -284,8 +284,19 @@ public record MpqHeader(
      * @return bytes the hash table occupies in the file.
      */
     public long hashTableStoredSize() {
-        final long plain = (long) hashTableEntries * HASH_ENTRY_SIZE;
-        final long declared = extended.hashTableCompressedSize();
+        return storedSize(extended.hashTableCompressedSize(),
+            (long) hashTableEntries * HASH_ENTRY_SIZE);
+    }
+
+    /**
+     * Resolves a table's stored length.
+     *
+     * @param declared the compressed size the header records, or 0.
+     * @param plain    the length the entry count implies.
+     * @return {@code declared} when it names a shorter, compressed table,
+     *         otherwise {@code plain}.
+     */
+    private static long storedSize(long declared, long plain) {
         return declared > 0 && declared < plain ? declared : plain;
     }
 
@@ -293,9 +304,8 @@ public record MpqHeader(
      * @return bytes the block table occupies in the file.
      */
     public long blockTableStoredSize() {
-        final long plain = (long) blockTableEntries * BLOCK_ENTRY_SIZE;
-        final long declared = extended.blockTableCompressedSize();
-        return declared > 0 && declared < plain ? declared : plain;
+        return storedSize(extended.blockTableCompressedSize(),
+            (long) blockTableEntries * BLOCK_ENTRY_SIZE);
     }
 
     /**
@@ -662,12 +672,9 @@ public record MpqHeader(
             malformed = true;
         }
 
-        final MpqHeader header = new MpqHeader(offset, headerSize, formatVersion, archiveSize,
-            sectorSizeShift, hashTablePosition, blockTablePosition, hashTableEntries,
-            blockTableEntries, hiBlockTablePosition, hetTablePosition, betTablePosition,
-            extended, located.userData(), malformed);
-
-        if (!source.contains(offset + hashTablePosition, header.hashTableStoredSize())) {
+        if (!source.contains(offset + hashTablePosition,
+            storedSize(extended.hashTableCompressedSize(),
+                (long) hashTableEntries * HASH_ENTRY_SIZE))) {
             throw new JMpqException("Hash table at " + (offset + hashTablePosition) + " spanning "
                 + hashTableEntries + " entries runs past the end of " + source.origin() + ".");
         }
@@ -680,15 +687,26 @@ public record MpqHeader(
             blockTableEntries = 0;
             malformed = true;
         }
-        if (!source.contains(offset + blockTablePosition, header.blockTableStoredSize())) {
+
+        // Worked out from the clamped count, not from a half-built header. An
+        // earlier version validated against a model still holding the raw
+        // negative count, so its stored size came out negative, the range check
+        // always failed, and the recovery below then replaced the clamped zero
+        // with every 16-byte row between the table and the end of the file --
+        // turning trailing bytes into live block entries.
+        final long blockTablePlain = (long) blockTableEntries * BLOCK_ENTRY_SIZE;
+        final long blockTableStored =
+            storedSize(extended.blockTableCompressedSize(), blockTablePlain);
+
+        if (!source.contains(offset + blockTablePosition, blockTableStored)) {
             // StormLib does exactly this: archives in the wild declare a block
             // table far larger than the file, and rejecting them would be
             // stricter than the game. A compressed table cannot be reinterpreted
             // this way, because its entry count is not implied by its length.
-            if (header.isBlockTableCompressed()) {
+            if (blockTableStored < blockTablePlain) {
                 throw new JMpqException("Compressed block table at "
                     + (offset + blockTablePosition) + " spanning "
-                    + header.blockTableStoredSize() + " bytes runs past the end of "
+                    + blockTableStored + " bytes runs past the end of "
                     + source.origin() + ".");
             }
             final long fits = (source.size() - offset - blockTablePosition) / BLOCK_ENTRY_SIZE;

@@ -235,6 +235,15 @@ public record MpqAttributes(
         final int version = in.getInt();
         final int flags = in.getInt();
 
+        if (version != VERSION) {
+            // 100 is the only version there has ever been, so a different one
+            // means the body is not laid out the way this code reads it. A
+            // same-length file would otherwise parse into plausible-looking
+            // checksums and timestamps that describe nothing.
+            throw new JMpqException("An attributes file declares version " + version
+                + "; only " + VERSION + " is known.");
+        }
+
         // An unknown bit means an array of unknown length, so nothing after the
         // arrays we do understand can be located. Reading the known prefix and
         // ignoring the rest is what StormLib does.

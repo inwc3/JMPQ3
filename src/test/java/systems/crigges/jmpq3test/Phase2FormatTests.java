@@ -451,6 +451,42 @@ public class Phase2FormatTests {
         throw new AssertionError("no header in the test fixture");
     }
 
+    /**
+     * A negative declared block count means no block table, not "every 16 bytes
+     * to the end of the file".
+     * <p>
+     * The count is clamped to zero, and the range check that decides whether to
+     * reinterpret an oversized table has to use the clamped value. Validating
+     * against the raw negative count made its byte length negative, so the check
+     * failed, and the recovery path then replaced the clamped zero with every row
+     * that fitted between the table and EOF — reading trailing bytes as live
+     * block entries.
+     */
+    @Test
+    public void aNegativeBlockCountDoesNotBecomeEverythingToTheEndOfTheFile() throws IOException {
+        final byte[] archive = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        // Trailing bytes after the block table, so "everything that fits" and
+        // "nothing" are observably different answers.
+        final byte[] image = new byte[archive.length + 64];
+        System.arraycopy(archive, 0, image, 0, archive.length);
+        for (int i = archive.length; i < image.length; i++) {
+            image[i] = (byte) 0xCD;
+        }
+
+        final int headerAt = headerOffset(image);
+        ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).putInt(headerAt + 0x1C, -1);
+
+        try (MpqArchive open = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(open.header().blockTableEntries(), 0,
+                "a negative count describes no blocks at all");
+            Assert.assertTrue(open.header().malformed());
+            Assert.assertEquals(open.blockCount(), 0);
+        }
+    }
+
     // ------------------------------------------------- P2-1 user data header
 
     /**
