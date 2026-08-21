@@ -139,12 +139,16 @@ public class JMpqEditor implements AutoCloseable {
      */
     public JMpqEditor(byte[] mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
         this.path = null;
-        this.memoryImage = mpqArchive;
         this.forceV0 = has(openOptions, MPQOpenOption.FORCE_V0);
         this.writeRequested = !has(openOptions, MPQOpenOption.READ_ONLY);
         this.canWrite = writeRequested;
+        // A writable editor stays open across many calls and rebuilds at close,
+        // so it must not alias the caller's array: mutating it afterwards would
+        // change the live archive underneath. A read-only editor never writes,
+        // so it can wrap and skip the copy.
+        this.memoryImage = writeRequested ? mpqArchive.clone() : mpqArchive;
         try {
-            this.archive = MpqArchive.open(mpqArchive, openOptions());
+            this.archive = MpqArchive.open(memoryImage, openOptions());
         } catch (JMpqException e) {
             throw e;
         } catch (IOException e) {
@@ -255,9 +259,13 @@ public class JMpqEditor implements AutoCloseable {
                     log.debug("External listfile names <{}>, not held by the archive.", name);
                 }
             }
-            // A list file that resolves nothing leaves the archive as it was,
-            // rather than claiming it became writable.
-            if (resolved > 0) {
+            // Parsing succeeded, so the question is whether the result is
+            // complete. Any resolved name means progress; none is still complete
+            // when the archive holds nothing a rebuild could lose, which is the
+            // case for an empty archive and its empty list file. Requiring a
+            // resolved name left such an archive read-only and unable to receive
+            // its first file.
+            if (resolved > 0 || archive.filesLostOnRebuild() == 0) {
                 canWrite = true;
             }
             log.debug("Applied external listfile: {} of {} names resolved.", resolved, supplied.size());
@@ -690,8 +698,12 @@ public class JMpqEditor implements AutoCloseable {
         for (String gone : deleted) {
             writer.remove(gone);
         }
-        // Insertions last, so they win over whatever the archive held.
+        // Insertions last, so they win over whatever the archive held. Remove
+        // every locale variant of the path first: the 1.x API has no locale
+        // parameter, so an override means the path as a whole. Putting only the
+        // neutral variant would leave other locales behind with stale content.
         for (Insert insert : inserts.values()) {
+            writer.remove(insert.name());
             if (insert.bytes() != null) {
                 writer.put(insert.name(), insert.bytes());
             } else {

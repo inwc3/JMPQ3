@@ -264,6 +264,88 @@ public class BehaviourContractTests {
         }
     }
 
+    /**
+     * The 1.x API has no locale parameter, so an override replaces the path as a
+     * whole. Putting only the neutral variant would leave other locales behind
+     * holding stale content.
+     */
+    @Test
+    public void legacyOverrideReplacesEveryLocaleVariant() throws IOException {
+        final short german = 0x407;
+        final byte[] image = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put("war3map.wts", (short) 0, "old-neutral".getBytes(StandardCharsets.UTF_8))
+            .put("war3map.wts", german, "old-german".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        Path mpq = TestResources.scratchDir("locale-override").resolve("m.w3x");
+        Files.write(mpq, image);
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray("war3map.wts", "new".getBytes(StandardCharsets.UTF_8), true);
+        }
+
+        try (MpqArchive archive = MpqArchive.open(mpq, MpqOpenOptions.warcraft3())) {
+            Assert.assertEquals(archive.localesOf("war3map.wts").size(), 1,
+                "the override should have replaced the path, not one variant");
+            Assert.assertEquals(new String(archive.read("war3map.wts"), StandardCharsets.UTF_8),
+                "new");
+        }
+    }
+
+    /**
+     * A writable in-memory editor must not alias the caller's array: it stays
+     * open across many calls and rebuilds at close, so a later mutation would
+     * change the live archive underneath it.
+     */
+    @Test
+    public void writableInMemoryEditorDoesNotAliasTheInput() throws IOException {
+        final byte[] caller = Files.readAllBytes(TestResources.mpqCopy("normalMap"));
+
+        JMpqEditor editor = new JMpqEditor(caller, MPQOpenOption.FORCE_V0);
+        // Scribble over the caller's array while the editor is open.
+        java.util.Arrays.fill(caller, (byte) 0);
+        editor.insertByteArray("added.txt", "x".getBytes(StandardCharsets.UTF_8));
+        editor.close();
+
+        try (MpqArchive rebuilt =
+                 MpqArchive.open(editor.getOutputByteArray(), MpqOpenOptions.warcraft3())) {
+            Assert.assertTrue(rebuilt.contains("added.txt"));
+            Assert.assertTrue(rebuilt.contains("war3map.j"),
+                "the original contents should have survived the caller's scribbling");
+        }
+    }
+
+    /**
+     * An empty external list file is complete for an archive that holds nothing,
+     * so it must restore writability. Requiring a resolved name left a fresh
+     * archive unable to receive its first file.
+     */
+    @Test
+    public void emptyExternalListfileIsAcceptedWhenNothingIsAtRisk() throws IOException {
+        // An archive with no listfile and no files: nothing is at risk.
+        final byte[] image = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withListfile(false))
+            .toByteArray();
+        Path mpq = TestResources.scratchDir("empty-external").resolve("m.w3x");
+        Files.write(mpq, image);
+
+        Path emptyListfile = TestResources.scratchDir("empty-lf").resolve("listfile.txt");
+        Files.writeString(emptyListfile, "");
+
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            Assert.assertFalse(editor.isCanWrite(), "no listfile means read-only to start");
+            editor.setExternalListfile(emptyListfile.toFile());
+            Assert.assertTrue(editor.isCanWrite(),
+                "an empty listfile is complete when the archive holds nothing");
+            editor.insertByteArray("first.txt", "hello".getBytes(StandardCharsets.UTF_8));
+        }
+
+        try (MpqArchive archive = MpqArchive.open(mpq, MpqOpenOptions.warcraft3())) {
+            Assert.assertEquals(new String(archive.read("first.txt"), StandardCharsets.UTF_8),
+                "hello");
+        }
+    }
+
     /** The writer refuses a format version it cannot write, at construction. */
     @Test
     public void unwritableFormatVersionIsRefusedEarly() {
