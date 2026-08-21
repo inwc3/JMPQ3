@@ -241,6 +241,29 @@ public class BehaviourContractTests {
         }
     }
 
+    /**
+     * The facade must not accept an edit it cannot persist. 1.x accepted a
+     * caller-supplied {@code (listfile)} and then wrote an archive with two
+     * entries under one name; failing at insertion, while the caller can still
+     * react, is the lesser evil.
+     */
+    @Test
+    public void facadeRejectsAnInsertItCannotPersist() throws IOException {
+        Path mpq = TestResources.mpqCopy("normalMap");
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.FORCE_V0)) {
+            Assert.expectThrows(IllegalArgumentException.class,
+                () -> editor.insertByteArray("(listfile)", new byte[1]));
+
+            // The other internal files are not generated, so they are accepted
+            // and must survive the rebuild.
+            editor.insertByteArray("(attributes)", new byte[]{100, 0, 0, 0, 3, 0, 0, 0}, true);
+        }
+        try (MpqArchive archive = MpqArchive.open(mpq, MpqOpenOptions.warcraft3())) {
+            Assert.assertTrue(archive.contains("(attributes)"),
+                "an explicitly supplied (attributes) file should be written");
+        }
+    }
+
     /** The writer refuses a format version it cannot write, at construction. */
     @Test
     public void unwritableFormatVersionIsRefusedEarly() {

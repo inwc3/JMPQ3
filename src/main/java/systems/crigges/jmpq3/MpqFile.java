@@ -2,6 +2,7 @@ package systems.crigges.jmpq3;
 
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.compression.CompressionUtil;
+import systems.crigges.jmpq3.compression.RecompressOptions;
 import systems.crigges.jmpq3.security.MPQEncryption;
 
 import java.io.ByteArrayOutputStream;
@@ -349,6 +350,123 @@ public class MpqFile {
 
 
 
+
+    /**
+     * Copies this file into a rebuilt archive at a new position, filling in the
+     * new block table entry.
+     * <p>
+     * Encryption policy: an encrypted file's sector key depends on its name and,
+     * for {@code ADJUSTED_ENCRYPTED} files, on its position and size, so
+     * relocating it invalidates the key. The sectors are therefore decrypted and
+     * stored plain, and the new block's encryption flags are cleared so they
+     * describe the bytes actually written.
+     *
+     * @param newBlock    block entry to fill in; its file position must be set.
+     * @param writeBuffer destination, positioned where the file data starts.
+     * @throws JMpqException if the source data is inconsistent with its block.
+     * @deprecated use {@code MpqArchiveWriter}, which chooses between copying
+     *             and re-encoding based on the target's sector size. Retained
+     *             for source and binary compatibility with 1.x.
+     */
+    @Deprecated
+    public void writeFileAndBlock(Block newBlock, ByteBuffer writeBuffer) throws JMpqException {
+        newBlock.setNormalSize(normalSize);
+        newBlock.setCompressedSize(compressedSize);
+        newBlock.setFlags((flags | EXISTS) & ~ENCRYPTION_FLAGS);
+
+        if (normalSize == 0 || compressedSize == 0) {
+            newBlock.setCompressedSize(0);
+            return;
+        }
+        writeBuffer.put(storedBytesDecrypted());
+    }
+
+    /**
+     * Encodes a new file into a rebuilt archive.
+     *
+     * @param file       file content.
+     * @param b          block entry to fill in.
+     * @param buf        destination.
+     * @param sectorSize archive sector size.
+     * @param recompress compression strategy.
+     * @deprecated use {@code MpqArchiveWriter}. Retained for compatibility.
+     */
+    @Deprecated
+    public static void writeFileAndBlock(byte[] file, Block b, ByteBuffer buf, int sectorSize,
+                                         RecompressOptions recompress) {
+        writeFileAndBlock(file, b, buf, sectorSize, "", recompress);
+    }
+
+    /**
+     * Encodes a new file into a rebuilt archive.
+     *
+     * @param fileArr      file content.
+     * @param b            block entry to fill in.
+     * @param buf          destination.
+     * @param sectorSize   archive sector size.
+     * @param pathlessName name used to derive the encryption key.
+     * @param recompress   compression strategy.
+     * @deprecated use {@code MpqArchiveWriter}. Retained for compatibility.
+     */
+    @Deprecated
+    public static void writeFileAndBlock(byte[] fileArr, Block b, ByteBuffer buf, int sectorSize,
+                                         String pathlessName, RecompressOptions recompress) {
+        b.setNormalSize(fileArr.length);
+        if (b.getFlags() == 0) {
+            b.setFlags(fileArr.length > 0 ? EXISTS | COMPRESSED : EXISTS);
+        }
+        if (fileArr.length == 0) {
+            b.setCompressedSize(0);
+            return;
+        }
+        // Delegates, so there is still one encoder rather than two.
+        b.setCompressedSize(org.inwc3.jmpq.MpqSectorWriter.writeInto(
+            buf, fileArr, sectorSize, pathlessName, b.getFlags(), b.getFilePosition(), recompress));
+    }
+
+    /**
+     * This file's stored bytes with any encryption removed.
+     *
+     * @return exactly {@link #getCompressedSize()} bytes.
+     * @throws JMpqException if the data is inconsistent with its block.
+     */
+    private byte[] storedBytesDecrypted() throws JMpqException {
+        final byte[] stored = readAt(0, compressedSize);
+        if (!isEncrypted) {
+            return stored;
+        }
+        if (block.hasFlag(SINGLE_UNIT)) {
+            decrypt(stored, baseKey);
+            return stored;
+        }
+        if (!block.hasSectorOffsetTable()) {
+            // Stored without compression is still sectored, so each sector has
+            // its own key. See the note on extractStored.
+            for (int i = 0, offset = 0; offset < stored.length; i++, offset += sectorSize) {
+                final int length = Math.min(sectorSize, stored.length - offset);
+                final byte[] sector = new byte[length];
+                System.arraycopy(stored, offset, sector, 0, length);
+                decrypt(sector, baseKey + i);
+                System.arraycopy(sector, 0, stored, offset, length);
+            }
+            return stored;
+        }
+
+        final int[] offsets = readSectorOffsets();
+        final byte[] table = readAt(0, offsets.length * 4);
+        decrypt(table, baseKey - 1);
+        System.arraycopy(table, 0, stored, 0, table.length);
+        for (int i = 0; i < offsets.length - 1; i++) {
+            final int start = offsets[i];
+            final int end = offsets[i + 1];
+            validateSectorRange(i, start, end);
+            final byte[] chunk = new byte[end - start];
+            System.arraycopy(stored, start, chunk, 0, chunk.length);
+            decrypt(chunk, baseKey + i);
+            System.arraycopy(chunk, 0, stored, start, chunk.length);
+        }
+        return stored;
+    }
 
     @Override
     public String toString() {

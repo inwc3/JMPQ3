@@ -207,14 +207,24 @@ public class MpqArchiveWriterTests {
             () -> MpqWriteOptions.defaults().withHashTableCapacity(1000));
     }
 
-    /** Reserved internal names are the writer's to generate. */
+    /**
+     * Only the name the writer generates is refused. This test used to expect
+     * all three internal names to be rejected, which made (attributes) and
+     * (signature) impossible to preserve at all -- nothing regenerates them, so
+     * refusing them meant losing them.
+     */
     @Test
-    public void reservedNamesAreRejected() {
+    public void onlyGeneratedNamesAreRejected() {
         final MpqArchiveWriter writer = MpqArchiveWriter.create(MpqWriteOptions.defaults());
-        for (String reserved : List.of("(listfile)", "(ListFile)", "(attributes)", "(signature)")) {
+        for (String generated : List.of("(listfile)", "(ListFile)", "(LISTFILE)")) {
             Assert.expectThrows(IllegalArgumentException.class,
-                () -> writer.put(reserved, new byte[1]));
+                () -> writer.put(generated, new byte[1]));
         }
+        // Accepted, because the writer does not produce them itself.
+        writer.put("(attributes)", new byte[8]);
+        writer.put("(signature)", new byte[64]);
+        Assert.assertTrue(writer.contains("(attributes)"));
+        Assert.assertTrue(writer.contains("(signature)"));
     }
 
     /** put copies its input, so a later mutation cannot change what is written. */

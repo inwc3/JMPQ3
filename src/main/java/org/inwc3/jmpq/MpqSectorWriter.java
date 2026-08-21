@@ -10,12 +10,16 @@ import java.nio.ByteBuffer;
 /**
  * Encodes one file's content into an archive image as sectors.
  * <p>
+ * Public only so the deprecated {@code MpqFile.writeFileAndBlock} overloads can
+ * delegate here rather than carrying a second copy of the encoder. New code
+ * should use {@link MpqArchiveWriter}.
+ * <p>
  * The layout produced is a sector offset table followed by the sectors it
  * describes. Each sector is compressed independently; a sector that does not
  * shrink is stored verbatim, which a reader detects because its stored length
  * equals its natural length.
  */
-final class MpqSectorWriter {
+public final class MpqSectorWriter {
     /** Compression-type byte for deflate, the only codec this writer emits. */
     private static final byte TYPE_DEFLATE = 0x02;
 
@@ -117,6 +121,30 @@ final class MpqSectorWriter {
         payload[0] = TYPE_DEFLATE;
         System.arraycopy(compressed, 0, payload, 1, compressed.length);
         return payload;
+    }
+
+    /**
+     * Encodes a file into a caller-supplied buffer.
+     * <p>
+     * Exists for the deprecated {@code MpqFile.writeFileAndBlock} overloads,
+     * whose signatures take a {@link ByteBuffer}. Encoding happens here so
+     * there is still only one implementation of it.
+     *
+     * @param target       destination, positioned where the file data starts.
+     * @param content      the file's bytes.
+     * @param sectorSize   the archive's sector size.
+     * @param name         the file's path, for the encryption key.
+     * @param flags        block flags.
+     * @param filePosition the file's offset relative to the archive header.
+     * @param recompress   compression strategy.
+     * @return the number of bytes written.
+     */
+    public static int writeInto(ByteBuffer target, byte[] content, int sectorSize, String name,
+                                int flags, long filePosition, RecompressOptions recompress) {
+        final MpqImageBuffer staging = new MpqImageBuffer(Math.max(64, content.length + 64));
+        final int written = write(staging, content, sectorSize, name, flags, filePosition, recompress);
+        target.put(staging.toByteArray(), 0, written);
+        return written;
     }
 
     /**

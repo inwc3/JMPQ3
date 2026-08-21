@@ -513,6 +513,7 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void insertByteArray(String name, byte[] input, boolean override) {
         requireWritable();
+        rejectGeneratedName(name);
         requireAbsent(name, override);
         // Copy on insert: the caller may reuse its array afterwards.
         inserts.put(MpqNames.canonical(name), new Insert(name, input.clone(), null));
@@ -546,6 +547,7 @@ public class JMpqEditor implements AutoCloseable {
      */
     public void insertFile(String name, File file, boolean override) throws IOException {
         requireWritable();
+        rejectGeneratedName(name);
         requireAbsent(name, override);
         log.debug("insert file: {}", name);
         // Stored as a path and read at close time, as 1.x did.
@@ -556,6 +558,22 @@ public class JMpqEditor implements AutoCloseable {
     private void requireWritable() {
         if (!canWrite) {
             throw new NonWritableChannelException();
+        }
+    }
+
+    /**
+     * The writer generates {@code (listfile)}, so supplying one would produce two
+     * entries under the same name. Rejected at insertion time rather than at
+     * close: 1.x accepted it and then wrote a broken archive, and failing when
+     * the caller can still do something about it is the lesser evil.
+     * <p>
+     * {@code (attributes)} and {@code (signature)} are not generated, so they
+     * are accepted and written as ordinary files.
+     */
+    private void rejectGeneratedName(String name) {
+        if ("(listfile)".equalsIgnoreCase(name)) {
+            throw new IllegalArgumentException("(listfile) is generated on close and cannot be"
+                + " inserted. Pass buildListfile to close(...) to control it.");
         }
     }
 

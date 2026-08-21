@@ -106,6 +106,33 @@ public class ExtensionHookTests {
         Assert.expectThrows(IOException.class, writer::toByteArray);
     }
 
+    /**
+     * Only {@code (listfile)} is the writer's to generate. A caller holding
+     * {@code (attributes)} or {@code (signature)} bytes may write them as
+     * ordinary files, which is the only way to preserve them until attributes
+     * generation lands.
+     */
+    @Test
+    public void onlyTheListfileIsReserved() throws IOException {
+        final byte[] attributes = new byte[]{100, 0, 0, 0, 3, 0, 0, 0};
+        final byte[] image = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put("(attributes)", attributes)
+            .put("(signature)", new byte[64])
+            .put("war3map.j", "s".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.read("(attributes)"), attributes);
+            Assert.assertEquals(archive.read("(signature)").length, 64);
+            Assert.assertTrue(archive.contains("(listfile)"));
+        }
+
+        // The generated one is refused, because supplying it would put two
+        // entries under one name.
+        Assert.expectThrows(IllegalArgumentException.class,
+            () -> MpqArchiveWriter.create(MpqWriteOptions.defaults()).put("(listfile)", new byte[1]));
+    }
+
     /** Capacity must be a power of two, as the format requires. */
     @Test
     public void capacityMustBeAPowerOfTwo() {

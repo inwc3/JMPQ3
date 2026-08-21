@@ -86,8 +86,11 @@ overloads taking a locale. 1.x registered everything as neutral and a rebuild
 dropped all but one variant.
 
 **An archive that cannot enumerate itself says so.** `MpqArchive.isEnumerable()`
-and `unnamedBlockCount()` replace a log warning, so you can find out before a
-rebuild how many files it would drop.
+and `filesLostOnRebuild()` replace a log warning, so you can find out before a
+rebuild how many files it would drop. Use `filesLostOnRebuild()`, not the
+deprecated `unnamedBlockCount()`: the latter counts only nameless blocks, so it
+reports zero for an archive whose `(attributes)` file a rebuild is about to
+discard.
 
 **Malformed headers are repaired, not rejected.** A garbage header size is
 replaced by the version's real size and the archive opens with
