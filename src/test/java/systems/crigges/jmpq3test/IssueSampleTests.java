@@ -29,8 +29,13 @@ import java.util.List;
  *
  * <h2>Running them</h2>
  * <pre>
- * ./gradlew test -Djmpq3.issueSamples=/path/to/maps
+ * ./gradlew test -PissueSamples=/path/to/maps
  * </pre>
+ * That is a Gradle <em>project</em> property. {@code -D} sets a system property
+ * on Gradle's own JVM rather than on the forked test JVM, so it would leave these
+ * tests skipping while looking like they had run — the build forwards it too, for
+ * exactly that reason, but the line above is the one to reach for.
+ * <p>
  * Any {@code .w3x} or {@code .mpq} in that directory is opened and every file it
  * can name is extracted. Maps whose names are recognised get their specific
  * pathology asserted as well.
@@ -43,7 +48,7 @@ public class IssueSampleTests {
     private static List<Path> samples() {
         final String configured = System.getProperty(PROPERTY);
         if (configured == null || configured.isBlank()) {
-            throw new SkipException("Set -D" + PROPERTY + "=<dir> to run against the maps"
+            throw new SkipException("Run with -PissueSamples=<dir> to test against the maps"
                 + " named in issues #46 and #47. They are third-party maps and are not"
                 + " committed to this repository.");
         }

@@ -56,7 +56,11 @@ test {
     // Opt-in path to the third-party maps named in issues #46 and #47, which
     // are not committed here. IssueSampleTests skips when it is unset.
     // Run with: ./gradlew test -PissueSamples=/path/to/maps
-    systemProperty 'jmpq3.issueSamples', findProperty('issueSamples') ?: ''
+    // Accepts either form, since -D is the reflex: a Gradle project property
+    // (-PissueSamples) or a system property on the Gradle JVM forwarded to the
+    // test JVM (-Djmpq3.issueSamples).
+    systemProperty 'jmpq3.issueSamples',
+        findProperty('issueSamples') ?: System.getProperty('jmpq3.issueSamples', '')
     testLogging {
         events "failed"
         exceptionFormat "full"
