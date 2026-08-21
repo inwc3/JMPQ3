@@ -355,6 +355,63 @@ public class Phase2FormatTests {
         }
     }
 
+    /**
+     * Internal names are matched case-insensitively, like every other MPQ name.
+     * <p>
+     * A source spelling its attributes file {@code (ATTRIBUTES)} used to slip
+     * past the carry-over filter, which compared by exact string, and then
+     * collide with the generated one, which compares canonically — so rebuilding
+     * such an archive with attributes enabled failed outright. This is the same
+     * mistake as comparing paths without folding them, which cost a file on
+     * rebuild in Phase 0.
+     */
+    @Test
+    public void internalNamesAreCarriedOverCaseInsensitively() throws IOException {
+        final byte[] stale = MpqAttributes.build(new int[]{9, 9}, new long[]{9, 9});
+        final byte[] original = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put("(ATTRIBUTES)", stale)
+            .put("a.txt", "kept".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        try (MpqArchive source = MpqArchive.open(original, MpqOpenOptions.defaults())) {
+            Assert.assertTrue(source.names().contains("(ATTRIBUTES)"),
+                "the fixture must spell it in capitals");
+            // It is an attributes file whatever its case, so a rebuild drops it.
+            Assert.assertEquals(source.filesLostOnRebuild(), 1);
+
+            final byte[] rebuilt = MpqArchiveWriter
+                .from(source, MpqWriteOptions.defaults()
+                    .withAttributes(true)
+                    .withAttributesTimestamp(0))
+                .toByteArray();
+
+            try (MpqArchive archive = MpqArchive.open(rebuilt, MpqOpenOptions.defaults())) {
+                // Fresh attributes, generated -- not the stale ones carried over.
+                final MpqAttributes attributes = archive.attributes().orElseThrow();
+                Assert.assertEquals(attributes.entries(), archive.header().blockTableEntries());
+                final int block = archive.entry("a.txt").orElseThrow().blockIndex();
+                Assert.assertEquals(attributes.crc32Of(block),
+                    crc32("kept".getBytes(StandardCharsets.UTF_8)));
+                Assert.assertEquals(archive.read("a.txt"),
+                    "kept".getBytes(StandardCharsets.UTF_8));
+                // Exactly one entry under that name, whatever its spelling.
+                Assert.assertEquals(archive.names().stream()
+                    .filter(name -> name.equalsIgnoreCase(MpqAttributes.NAME)).count(), 0,
+                    "generated internals are not listed");
+            }
+        }
+    }
+
+    /** The generated list file cannot be supplied under any spelling. */
+    @Test
+    public void theGeneratedListfileIsReservedUnderEverySpelling() {
+        for (String spelling : new String[]{"(listfile)", "(LISTFILE)", "(ListFile)"}) {
+            Assert.expectThrows(IllegalArgumentException.class,
+                () -> MpqArchiveWriter.create(MpqWriteOptions.defaults())
+                    .put(spelling, new byte[1]));
+        }
+    }
+
     // ---------------------------------------------------- P2-2 hi-block table
 
     /**

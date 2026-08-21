@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SequencedMap;
+import java.util.Set;
 
 /**
  * Read-only access to an MPQ archive.
@@ -65,7 +66,8 @@ public final class MpqArchive implements AutoCloseable {
      * regenerated, so it is not lost; these two are simply dropped, which
      * {@link #filesLostOnRebuild()} has to account for.
      */
-    private static final List<String> LOST_ON_REBUILD = List.of("(attributes)", "(signature)");
+    private static final Set<String> LOST_ON_REBUILD = Set.of(
+        MpqNames.canonical("(attributes)"), MpqNames.canonical("(signature)"));
 
     private static int tableKey(String name) {
         final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
@@ -734,7 +736,8 @@ public final class MpqArchive implements AutoCloseable {
     public int filesLostOnRebuild() {
         int lost = 0;
         for (MpqFileEntry entry : entries()) {
-            if (entry.name().isEmpty() || LOST_ON_REBUILD.contains(entry.name())) {
+            if (entry.name().isEmpty()
+                || LOST_ON_REBUILD.contains(MpqNames.canonical(entry.name()))) {
                 lost++;
             }
         }
