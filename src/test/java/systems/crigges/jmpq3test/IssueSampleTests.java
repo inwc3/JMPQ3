@@ -40,6 +40,36 @@ public class IssueSampleTests {
     /** Directory holding the sample maps, if the runner supplied one. */
     private static final String PROPERTY = "jmpq3.issueSamples";
 
+    /**
+     * Samples that need protection-specific handling this library does not do.
+     * <p>
+     * Green TD Pro Deathmatch, from issue #47, is the case the audit had in mind
+     * when it marked fake-header resilience best-effort and said to skip it if it
+     * destabilised normal parsing. It needs four separate behaviours, none of
+     * which is general:
+     * <ol>
+     *   <li>Two decoy user data headers whose redirects point at bytes that are
+     *       not archive headers.</li>
+     *   <li>A header declaring format version 2 whose hi-word fields are junk,
+     *       so it is only readable if the declared version is ignored.</li>
+     *   <li>Table offsets that rely on 32-bit wraparound: the block table is
+     *       declared at {@code 0xFFFFF220}, which only lands inside the file
+     *       because Storm.dll adds it to the header offset in 32-bit arithmetic
+     *       ({@code 0x1400 - 3552 = 0x620}).</li>
+     *   <li>Every block declaring a compressed size of {@code 0xFFFFFFFF}, so
+     *       stored sizes have to be inferred from neighbouring positions.</li>
+     * </ol>
+     * The hash and block tables really are at those wrapped offsets and really
+     * do decode -- every known Warcraft III path resolves, and the block
+     * positions ascend sensibly -- so this is a diagnosis rather than a guess.
+     * Supporting it is a deliberate non-goal, not an oversight.
+     * <p>
+     * What is still required of such a sample: failing cleanly. A protected map
+     * must produce this library's own exception, not a crash, an infinite loop,
+     * or silently wrong data.
+     */
+    private static final List<String> NEEDS_PROTECTION_SUPPORT = List.of("greentd");
+
     private static List<Path> samples() {
         final String configured = System.getProperty(PROPERTY);
         if (configured == null || configured.isBlank()) {
@@ -79,12 +109,49 @@ public class IssueSampleTests {
      */
     @Test
     public void everySampleOpensWithoutForcingVersion0() throws IOException {
-        for (Path sample : samples()) {
+        for (Path sample : supported()) {
             try (MpqArchive archive = MpqArchive.open(sample, MpqOpenOptions.defaults())) {
                 Assert.assertTrue(archive.blockCount() > 0,
                     sample.getFileName() + " opened but has no blocks");
             }
         }
+    }
+
+    /**
+     * A sample this library cannot read must say so, not misbehave.
+     * <p>
+     * The distinction matters more than the support does: a protected map that
+     * throws is a map a caller can handle, while one that returns plausible
+     * rubbish is a map that corrupts whatever is built from it.
+     */
+    @Test
+    public void unsupportedSamplesFailCleanly() {
+        for (Path sample : samples()) {
+            if (!needsProtectionSupport(sample)) {
+                continue;
+            }
+            final systems.crigges.jmpq3.JMpqException thrown = Assert.expectThrows(
+                systems.crigges.jmpq3.JMpqException.class,
+                () -> MpqArchive.open(sample, MpqOpenOptions.defaults()).close());
+            Assert.assertNotNull(thrown.getMessage(),
+                sample.getFileName() + " failed without saying why");
+        }
+    }
+
+    private static boolean needsProtectionSupport(Path sample) {
+        final String name = sample.getFileName().toString().toLowerCase();
+        return NEEDS_PROTECTION_SUPPORT.stream().anyMatch(name::contains);
+    }
+
+    /** The samples this library claims to handle. */
+    private static List<Path> supported() {
+        final List<Path> usable = samples().stream()
+            .filter(sample -> !needsProtectionSupport(sample))
+            .toList();
+        if (usable.isEmpty()) {
+            throw new SkipException("every sample present needs protection-specific handling");
+        }
+        return usable;
     }
 
     /**
@@ -102,7 +169,7 @@ public class IssueSampleTests {
             "war3map.j", "war3map.w3i", "war3map.w3e", "war3map.wts", "war3map.doo",
             "war3map.shd", "war3map.wpm", "war3mapMap.blp", "war3mapExtra.txt");
 
-        for (Path sample : samples()) {
+        for (Path sample : supported()) {
             final List<String> recovered = new ArrayList<>();
             try (MpqArchive trusted = MpqArchive.open(sample, MpqOpenOptions.defaults());
                  MpqArchive forced = MpqArchive.open(sample, MpqOpenOptions.warcraft3())) {

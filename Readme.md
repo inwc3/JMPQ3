@@ -215,8 +215,18 @@ Two things cost real time and are opt-in, so neither is paid by accident:
   that would otherwise have been copied verbatim, which is the fast path for a
   rebuild.
 
-For reference, rebuilding a 139 MB archive with one file replaced takes roughly
-300 ms on a developer machine, dominated by copying stored bytes.
+Measured on Warcraft III 1.31's `War3.mpq` — 539 MB, 10,888 blocks — on a
+developer machine:
+
+| operation | time |
+|---|---|
+| open, parse tables, read the list file | 137 ms |
+| extract all 10,887 files (1.05 GB decoded) | 18.7 s |
+| rebuild the whole archive with one file replaced | 4.7 s |
+
+Opening is near-instant because the archive is memory-mapped and only its tables
+are parsed. The rebuild needed about 608 MB of heap for a 539 MB archive, which
+is the memory profile to plan for: peak is roughly the archive's size.
 
 ## Thread safety
 
