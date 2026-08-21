@@ -51,6 +51,21 @@ public final class MpqArchive implements AutoCloseable {
     /** Encryption key for block table data. */
     private static final int KEY_BLOCK_TABLE = tableKey("(block table)");
 
+    /**
+     * Files an archive holds by convention rather than by being listed. A list
+     * file does not name itself, so these have to be known rather than
+     * discovered.
+     */
+    private static final List<String> INTERNAL_NAMES =
+        List.of("(listfile)", "(attributes)", "(signature)");
+
+    /**
+     * Internal files a rebuild does not carry over. {@code (listfile)} is
+     * regenerated, so it is not lost; these two are simply dropped, which
+     * {@link #filesLostOnRebuild()} has to account for.
+     */
+    private static final List<String> LOST_ON_REBUILD = List.of("(attributes)", "(signature)");
+
     private static int tableKey(String name) {
         final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
         hasher.process(name);
@@ -68,6 +83,25 @@ public final class MpqArchive implements AutoCloseable {
 
     /** Names from the archive's list file, canonical name to spelling. */
     private final SequencedMap<String, String> names = new LinkedHashMap<>();
+
+    /**
+     * How much this archive knows about its own contents.
+     * <p>
+     * Three states that must not be conflated, and were: an archive with no
+     * list file, one whose list file will not parse, and one whose list file
+     * parsed and happens to be empty. The first two mean a rebuild would lose
+     * whatever it cannot name; the third is a perfectly healthy empty archive.
+     */
+    public enum Enumeration {
+        /** The list file parsed. {@link #names()} is authoritative. */
+        PARSED,
+        /** No {@code (listfile)} block at all. */
+        ABSENT,
+        /** A {@code (listfile)} block that could not be decoded. */
+        UNREADABLE
+    }
+
+    private Enumeration enumeration = Enumeration.ABSENT;
 
     private MpqArchive(MpqSource source, MpqOpenOptions options) throws IOException {
         this.source = source;
@@ -245,6 +279,14 @@ public final class MpqArchive implements AutoCloseable {
         for (String name : names.values()) {
             namesByKey.put(MpqNames.fileKey(name), name);
         }
+        // The internal files are known by name even though a list file does not
+        // list itself. Without these they would count as unnameable, which is
+        // what unnamedBlockCount reports as data a rebuild would lose.
+        for (String internal : INTERNAL_NAMES) {
+            if (hashTable.hasFile(internal)) {
+                namesByKey.put(MpqNames.fileKey(internal), internal);
+            }
+        }
         final Map<Integer, HashTable.Mapping> byBlock = new LinkedHashMap<>();
         for (HashTable.Mapping mapping : hashTable.mappings()) {
             // Prefer a mapping whose name is known, so a block reachable by
@@ -418,6 +460,7 @@ public final class MpqArchive implements AutoCloseable {
      */
     private void readNames() {
         if (!contains("(listfile)")) {
+            enumeration = Enumeration.ABSENT;
             log.debug("{} has no (listfile); it cannot be enumerated.", source.origin());
             return;
         }
@@ -425,10 +468,14 @@ public final class MpqArchive implements AutoCloseable {
         try {
             listfile = new Listfile(read("(listfile)"));
         } catch (IOException | RuntimeException e) {
+            enumeration = Enumeration.UNREADABLE;
             log.warn("Cannot read the (listfile) of {}; the archive is not enumerable.",
                 source.origin(), e);
             return;
         }
+        // Parsed, even if it turns out to name nothing: an empty list file is a
+        // valid list file, and a fresh archive has one.
+        enumeration = Enumeration.PARSED;
 
         for (String name : listfile.getFiles()) {
             if (contains(name)) {
@@ -438,6 +485,105 @@ public final class MpqArchive implements AutoCloseable {
                     source.origin(), name);
             }
         }
+    }
+
+    /**
+     * Whether this archive can list its own contents.
+     * <p>
+     * An archive without a usable {@code (listfile)} cannot: the hash table
+     * stores hashes, not names, so there is nothing to enumerate. Its files are
+     * still readable by exact name. This is a queryable fact rather than a log
+     * line, because a caller about to rebuild needs to know that names it
+     * cannot see would be dropped.
+     *
+     * @return whether {@link #names()} reflects the whole archive.
+     */
+    public boolean isEnumerable() {
+        return enumeration == Enumeration.PARSED;
+    }
+
+    /**
+     * @return which of the three enumeration states this archive is in.
+     */
+    public Enumeration enumerationState() {
+        return enumeration;
+    }
+
+    /**
+     * How many live blocks no name resolves to.
+     * <p>
+     * A rebuild can only carry over files it can name, so this is exactly how
+     * many files a rebuild would discard. Non-zero means the archive's list file
+     * is incomplete, which protected archives do deliberately. Before 2.0 this
+     * was a log warning at open time and nothing a caller could act on.
+     *
+     * @return the number of unnameable live blocks.
+     */
+    public int filesLostOnRebuild() {
+        int lost = 0;
+        for (MpqFileEntry entry : entries()) {
+            if (entry.name().isEmpty() || LOST_ON_REBUILD.contains(entry.name())) {
+                lost++;
+            }
+        }
+        return lost;
+    }
+
+    /**
+     * @return the number of live blocks no name resolves to.
+     * @deprecated counts only nameless blocks, which understates what a rebuild
+     *             discards; use {@link #filesLostOnRebuild()}.
+     */
+    @Deprecated
+    public int unnamedBlockCount() {
+        int unnamed = 0;
+        for (MpqFileEntry entry : entries()) {
+            if (entry.name().isEmpty()) {
+                unnamed++;
+            }
+        }
+        return unnamed;
+    }
+
+    /**
+     * The hash table backing this archive.
+     * <p>
+     * Exposed for the deprecated {@code JMpqEditor} adapter, whose public API
+     * hands this object to callers. New code should use {@link #entry(String)}
+     * and {@link #localesOf(String)} instead, which do not require knowing how
+     * the format stores its index.
+     *
+     * @return the live hash table.
+     */
+    public HashTable hashTable() {
+        return hashTable;
+    }
+
+    /**
+     * A file's bytes exactly as stored, without decryption.
+     * <p>
+     * Exposed for the deprecated adapter, which constructs legacy
+     * {@code MpqFile} objects that do their own decoding. New code should use
+     * {@link #read(MpqFileEntry)}.
+     *
+     * @param entry the file.
+     * @return exactly {@link MpqFileEntry#compressedSize()} bytes.
+     * @throws IOException if the range lies outside the archive.
+     */
+    public byte[] rawBytes(MpqFileEntry entry) throws IOException {
+        return source.bytes(header.headerOffset() + entry.filePosition(), entry.compressedSize());
+    }
+
+    /**
+     * Every block table row, live or not, in table order.
+     * <p>
+     * Exposed for the deprecated adapter. {@link #entries()} is the supported
+     * form: it skips dead rows and attaches names and locales.
+     *
+     * @return the raw rows.
+     */
+    public List<MpqFileEntry> rawBlocks() {
+        return List.of(blocks);
     }
 
     /**
