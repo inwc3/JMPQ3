@@ -253,6 +253,21 @@ public class Version3IntegrityTests {
 
         // A zero hash table position, which no real archive has.
         assertScanSkipsDecoy(decoy -> decoy.putInt(0x10, 0), "no hash table");
+
+        // In-range low table offsets, but a high word putting the real position
+        // 4 GiB out. The parser builds 48-bit offsets from version 1 onward, so
+        // the screen has to as well or it accepts what the parser refuses.
+        assertScanSkipsDecoy(decoy -> {
+            decoy.putShort(0x0C, (short) 1);
+            decoy.putInt(0x04, 44);
+            decoy.putShort(0x28, (short) 1);
+        }, "high word on the hash table offset");
+
+        assertScanSkipsDecoy(decoy -> {
+            decoy.putShort(0x0C, (short) 1);
+            decoy.putInt(0x04, 44);
+            decoy.putShort(0x2A, (short) 1);
+        }, "high word on the block table offset");
     }
 
     /**

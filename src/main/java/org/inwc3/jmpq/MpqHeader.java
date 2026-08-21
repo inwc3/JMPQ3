@@ -447,6 +447,35 @@ public record MpqHeader(
     }
 
     /**
+     * A table position as the format lays it out.
+     * <p>
+     * From version 1 the offset is 48 bits: a low word in the version 0 field
+     * and a high word further into the header. Both the plausibility screen and
+     * the parser go through here, because when they each built the offset
+     * themselves they drifted — the screen kept using low-only positions after
+     * the parser had learned about the high words, so a decoy with in-range low
+     * offsets and non-zero high words passed the screen and then failed to
+     * parse, with a valid header still ahead of it.
+     *
+     * @param source     the archive bytes.
+     * @param headerAt   the header offset.
+     * @param version    the format version the header will be read as, so 0
+     *                   under {@code forceV0}, where the high words are not
+     *                   part of the header at all.
+     * @param lowOffset  offset of the 32-bit low field.
+     * @param highOffset offset of the 16-bit high field.
+     * @return the table offset relative to the header.
+     */
+    private static long tablePosition(MpqSource source, long headerAt, int version,
+                                     int lowOffset, int highOffset) throws JMpqException {
+        long position = source.u32(headerAt + lowOffset);
+        if (version >= 1) {
+            position |= (long) source.u16(headerAt + highOffset) << 32;
+        }
+        return position;
+    }
+
+    /**
      * Cheap plausibility test for a candidate header, mirroring StormLib's
      * {@code ERROR_FAKE_MPQ_HEADER} checks.
      *
@@ -497,17 +526,18 @@ public record MpqHeader(
             return false;
         }
 
-        final long hashTablePosition = source.u32(position + 0x10);
-        final long blockTablePosition = source.u32(position + 0x14);
+        // Built exactly as the parser builds them, high words included.
+        final long hashTablePosition = tablePosition(source, position, version, 0x10, 0x28);
+        final long blockTablePosition = tablePosition(source, position, version, 0x14, 0x2A);
         return hashTablePosition > 0
             && blockTablePosition > 0
             && source.contains(position + hashTablePosition,
-                candidateHashTableBytes(source, position, hashTableEntries, forceV0))
+                candidateHashTableBytes(source, position, hashTableEntries, version))
             // A block table that runs past the end is clamped rather than
             // refused, so only its position has to be in the file -- unless it
             // is compressed, where the stored length is all there is to go on.
             && source.contains(position + blockTablePosition,
-                candidateCompressedBlockTableBytes(source, position, forceV0));
+                candidateCompressedBlockTableBytes(source, position, version));
     }
 
     /**
@@ -516,19 +546,18 @@ public record MpqHeader(
      *
      * @param source   the archive bytes.
      * @param position the candidate header offset.
-     * @param forceV0  whether the archive will be read as version 0 regardless.
+     * @param version  the version the header will be read as.
      * @return bytes to require at the block table position, or 0 to require only
      *         that the position itself is in the file.
      */
     private static long candidateCompressedBlockTableBytes(MpqSource source, long position,
-                                                           boolean forceV0) throws JMpqException {
-        if (forceV0 || source.u16(position + 0x0C) != 3
-            || !source.contains(position, SIZE_BY_VERSION[3])) {
+                                                           int version) throws JMpqException {
+        if (version != 3) {
             return 0;
         }
         final long plain = (long) source.i32(position + 0x1C) * BLOCK_ENTRY_SIZE;
-        final long stored = source.i64(position + 0x4C);
-        return stored > 0 && stored < plain ? stored : 0;
+        final long stored = storedSize(source.i64(position + 0x4C), plain);
+        return stored < plain ? stored : 0;
     }
 
     /**
@@ -540,25 +569,23 @@ public record MpqHeader(
      * the scan would then settle on the decoy. That is the reverse of what this
      * check is for, so the stored length is used where the header declares one.
      *
-     * Only format version 3 has the field, and only if this candidate is going
-     * to be read as version 3 -- under {@code forceV0} it will be read as
-     * version 0, where those bytes mean nothing.
+     * Only format version 3 has the field, which is why the resolved version is
+     * passed in rather than read again here: under {@code forceV0} it is 0, and
+     * those bytes mean nothing.
      *
      * @param source   the archive bytes.
      * @param position the candidate header offset.
      * @param entries  declared hash table entries.
-     * @param forceV0  whether the archive will be read as version 0 regardless.
+     * @param version  the version the header will be read as.
      * @return bytes to require at the hash table position.
      */
     private static long candidateHashTableBytes(MpqSource source, long position, int entries,
-                                                boolean forceV0) throws JMpqException {
+                                                int version) throws JMpqException {
         final long plain = (long) entries * HASH_ENTRY_SIZE;
-        if (forceV0 || source.u16(position + 0x0C) != 3
-            || !source.contains(position, SIZE_BY_VERSION[3])) {
+        if (version != 3) {
             return plain;
         }
-        final long stored = source.i64(position + 0x44);
-        return stored > 0 && stored < plain ? stored : plain;
+        return storedSize(source.i64(position + 0x44), plain);
     }
 
     /**
@@ -610,8 +637,8 @@ public record MpqHeader(
                 + " would mean sectors of " + (512L << sectorSizeShift) + " bytes.");
         }
 
-        long hashTablePosition = source.u32(offset + 0x10);
-        long blockTablePosition = source.u32(offset + 0x14);
+        final long hashTablePosition = tablePosition(source, offset, formatVersion, 0x10, 0x28);
+        final long blockTablePosition = tablePosition(source, offset, formatVersion, 0x14, 0x2A);
         final int hashTableEntries = source.i32(offset + 0x18) & 0x0FFFFFFF;
         int blockTableEntries = source.i32(offset + 0x1C);
 
@@ -622,10 +649,9 @@ public record MpqHeader(
         Extended extended = Extended.NONE;
 
         if (formatVersion >= 1) {
+            // The table offsets already carry their high words, from
+            // tablePosition above.
             hiBlockTablePosition = source.i64(offset + 0x20);
-            // The high words extend the table offsets beyond 4 GiB.
-            hashTablePosition |= (long) source.u16(offset + 0x28) << 32;
-            blockTablePosition |= (long) source.u16(offset + 0x2A) << 32;
         }
         if (formatVersion >= 2) {
             archiveSize = source.i64(offset + 0x2C);
