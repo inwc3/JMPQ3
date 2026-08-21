@@ -135,8 +135,8 @@ public class ExtensionHookTests {
             Assert.assertFalse(archive.contains("(listfile)"));
             // Still readable if you know the name, which is the point.
             Assert.assertEquals(archive.read("war3map.j"), "hidden".getBytes(StandardCharsets.UTF_8));
-            Assert.assertEquals(archive.unnamedBlockCount(), archive.blockCount(),
-                "every block should be unnameable without a listfile");
+            Assert.assertEquals(archive.filesLostOnRebuild(), archive.blockCount(),
+                "every block is at risk without a listfile");
         }
     }
 

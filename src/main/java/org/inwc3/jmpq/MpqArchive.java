@@ -59,6 +59,13 @@ public final class MpqArchive implements AutoCloseable {
     private static final List<String> INTERNAL_NAMES =
         List.of("(listfile)", "(attributes)", "(signature)");
 
+    /**
+     * Internal files a rebuild does not carry over. {@code (listfile)} is
+     * regenerated, so it is not lost; these two are simply dropped, which
+     * {@link #filesLostOnRebuild()} has to account for.
+     */
+    private static final List<String> LOST_ON_REBUILD = List.of("(attributes)", "(signature)");
+
     private static int tableKey(String name) {
         final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
         hasher.process(name);
@@ -76,6 +83,25 @@ public final class MpqArchive implements AutoCloseable {
 
     /** Names from the archive's list file, canonical name to spelling. */
     private final SequencedMap<String, String> names = new LinkedHashMap<>();
+
+    /**
+     * How much this archive knows about its own contents.
+     * <p>
+     * Three states that must not be conflated, and were: an archive with no
+     * list file, one whose list file will not parse, and one whose list file
+     * parsed and happens to be empty. The first two mean a rebuild would lose
+     * whatever it cannot name; the third is a perfectly healthy empty archive.
+     */
+    public enum Enumeration {
+        /** The list file parsed. {@link #names()} is authoritative. */
+        PARSED,
+        /** No {@code (listfile)} block at all. */
+        ABSENT,
+        /** A {@code (listfile)} block that could not be decoded. */
+        UNREADABLE
+    }
+
+    private Enumeration enumeration = Enumeration.ABSENT;
 
     private MpqArchive(MpqSource source, MpqOpenOptions options) throws IOException {
         this.source = source;
@@ -434,6 +460,7 @@ public final class MpqArchive implements AutoCloseable {
      */
     private void readNames() {
         if (!contains("(listfile)")) {
+            enumeration = Enumeration.ABSENT;
             log.debug("{} has no (listfile); it cannot be enumerated.", source.origin());
             return;
         }
@@ -441,10 +468,14 @@ public final class MpqArchive implements AutoCloseable {
         try {
             listfile = new Listfile(read("(listfile)"));
         } catch (IOException | RuntimeException e) {
+            enumeration = Enumeration.UNREADABLE;
             log.warn("Cannot read the (listfile) of {}; the archive is not enumerable.",
                 source.origin(), e);
             return;
         }
+        // Parsed, even if it turns out to name nothing: an empty list file is a
+        // valid list file, and a fresh archive has one.
+        enumeration = Enumeration.PARSED;
 
         for (String name : listfile.getFiles()) {
             if (contains(name)) {
@@ -468,7 +499,14 @@ public final class MpqArchive implements AutoCloseable {
      * @return whether {@link #names()} reflects the whole archive.
      */
     public boolean isEnumerable() {
-        return !names.isEmpty();
+        return enumeration == Enumeration.PARSED;
+    }
+
+    /**
+     * @return which of the three enumeration states this archive is in.
+     */
+    public Enumeration enumerationState() {
+        return enumeration;
     }
 
     /**
@@ -481,6 +519,22 @@ public final class MpqArchive implements AutoCloseable {
      *
      * @return the number of unnameable live blocks.
      */
+    public int filesLostOnRebuild() {
+        int lost = 0;
+        for (MpqFileEntry entry : entries()) {
+            if (entry.name().isEmpty() || LOST_ON_REBUILD.contains(entry.name())) {
+                lost++;
+            }
+        }
+        return lost;
+    }
+
+    /**
+     * @return the number of live blocks no name resolves to.
+     * @deprecated counts only nameless blocks, which understates what a rebuild
+     *             discards; use {@link #filesLostOnRebuild()}.
+     */
+    @Deprecated
     public int unnamedBlockCount() {
         int unnamed = 0;
         for (MpqFileEntry entry : entries()) {

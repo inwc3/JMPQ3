@@ -195,11 +195,12 @@ public class JMpqEditor implements AutoCloseable {
      * the files whose names are unknown, so it is downgraded to read-only.
      */
     private void downgradeIfNotEnumerable() {
-        // Presence of the (listfile), not whether it named anything: a freshly
-        // created archive has an empty one and is perfectly writable, and
-        // treating that as unenumerable made it impossible to add the first
-        // file to it.
-        if (canWrite && !archive.contains("(listfile)")) {
+        // Three states, not two. A parsed list file means the archive knows its
+        // own contents, even if it names nothing -- a fresh archive has an empty
+        // one and must be able to receive its first file. Both an absent list
+        // file and one that will not decode mean a rebuild would replace the
+        // archive with whatever it could name, which is nothing.
+        if (canWrite && !archive.isEnumerable()) {
             log.warn("The mpq doesn't contain a listfile. It cannot be rebuilt.");
             canWrite = false;
         }
@@ -301,7 +302,11 @@ public class JMpqEditor implements AutoCloseable {
             }
         }
 
-        if (names.isEmpty()) {
+        if (!archive.isEnumerable()) {
+            // Gate on the archive's own knowledge, not on whether this list
+            // happened to be empty: an unenumerable archive holding an
+            // (attributes) file still put one name in the list, which used to
+            // suppress the fallback and hide every recoverable block.
             extractUnnamedBlocks(root);
         }
     }

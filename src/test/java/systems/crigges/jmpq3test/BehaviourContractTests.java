@@ -89,15 +89,19 @@ public class BehaviourContractTests {
         Path mpq = TestResources.mpqCopy("listfilelessMap");
         try (MpqArchive archive = MpqArchive.open(mpq, MpqOpenOptions.warcraft3())) {
             // Nothing is named, so every live block would be dropped.
-            Assert.assertEquals(archive.unnamedBlockCount(), archive.blockCount());
+            Assert.assertEquals(archive.filesLostOnRebuild(), archive.blockCount());
         }
 
         // A complete list file drops nothing.
         Path complete = TestResources.mpqCopy("normalMap");
         try (MpqArchive archive = MpqArchive.open(complete, MpqOpenOptions.warcraft3())) {
             Assert.assertTrue(archive.isEnumerable());
+            // normalMap holds an (attributes) file, which a rebuild does not
+            // carry over, so exactly one file is at risk.
+            Assert.assertEquals(archive.filesLostOnRebuild(), 1,
+                "only the (attributes) file should be at risk");
             Assert.assertEquals(archive.unnamedBlockCount(), 0,
-                "normalMap should name everything it holds");
+                "every block should be nameable");
         }
     }
 

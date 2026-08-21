@@ -154,7 +154,7 @@ public final class MpqArchiveWriter {
                     new Pending(name, locale, new Content.Existing(source, entry)));
             }
         }
-        final int dropped = source.unnamedBlockCount();
+        final int dropped = source.filesLostOnRebuild();
         if (dropped > 0) {
             // Stated plainly, because it is data loss the caller may not
             // expect: these blocks exist but nothing names them, so the rebuilt
