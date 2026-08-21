@@ -438,35 +438,87 @@ public record MpqHeader(
 
     /**
      * Cheap plausibility test for a candidate header, mirroring StormLib's
-     * {@code ERROR_FAKE_MPQ_HEADER} checks: a header whose table positions fall
-     * outside the file cannot be the real one.
+     * {@code ERROR_FAKE_MPQ_HEADER} checks.
+     *
+     * <h4>The invariant</h4>
+     * This must reject only headers that {@link #parseAt} would reject anyway.
+     * Rejecting anything more is not a stricter filter, it is a bug: the scan
+     * moves on and can settle on a decoy planted earlier in the file, which is
+     * the reverse of the point. Two rounds of review found exactly that, both
+     * times because a condition here was tightened past what the parser
+     * actually requires.
+     * <p>
+     * So the checks below are a screen of the parser's own rejections, in the
+     * same order and with the same thresholds, and nothing else. Everything the
+     * parser merely <em>repairs</em> — a wrong header size, an oversized block
+     * table, an out-of-range hi-block position — is deliberately not screened
+     * here, because such a header is still perfectly usable.
      */
     private static boolean isPlausible(MpqSource source, long position, boolean forceV0)
         throws JMpqException {
         if (!source.contains(position, SIZE_BY_VERSION[0])) {
             return false;
         }
-        // A version this library cannot parse cannot be the header it goes on to
-        // use, so accepting the candidate only ends the scan early and then
-        // fails in parseAt -- with a valid header possibly still ahead of it.
-        // Unless forceV0 is set, in which case the declared version is ignored
-        // on purpose and a garbage one is exactly what is expected.
-        if (!forceV0 && source.u16(position + 0x0C) > MAX_FORMAT_VERSION) {
+
+        // The version the parser will settle on: forceV0 ignores what the header
+        // declares, which is the whole point of it.
+        final int version = forceV0 ? 0 : source.u16(position + 0x0C);
+        if (version > MAX_FORMAT_VERSION) {
+            return false;
+        }
+        // The parser reads the whole header for that version before anything
+        // else, and cannot repair its way out of the bytes not being there.
+        // This cannot currently change which header is chosen: a candidate
+        // without room for its own header is necessarily the last one in the
+        // file, so there is no later header to reach and the fallback returns
+        // this one anyway. It is here to keep the screen a faithful mirror of
+        // the parser rather than a set of conditions that happen to matter.
+        if (!source.contains(position, SIZE_BY_VERSION[version])) {
+            return false;
+        }
+
+        final int sectorShift = source.u16(position + 0x0E) & 0xFF;
+        if (sectorShift > MAX_SECTOR_SIZE_SHIFT) {
+            return false;
+        }
+
+        final int hashTableEntries = source.i32(position + 0x18) & 0x0FFFFFFF;
+        if (hashTableEntries <= 0 || hashTableEntries > MAX_HASH_TABLE_ENTRIES) {
             return false;
         }
 
         final long hashTablePosition = source.u32(position + 0x10);
         final long blockTablePosition = source.u32(position + 0x14);
-        final int hashTableEntries = source.i32(position + 0x18) & 0x0FFFFFFF;
-        final int sectorShift = source.u16(position + 0x0E) & 0xFF;
-
         return hashTablePosition > 0
             && blockTablePosition > 0
-            && hashTableEntries > 0
-            && sectorShift <= MAX_SECTOR_SIZE_SHIFT
             && source.contains(position + hashTablePosition,
                 candidateHashTableBytes(source, position, hashTableEntries, forceV0))
-            && source.contains(position + blockTablePosition, 0);
+            // A block table that runs past the end is clamped rather than
+            // refused, so only its position has to be in the file -- unless it
+            // is compressed, where the stored length is all there is to go on.
+            && source.contains(position + blockTablePosition,
+                candidateCompressedBlockTableBytes(source, position, forceV0));
+    }
+
+    /**
+     * Stored length of a candidate's block table, but only when compressing it
+     * makes that length load-bearing.
+     *
+     * @param source   the archive bytes.
+     * @param position the candidate header offset.
+     * @param forceV0  whether the archive will be read as version 0 regardless.
+     * @return bytes to require at the block table position, or 0 to require only
+     *         that the position itself is in the file.
+     */
+    private static long candidateCompressedBlockTableBytes(MpqSource source, long position,
+                                                           boolean forceV0) throws JMpqException {
+        if (forceV0 || source.u16(position + 0x0C) != 3
+            || !source.contains(position, SIZE_BY_VERSION[3])) {
+            return 0;
+        }
+        final long plain = (long) source.i32(position + 0x1C) * BLOCK_ENTRY_SIZE;
+        final long stored = source.i64(position + 0x4C);
+        return stored > 0 && stored < plain ? stored : 0;
     }
 
     /**

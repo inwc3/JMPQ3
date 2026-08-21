@@ -229,6 +229,79 @@ public class Version3IntegrityTests {
         Assert.assertTrue(thrown.getMessage().contains("not supported"), thrown.getMessage());
     }
 
+    /**
+     * The remaining rejections the parser makes, screened for as a family.
+     * <p>
+     * Two review rounds went on this one condition at a time, so the rest are
+     * done together: a candidate the parser would refuse must not end the scan,
+     * whichever of its refusals applies. Each decoy here is otherwise perfectly
+     * plausible and differs only in the field that dooms it.
+     */
+    @Test
+    public void everyDecoyTheParserWouldRefuseIsSkipped() throws IOException {
+        // A hash table entry count above the maximum StormLib accepts.
+        assertScanSkipsDecoy(decoy -> decoy.putInt(0x18, 0x0010_0000), "oversized hash table");
+
+        // Not covered here: a version 3 header without 208 bytes behind it. Such
+        // a candidate is necessarily the last one in the file -- anything after
+        // it would be past the end -- so there is never a later valid header for
+        // the scan to reach, and the screen cannot change the outcome. See the
+        // note in isPlausible.
+
+        // A sector size shift that would mean sectors beyond an int.
+        assertScanSkipsDecoy(decoy -> decoy.putShort(0x0E, (short) 30), "impossible sector size");
+
+        // A zero hash table position, which no real archive has.
+        assertScanSkipsDecoy(decoy -> decoy.putInt(0x10, 0), "no hash table");
+    }
+
+    /**
+     * Plants an otherwise-plausible decoy at offset 0, breaks the one field the
+     * caller names, and requires the scan to reach the real header at 0x200.
+     */
+    private void assertScanSkipsDecoy(java.util.function.Consumer<ByteBuffer> damage, String what)
+        throws IOException {
+        final byte[] image = behindADecoy(build(new Shape(false, false, false, false)));
+
+        final ByteBuffer decoy = ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN);
+        // In-range tables, so only the damaged field can disqualify it.
+        decoy.putInt(0x04, 32);
+        decoy.putShort(0x0C, (short) 0);
+        decoy.putShort(0x0E, (short) 3);
+        decoy.putInt(0x10, 0x100);
+        decoy.putInt(0x14, 0x180);
+        decoy.putInt(0x18, 4);
+        decoy.putInt(0x1C, 1);
+        damage.accept(decoy);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.header().headerOffset(), MpqHeader.ALIGNMENT,
+                "the scan should have walked past the decoy with " + what);
+            Assert.assertEquals(archive.read("a.txt"), content(), what);
+        }
+    }
+
+    /**
+     * The other half of the invariant: a header the parser only <em>repairs</em>
+     * must still be accepted, or tightening the screen would start losing
+     * archives that open perfectly well today.
+     */
+    @Test
+    public void aHeaderTheParserWouldOnlyRepairIsStillPlausible() throws IOException {
+        final byte[] image = source();
+        final ByteBuffer header = ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN);
+
+        // A wrong header size and an absurd block table count are both repaired,
+        // so neither may disqualify the header.
+        header.putInt(0x04, 999);
+        header.putInt(0x1C, 0x0100_0000);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertTrue(archive.header().malformed());
+            Assert.assertEquals(archive.read("a.txt"), content());
+        }
+    }
+
     // ------------------------------------------------------------ fixtures
 
     /**
