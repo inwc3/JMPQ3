@@ -182,6 +182,93 @@ public class MpqAttributesTests {
     }
 
     /**
+     * StormLib sizes the patch-bit array as {@code (n + 6) / 8} but loads it as
+     * {@code (n + 7) / 8}, so for a block count congruent to 1 modulo 8 the file
+     * it writes is one byte short of its own bit count -- a one-block archive is
+     * allotted zero bytes for one bit.
+     * <p>
+     * Both lengths therefore occur, and neither may be read past. Reading the
+     * short form used to throw {@link ArrayIndexOutOfBoundsException} on an
+     * otherwise length-valid file.
+     */
+    @Test
+    public void bothPatchBitLengthsAreAcceptedAndNeitherIsReadPast() throws JMpqException {
+        // One block: StormLib allots (1 + 6) / 8 = 0 bytes for the bit.
+        final byte[] oneBlockShort = patchBitFile(1, 0);
+        Assert.assertEquals(oneBlockShort.length, 8);
+        final MpqAttributes one = MpqAttributes.parse(oneBlockShort, 1);
+        Assert.assertEquals(one.entries(), 1);
+        Assert.assertEquals(one.patchBits(), new boolean[]{false},
+            "the bit was never stored, so it is not set");
+
+        // Nine blocks: (9 + 6) / 8 = 1 byte, one short of the nine bits.
+        final byte[] nineShort = patchBitFile(9, 1);
+        nineShort[8] = (byte) 0b1000_0001;
+        final MpqAttributes nine = MpqAttributes.parse(nineShort, 9);
+        Assert.assertEquals(nine.entries(), 9);
+        Assert.assertTrue(nine.patchBits()[0]);
+        Assert.assertTrue(nine.patchBits()[7]);
+        Assert.assertFalse(nine.patchBits()[8], "the ninth bit had nowhere to live");
+
+        // The same nine blocks written to the length that actually holds them.
+        final byte[] nineFull = patchBitFile(9, 2);
+        nineFull[8] = (byte) 0b1000_0001;
+        nineFull[9] = (byte) 0b1000_0000;
+        final MpqAttributes read = MpqAttributes.parse(nineFull, 9);
+        Assert.assertEquals(read.entries(), 9);
+        Assert.assertTrue(read.patchBits()[8], "now it does");
+    }
+
+    /**
+     * What this implementation emits is the length that holds every bit, so a
+     * write can never leave the buffer, and it must parse back unchanged.
+     */
+    @Test
+    public void emittedPatchBitsRoundTripAtEveryAwkwardCount() throws JMpqException {
+        for (int entries : new int[]{1, 7, 8, 9, 16, 17}) {
+            final boolean[] bits = new boolean[entries];
+            bits[entries - 1] = true;
+            bits[0] = true;
+            final MpqAttributes attributes = new MpqAttributes(MpqAttributes.VERSION,
+                MpqAttributes.HAS_PATCH_BIT, new int[0], new long[0], new byte[0][],
+                bits, false);
+
+            final MpqAttributes read = MpqAttributes.parse(attributes.toByteArray(), entries);
+            Assert.assertEquals(read.entries(), entries, "entries for " + entries);
+            Assert.assertEquals(read.patchBits(), bits, "bits for " + entries);
+        }
+    }
+
+    /** Patch bits sit after the arrays that precede them, not at a fixed offset. */
+    @Test
+    public void patchBitsAreReadAfterTheArraysBeforeThem() throws JMpqException {
+        final int entries = 9;
+        final int flags = MpqAttributes.HAS_CRC32 | MpqAttributes.HAS_PATCH_BIT;
+        final ByteBuffer out = ByteBuffer
+            .allocate((int) MpqAttributes.sizeFor(flags, entries))
+            .order(ByteOrder.LITTLE_ENDIAN);
+        out.putInt(MpqAttributes.VERSION);
+        out.putInt(flags);
+        for (int i = 0; i < entries; i++) {
+            out.putInt(0x500 + i);
+        }
+        out.put((byte) 0b0100_0000);
+
+        final MpqAttributes attributes = MpqAttributes.parse(out.array(), entries);
+        Assert.assertEquals(attributes.crc32Of(8), 0x508);
+        Assert.assertFalse(attributes.patchBits()[0]);
+        Assert.assertTrue(attributes.patchBits()[1]);
+    }
+
+    /** A patch-bit-only attributes file of the given length in bit bytes. */
+    private static byte[] patchBitFile(int entries, int patchBytes) {
+        final ByteBuffer out = ByteBuffer.allocate(8 + patchBytes).order(ByteOrder.LITTLE_ENDIAN);
+        out.putInt(MpqAttributes.VERSION);
+        out.putInt(MpqAttributes.HAS_PATCH_BIT);
+        return out.array();
+    }
+
+    /**
      * A bytemask naming nothing this implementation knows describes no entries.
      * Worth its own test: the length-driven count only terminates because of
      * that, and without the guard the deprecated parser spins forever.

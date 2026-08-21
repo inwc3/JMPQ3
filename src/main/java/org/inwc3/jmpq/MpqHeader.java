@@ -161,11 +161,29 @@ public record MpqHeader(
             new byte[0], new byte[0], new byte[0], new byte[0], new byte[0], new byte[0]);
 
         /**
-         * @return whether any digest was recorded, and so whether validating
-         *         the tables against them is meaningful.
+         * Whether any digest was actually recorded.
+         * <p>
+         * Every version 3 header has all six fields present, so their lengths
+         * say nothing: an archive that simply left them blank still carries
+         * sixteen zero bytes each. Only a non-zero digest is a recorded one,
+         * which is the same convention {@link #matchesDigest} applies, and
+         * without it a blank version 3 header reported its tables as verified
+         * against digests nobody had computed.
+         *
+         * @return whether validating the tables is meaningful.
          */
         public boolean hasDigests() {
-            return md5HashTable.length == DIGEST_SIZE || md5BlockTable.length == DIGEST_SIZE;
+            return isRecorded(md5HashTable) || isRecorded(md5BlockTable)
+                || isRecorded(md5HiBlockTable) || isRecorded(md5HetTable)
+                || isRecorded(md5BetTable) || isRecorded(md5Header);
+        }
+
+        /**
+         * @param digest a digest field.
+         * @return whether it holds a digest rather than being absent or blank.
+         */
+        static boolean isRecorded(byte[] digest) {
+            return digest.length == DIGEST_SIZE && !isAllZero(digest);
         }
 
         @Override
@@ -243,6 +261,20 @@ public record MpqHeader(
     }
 
     /**
+     * @return absolute file offset of the HET table.
+     */
+    public long hetTableFileOffset() {
+        return headerOffset + hetTablePosition;
+    }
+
+    /**
+     * @return absolute file offset of the BET table.
+     */
+    public long betTableFileOffset() {
+        return headerOffset + betTablePosition;
+    }
+
+    /**
      * Stored length of the hash table.
      * <p>
      * A version 3 archive may compress its tables, in which case the stored
@@ -305,7 +337,7 @@ public record MpqHeader(
      *         compare against.
      */
     static boolean matchesDigest(byte[] data, byte[] digest) {
-        if (digest.length != Extended.DIGEST_SIZE || isAllZero(digest)) {
+        if (!Extended.isRecorded(digest)) {
             // StormLib treats an all-zero digest as "not recorded" rather than
             // as the digest of these bytes.
             return true;
@@ -318,7 +350,7 @@ public record MpqHeader(
         }
     }
 
-    private static boolean isAllZero(byte[] digest) {
+    static boolean isAllZero(byte[] digest) {
         for (byte value : digest) {
             if (value != 0) {
                 return false;

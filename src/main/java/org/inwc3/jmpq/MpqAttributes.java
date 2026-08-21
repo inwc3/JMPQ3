@@ -111,6 +111,10 @@ public record MpqAttributes(
      * @return the exact file length.
      */
     public static long sizeFor(int flags, int entries) {
+        return sizeFor(flags, entries, patchBitBytesStormLibWrites(entries));
+    }
+
+    private static long sizeFor(int flags, int entries, long patchBytes) {
         long size = HEADER_SIZE;
         if ((flags & HAS_CRC32) != 0) {
             size += 4L * entries;
@@ -122,11 +126,35 @@ public record MpqAttributes(
             size += 16L * entries;
         }
         if ((flags & HAS_PATCH_BIT) != 0) {
-            // StormLib rounds up and then allows a spare byte, rather than the
-            // (entries + 7) / 8 you would expect.
-            size += (entries + 6L) / 8;
+            size += patchBytes;
         }
         return size;
+    }
+
+    /**
+     * Patch-bit bytes as StormLib counts them in
+     * {@code GetSizeOfAttributesFile}: {@code (n + 6) / 8}.
+     * <p>
+     * That is one byte short of holding {@code n} bits whenever {@code n} is
+     * congruent to 1 modulo 8 -- a one-block archive is allotted zero bytes for
+     * one bit. StormLib is inconsistent with itself here: its loader sizes the
+     * same array as {@code (n + 7) / 8}. Both lengths therefore occur, so
+     * parsing accepts either and nothing indexes past what a file holds.
+     *
+     * @param entries number of blocks described.
+     * @return the byte count StormLib writes.
+     */
+    private static long patchBitBytesStormLibWrites(int entries) {
+        return (entries + 6L) / 8;
+    }
+
+    /**
+     * @param entries number of blocks described.
+     * @return bytes actually needed to hold that many bits, which is what this
+     *         implementation emits so a write can never leave the buffer.
+     */
+    private static long patchBitBytesNeeded(int entries) {
+        return (entries + 7L) / 8;
     }
 
     /**
@@ -142,12 +170,45 @@ public record MpqAttributes(
      * @return the size as an {@code int}.
      */
     private static int inMemorySize(int flags, int entries) {
-        final long size = sizeFor(flags, entries);
+        return inMemorySize(flags, entries, patchBitBytesStormLibWrites(entries));
+    }
+
+    private static int inMemorySize(int flags, int entries, long patchBytes) {
+        final long size = sizeFor(flags, entries, patchBytes);
         if (size > Integer.MAX_VALUE - 8) {
             throw new IllegalArgumentException("Attributes for " + entries + " blocks would need "
                 + size + " bytes, more than can be held in memory.");
         }
         return (int) size;
+    }
+
+    /**
+     * Works out how many blocks a file of this length describes.
+     * <p>
+     * Four lengths are legal for one archive: the block count or one fewer --
+     * StormLib tolerates a short file, because the tool writing it is rarely the
+     * tool reading it -- each with either patch-bit length, since StormLib
+     * writes one and reads the other. A length matching none is reported rather
+     * than guessed at.
+     *
+     * @param usable     the bytemask, restricted to arrays we understand.
+     * @param blockCount block table rows the archive has.
+     * @param length     the file length.
+     * @return the entry count that length implies.
+     * @throws JMpqException if no candidate matches.
+     */
+    private static int resolveEntryCount(int usable, int blockCount, int length)
+        throws JMpqException {
+        final int fewest = Math.max(0, blockCount - 1);
+        for (int entries = blockCount; entries >= fewest; entries--) {
+            if (sizeFor(usable, entries, patchBitBytesStormLibWrites(entries)) == length
+                || sizeFor(usable, entries, patchBitBytesNeeded(entries)) == length) {
+                return entries;
+            }
+        }
+        throw new JMpqException("An attributes file with flags 0x"
+            + Integer.toHexString(usable) + " for " + blockCount + " blocks should be "
+            + sizeFor(usable, blockCount) + " bytes, but is " + length + ".");
     }
 
     /**
@@ -173,19 +234,8 @@ public record MpqAttributes(
         // ignoring the rest is what StormLib does.
         final int usable = flags & KNOWN_FLAGS;
 
-        final int entries;
-        final boolean truncated;
-        if (sizeFor(usable, blockCount) == data.length) {
-            entries = blockCount;
-            truncated = false;
-        } else if (blockCount > 0 && sizeFor(usable, blockCount - 1) == data.length) {
-            entries = blockCount - 1;
-            truncated = true;
-        } else {
-            throw new JMpqException("An attributes file with flags 0x"
-                + Integer.toHexString(flags) + " for " + blockCount + " blocks should be "
-                + sizeFor(usable, blockCount) + " bytes, but is " + data.length + ".");
-        }
+        final int entries = resolveEntryCount(usable, blockCount, data.length);
+        final boolean truncated = entries != blockCount;
 
         final int[] crc32 = (usable & HAS_CRC32) != 0 ? new int[entries] : new int[0];
         for (int i = 0; i < crc32.length; i++) {
@@ -204,7 +254,11 @@ public record MpqAttributes(
             (usable & HAS_PATCH_BIT) != 0 ? new boolean[entries] : new boolean[0];
         final int bitsAt = in.position();
         for (int i = 0; i < patchBits.length; i++) {
-            patchBits[i] = (data[bitsAt + (i >>> 3)] & (0x80 >>> (i & 7))) != 0;
+            final int at = bitsAt + (i >>> 3);
+            // A file written to StormLib own size formula can be a byte short of
+            // its own bit count. The entries it does not reach are left unmarked,
+            // which beats refusing the file or reading past its end.
+            patchBits[i] = at < data.length && (data[at] & (0x80 >>> (i & 7))) != 0;
         }
 
         return new MpqAttributes(version, flags, crc32, fileTimes, md5, patchBits, truncated);
@@ -245,8 +299,10 @@ public record MpqAttributes(
      */
     public byte[] toByteArray() {
         final int emitted = flags & KNOWN_FLAGS;
+        // Sized to hold every bit rather than to StormLib short formula, so a
+        // block count congruent to 1 modulo 8 cannot write past the buffer.
         final ByteBuffer out = ByteBuffer
-            .allocate(inMemorySize(emitted, entries()))
+            .allocate(inMemorySize(emitted, entries(), patchBitBytesNeeded(entries())))
             .order(ByteOrder.LITTLE_ENDIAN);
         out.putInt(version);
         out.putInt(emitted);
@@ -260,7 +316,7 @@ public record MpqAttributes(
             out.put(digest);
         }
         if (patchBits.length > 0) {
-            final byte[] bits = new byte[(int) ((patchBits.length + 6L) / 8)];
+            final byte[] bits = new byte[(int) patchBitBytesNeeded(patchBits.length)];
             for (int i = 0; i < patchBits.length; i++) {
                 if (patchBits[i]) {
                     bits[i >>> 3] |= (byte) (0x80 >>> (i & 7));

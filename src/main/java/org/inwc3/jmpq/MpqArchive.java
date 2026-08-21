@@ -254,6 +254,26 @@ public final class MpqArchive implements AutoCloseable {
     }
 
     /**
+     * Compares one region of the file against a recorded digest.
+     * <p>
+     * A region that does not fit in the file cannot be digested, and is not
+     * counted as a mismatch: the header is describing something that is not
+     * there, which the table readers report on their own terms.
+     *
+     * @param offset where the region starts.
+     * @param length how long it is.
+     * @param digest the expected digest, or blank to skip.
+     * @return whether it matched, or true when there was nothing to compare.
+     */
+    private boolean matchesRegion(long offset, long length, byte[] digest) throws IOException {
+        if (length <= 0 || length > Integer.MAX_VALUE - 8
+            || !source.contains(offset, length)) {
+            return true;
+        }
+        return MpqHeader.matchesDigest(source.bytes(offset, (int) length), digest);
+    }
+
+    /**
      * Checks the tables against the MD5 digests a version 3 header records.
      * <p>
      * Reported rather than enforced, as StormLib does: a mismatch means the
@@ -267,19 +287,26 @@ public final class MpqArchive implements AutoCloseable {
         }
 
         boolean matched = header.verifyHeaderDigest(source);
-        matched &= MpqHeader.matchesDigest(
-            source.bytes(header.hashTableFileOffset(), (int) header.hashTableStoredSize()),
+        matched &= matchesRegion(header.hashTableFileOffset(), header.hashTableStoredSize(),
             extended.md5HashTable());
-        matched &= MpqHeader.matchesDigest(
-            source.bytes(header.blockTableFileOffset(), (int) header.blockTableStoredSize()),
+        matched &= matchesRegion(header.blockTableFileOffset(), header.blockTableStoredSize(),
             extended.md5BlockTable());
         if (header.hasHiBlockTable()) {
-            final long bytes = (long) header.blockTableEntries() * MpqHeader.HI_BLOCK_ENTRY_SIZE;
-            if (source.contains(header.hiBlockTableFileOffset(), bytes)) {
-                matched &= MpqHeader.matchesDigest(
-                    source.bytes(header.hiBlockTableFileOffset(), (int) bytes),
-                    extended.md5HiBlockTable());
-            }
+            matched &= matchesRegion(header.hiBlockTableFileOffset(),
+                (long) header.blockTableEntries() * MpqHeader.HI_BLOCK_ENTRY_SIZE,
+                extended.md5HiBlockTable());
+        }
+        // The extended tables are not read by this library, but their digests
+        // are still recorded, and Integrity.VERIFIED claims every recorded
+        // digest matched. Skipping them would make that claim false for an
+        // archive whose HET or BET table is the damaged one.
+        if (header.hetTablePosition() != 0) {
+            matched &= matchesRegion(header.hetTableFileOffset(),
+                extended.hetTableCompressedSize(), extended.md5HetTable());
+        }
+        if (header.betTablePosition() != 0) {
+            matched &= matchesRegion(header.betTableFileOffset(),
+                extended.betTableCompressedSize(), extended.md5BetTable());
         }
 
         if (!matched) {

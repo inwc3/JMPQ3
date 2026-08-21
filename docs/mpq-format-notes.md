@@ -315,9 +315,24 @@ declared bytemask and accepts either `n` or `n - 1` entries, reporting which via
 outside the four known ones are preserved in `flags()` but their arrays cannot be
 located, so parsing stops after the known prefix — as StormLib does.
 
-The patch-bit array is `(n + 6) / 8` bytes, which is StormLib's own formula: it
-rounds up and then tolerates a spare byte, rather than the `(n + 7) / 8` you
-would expect.
+### The patch-bit array has two lengths, because StormLib disagrees with itself
+
+`GetSizeOfAttributesFile` sizes it as `(dwBlockTableSize + 6) / 8`, and the
+loader sizes the same array as `(dwAttributesEntries + 7) / 8`. Those differ
+whenever `n` is congruent to 1 modulo 8: a one-block archive is allotted **zero**
+bytes for one bit, and a nine-block archive gets one byte for nine bits.
+
+This is not a reading error on our part — both expressions are in StormLib, in
+functions that describe the same array. So both lengths occur in the wild.
+
+**Decision.** `MpqAttributes.parse` accepts either length (and either, combined
+with the tolerated one-entry-short count, so four lengths in total are legal for
+one archive). Bits the file does not physically reach are read as unset rather
+than read out of bounds. What we *emit* is `(n + 7) / 8`, the length that holds
+every bit, so a write can never leave the buffer.
+
+The bit order is most-significant-first, per StormLib's
+`dwBitMask = (dwBitMask << 0x07) | (dwBitMask >> 0x01)` starting from `0x80`.
 
 
 ## 12. The hi-block table is plain; the hash and block tables may not be
@@ -352,6 +367,17 @@ not refuse the archive.
 
 **Decision.** `MpqArchive.integrity()` returns `UNRECORDED`, `VERIFIED` or
 `MISMATCHED`, and a mismatch is logged. Refusing to open would throw away an
-archive whose tables may decode every file perfectly. An all-zero digest counts
-as "not recorded" rather than as the digest of those bytes.
+archive whose tables may decode every file perfectly.
+
+Two things follow from the digests being optional. An all-zero field counts as
+"not recorded" rather than as the digest of those bytes — and since *every*
+version 3 header carries all six fields, whether a digest exists can only be
+decided by looking at its contents, never by its presence. A header that left
+them blank must report `UNRECORDED`; reporting `VERIFIED` would claim agreement
+with digests nobody computed.
+
+And `VERIFIED` has to mean *every* recorded digest, including the HET and BET
+tables. This library does not read those tables, but it does check their digests:
+skipping them would let an archive whose HET table is the damaged one report
+clean.
 
