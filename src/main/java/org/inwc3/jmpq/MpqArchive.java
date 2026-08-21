@@ -441,6 +441,47 @@ public final class MpqArchive implements AutoCloseable {
     }
 
     /**
+     * The hash table backing this archive.
+     * <p>
+     * Exposed for the deprecated {@code JMpqEditor} adapter, whose public API
+     * hands this object to callers. New code should use {@link #entry(String)}
+     * and {@link #localesOf(String)} instead, which do not require knowing how
+     * the format stores its index.
+     *
+     * @return the live hash table.
+     */
+    public HashTable hashTable() {
+        return hashTable;
+    }
+
+    /**
+     * A file's bytes exactly as stored, without decryption.
+     * <p>
+     * Exposed for the deprecated adapter, which constructs legacy
+     * {@code MpqFile} objects that do their own decoding. New code should use
+     * {@link #read(MpqFileEntry)}.
+     *
+     * @param entry the file.
+     * @return exactly {@link MpqFileEntry#compressedSize()} bytes.
+     * @throws IOException if the range lies outside the archive.
+     */
+    public byte[] rawBytes(MpqFileEntry entry) throws IOException {
+        return source.bytes(header.headerOffset() + entry.filePosition(), entry.compressedSize());
+    }
+
+    /**
+     * Every block table row, live or not, in table order.
+     * <p>
+     * Exposed for the deprecated adapter. {@link #entries()} is the supported
+     * form: it skips dead rows and attaches names and locales.
+     *
+     * @return the raw rows.
+     */
+    public List<MpqFileEntry> rawBlocks() {
+        return List.of(blocks);
+    }
+
+    /**
      * The bytes preceding the archive header.
      * <p>
      * Warcraft III maps carry a 512-byte prefix before the archive proper, and

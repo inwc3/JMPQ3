@@ -583,11 +583,26 @@ public class Phase0RegressionTests {
      * at the workaround rather than leaving the caller guessing.
      */
     @Test
-    public void p0_8_badHeaderSizeIsReported() {
+    public void p0_8_badHeaderSizeIsRepairedNotRejected() throws IOException {
+        // This assertion is deliberately the opposite of what it was. Phase 0
+        // rejected a garbage header size and told the caller to retry with
+        // FORCE_V0; P2-5a asks for StormLib's leniency instead, because
+        // Storm.dll ignores the field and the game loads these maps. The new
+        // core repairs the size, flags the archive malformed and opens it, so
+        // the protected maps of issue #46 are readable without a special
+        // option.
         Path mpq = TestResources.mpqCopy("listfileTooLong");
-        JMpqException thrown = Assert.expectThrows(JMpqException.class,
-            () -> new JMpqEditor(mpq, MPQOpenOption.READ_ONLY));
-        Assert.assertTrue(thrown.getMessage().contains("FORCE_V0"), thrown.getMessage());
+        try (JMpqEditor editor = new JMpqEditor(mpq, MPQOpenOption.READ_ONLY)) {
+            Assert.assertEquals(editor.getFormatVersion(), 0);
+            Assert.assertTrue(editor.hasFile("(listfile)"),
+                "the repaired header should still describe a usable archive");
+        }
+
+        try (org.inwc3.jmpq.MpqArchive archive =
+                 org.inwc3.jmpq.MpqArchive.open(mpq, org.inwc3.jmpq.MpqOpenOptions.defaults())) {
+            Assert.assertTrue(archive.header().malformed(),
+                "a repaired header must still be reported as malformed");
+        }
     }
 
     /**

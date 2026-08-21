@@ -46,6 +46,34 @@ public class BlockTable {
     }
 
     /**
+     * Wraps an already-decoded set of rows, for the deprecated
+     * {@code JMpqEditor} adapter, which obtains its rows from the new core
+     * rather than by decrypting the table itself.
+     *
+     * @param rows block table rows in table order.
+     * @return a block table over those rows.
+     */
+    public static BlockTable of(List<Block> rows) {
+        final ByteBuffer plain = ByteBuffer.allocate(rows.size() * ENTRY_SIZE)
+            .order(ByteOrder.LITTLE_ENDIAN);
+        for (Block row : rows) {
+            row.writeToBuffer(plain);
+        }
+        plain.clear();
+        // The constructor decrypts, so hand it an encrypted image built from
+        // these rows rather than duplicating the decoding logic here.
+        final ByteBuffer encrypted = ByteBuffer.allocate(rows.size() * ENTRY_SIZE)
+            .order(ByteOrder.LITTLE_ENDIAN);
+        new MPQEncryption(KEY_BLOCK_TABLE, false).processFinal(plain, encrypted);
+        encrypted.rewind();
+        try {
+            return new BlockTable(encrypted);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot rebuild an in-memory block table.", e);
+        }
+    }
+
+    /**
      * @return number of entries, live or not.
      */
     public int size() {
