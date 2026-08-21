@@ -25,47 +25,40 @@ genuinely ambiguous, the interpretation chosen is recorded with its citation in
 
 ## Installation
 
-Released to GitHub Packages as `org.inwc3:jmpq3`. Every tag `v*` publishes
-automatically.
+Available through [JitPack](https://jitpack.io/#inwc3/JMPQ3/), which builds
+tagged commits on demand:
 
 ```gradle
 repositories {
     mavenCentral()
-    maven {
-        url = uri('https://maven.pkg.github.com/inwc3/JMPQ3')
-        credentials {
-            username = System.getenv('GITHUB_ACTOR')
-            password = System.getenv('GITHUB_TOKEN')
-        }
-    }
+    maven { url = uri('https://jitpack.io') }
 }
 
 dependencies {
-    implementation 'org.inwc3:jmpq3:2.0.0'
+    implementation 'com.github.inwc3:JMPQ3:v2.0.0'
 }
 ```
 
-**GitHub Packages requires authentication even for public artifacts**, so a
-token with `read:packages` is needed to resolve this — including in CI. That is
-a property of GitHub Packages, not of this library. Publishing to Maven Central
-instead would remove the requirement; it needs a Sonatype namespace and signing
-keys, which is a decision rather than a build change.
+A commit hash or branch name works in place of the tag while testing unreleased
+changes.
 
-Older 1.9.x releases remain on [JitPack](https://jitpack.io/#inwc3/JMPQ3/).
+Tags are also published to GitHub Packages as `org.inwc3:jmpq3` by the release
+workflow. That route needs a token with `read:packages` even for public
+artifacts — a property of GitHub Packages, not of this library — so JitPack is
+the simpler option and the one above is the recommended form.
 
 ### Optional: Zopfli
 
 `RecompressOptions.useZopfli` needs one extra dependency, deliberately not
-declared here so that consumers who never use it do not inherit a second
-repository for it:
+declared by this library so that consumers who never use it do not pull it in:
 
 ```gradle
 dependencies {
-    runtimeOnly 'com.github.eustas:CafeUndZopfli:5cdf283e67'  // needs https://jitpack.io
+    runtimeOnly 'com.github.eustas:CafeUndZopfli:5cdf283e67'
 }
 ```
 
-Asking for Zopfli without it says so, rather than failing with
+Asking for Zopfli without it on the classpath says so, rather than failing with
 `NoClassDefFoundError`.
 
 ## Format support
