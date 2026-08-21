@@ -243,9 +243,31 @@ with `0` starts them at `s1 = 0, s2 = 0`. The two results differ by 1 in the low
 half and by the byte count in the high half — for every input, without
 exception.
 
-**Decision.** `MpqChecksums.adler32` implements the seeded-zero form.
-`java.util.zip.Adler32` cannot be used: it offers no way to seed, so it always
-computes the standard variant.
+**Decision.** `MpqChecksums.adler32` produces the seeded-zero form *via*
+`java.util.zip.Adler32`. The seeds differ by a closed form rather than anything
+structural — running the recurrence from `s1 = 1` adds 1 to the low half and one
+per byte to the high half — so the JDK's intrinsic does the work and the result
+is corrected:
+
+```
+s1(seed 0) = s1(seed 1) - 1          (mod 65521)
+s2(seed 0) = s2(seed 1) - n          (mod 65521)
+```
+
+The first implementation was a hand-written loop instead, and it was **wrong**.
+zlib chooses its `NMAX = 5552` fold interval so that `s2` cannot overflow an
+*unsigned* 32-bit accumulator; Java has no such type, and a signed `int`
+overflows at half that. A single sector of a few thousand high-valued bytes was
+therefore checksummed incorrectly — reachable in practice, because the default
+recompression setting never shrinks a sector, so raw bytes reach the checksum as
+they are.
+
+That bug survived a round trip, an all-green suite and a code review, for the
+same reason as the seed itself: the reader and the writer shared the wrong
+arithmetic and agreed with each other. `tools/mpqref.py` caught it once a
+fixture with high-valued stored sectors existed, which is now part of the
+exported set. The hand-written loop survives as `adler32Reference`, used only as
+the oracle the fast path is fuzzed against.
 
 This one is worth dwelling on, because no self-consistent test can catch it. A
 reader and a writer that both use the standard seed agree with each other on

@@ -633,11 +633,18 @@ public final class MpqArchive implements AutoCloseable {
         }
         final long tableBytes = (long) blockCount * MpqHeader.HI_BLOCK_ENTRY_SIZE;
         if (!source.contains(header.hiBlockTableFileOffset(), tableBytes)) {
-            // The archive claims a hi-block table it does not hold. Reading the
-            // low words alone at least matches what a version 0 reader sees.
-            log.warn("{} declares a hi-block table at {} that does not fit; ignoring it.",
-                source.origin(), header.hiBlockTableFileOffset());
-            return new int[0];
+            // Reported, not worked around. An archive declaring a hi-block table
+            // is declaring that its file positions do not fit in 32 bits, so
+            // carrying on with the low words alone puts every file at the wrong
+            // offset -- reads that fail, or worse, succeed with wrong bytes.
+            // StormLib treats an unreadable hi-block table as fatal too
+            // (BuildFileTable_Classic sets dwErrCode and stops). A version 0
+            // archive never reaches here, so MPQOpenOption.FORCE_V0 remains the
+            // way to read one whose header claims a table it does not have.
+            throw new JMpqException("Archive declares a hi-block table at "
+                + header.hiBlockTableFileOffset() + " spanning " + tableBytes
+                + " bytes, which is not inside " + source.origin()
+                + ". Its file positions cannot be resolved.");
         }
         final int[] highWords = new int[blockCount];
         for (int i = 0; i < blockCount; i++) {

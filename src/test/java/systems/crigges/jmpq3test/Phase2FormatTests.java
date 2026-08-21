@@ -538,12 +538,21 @@ public class Phase2FormatTests {
     }
 
     /**
-     * An archive claiming a hi-block table it does not hold is read with the low
-     * words alone, which is what a version 0 reader would do anyway. Refusing it
-     * would lose an archive that is entirely readable.
+     * An archive claiming a hi-block table it does not hold is reported, not
+     * quietly read with the low words alone.
+     * <p>
+     * Ignoring the table looked like leniency and was not: declaring one means
+     * the file positions do not fit in 32 bits, so dropping the high words puts
+     * every file at the wrong offset — reads that fail, or worse, succeed with
+     * the wrong bytes. StormLib treats an unreadable hi-block table as fatal for
+     * the same reason.
+     * <p>
+     * The escape hatch is real rather than notional: a version 0 archive never
+     * consults the field, so a Warcraft III map whose header was corrupted into
+     * claiming one still opens under {@code FORCE_V0}.
      */
     @Test
-    public void aHiBlockTableOutsideTheFileIsIgnored() throws IOException {
+    public void aHiBlockTableOutsideTheFileIsReported() throws IOException {
         final byte[] plain = MpqArchiveWriter.create(MpqWriteOptions.defaults()
                 .withFormatVersion(1))
             .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
@@ -553,11 +562,34 @@ public class Phase2FormatTests {
         final int headerAt = headerOffset(plain);
         edit.putLong(headerAt + 0x20, 0x7FFF_FFFFL);
 
-        try (MpqArchive archive = MpqArchive.open(plain, MpqOpenOptions.defaults())) {
-            Assert.assertFalse(archive.header().hasHiBlockTable(), "dropped as implausible");
-            Assert.assertTrue(archive.header().malformed());
+        final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+            () -> MpqArchive.open(plain, MpqOpenOptions.defaults()).close());
+        Assert.assertTrue(thrown.getMessage().contains("hi-block table"), thrown.getMessage());
+
+        // Read as version 0, the field is not part of the header at all.
+        try (MpqArchive archive = MpqArchive.open(plain, MpqOpenOptions.warcraft3())) {
+            Assert.assertFalse(archive.header().hasHiBlockTable());
             Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
         }
+    }
+
+    /** A table whose position is in the file but which runs off the end, likewise. */
+    @Test
+    public void aTruncatedHiBlockTableIsReported() throws IOException {
+        final byte[] plain = MpqArchiveWriter.create(MpqWriteOptions.defaults()
+                .withFormatVersion(1))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        // One byte before the end: inside the file, but far too small to hold
+        // one entry per block.
+        final ByteBuffer edit = ByteBuffer.wrap(plain).order(ByteOrder.LITTLE_ENDIAN);
+        final int headerAt = headerOffset(plain);
+        edit.putLong(headerAt + 0x20, plain.length - headerAt - 1);
+
+        final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+            () -> MpqArchive.open(plain, MpqOpenOptions.defaults()).close());
+        Assert.assertTrue(thrown.getMessage().contains("hi-block table"), thrown.getMessage());
     }
 
     /**
@@ -723,11 +755,25 @@ public class Phase2FormatTests {
 
         final StringBuilder expected = new StringBuilder("# archive\tname\tsize\tmd5\n");
 
+        // 8 KiB sectors of incompressible data are stored raw, so a whole
+        // sector of high-valued bytes reaches the checksum. That is what
+        // overflows a signed 32-bit Adler accumulator -- and it is invisible to a
+        // round trip, because both sides would share the same wrong arithmetic.
+        // Only the reference can see it, which is why this shape is exported.
+        files.put("wide.bin", incompressible(40_000, 21));
+        // High-valued bytes, stored raw: the default recompression setting never
+        // shrinks a sector, so these reach the checksum as they are. A run of
+        // 0xFF is what pushes the Adler accumulator past a signed 32-bit range.
+        final byte[] high = new byte[40_000];
+        java.util.Arrays.fill(high, (byte) 0xFF);
+        files.put("high.bin", high);
+
         final MpqWriteOptions[] shapes = {
             MpqWriteOptions.defaults().withSectorChecksums(true),
             MpqWriteOptions.defaults().withAttributes(true).withAttributesTimestamp(0),
             MpqWriteOptions.defaults().withSectorChecksums(true).withAttributes(true)
                 .withAttributesTimestamp(0).withFormatVersion(1),
+            MpqWriteOptions.defaults().withSectorChecksums(true).withSectorSizeShift(4),
         };
 
         for (int shape = 0; shape < shapes.length; shape++) {

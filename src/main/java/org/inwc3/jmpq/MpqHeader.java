@@ -692,9 +692,10 @@ public record MpqHeader(
 
         if (hiBlockTablePosition < 0
             || (hiBlockTablePosition != 0 && !source.contains(offset + hiBlockTablePosition, 0))) {
-            // A position outside the file cannot be a table. Dropping it leaves
-            // the low words, which is what a version 0 reader would use.
-            hiBlockTablePosition = 0;
+            // Kept, not dropped. Dropping it left the low words in place, which
+            // silently relocates every file in an archive that needs the high
+            // ones; MpqArchive reports it instead, as StormLib does. Recording
+            // that the header is malformed is still worth doing.
             malformed = true;
         }
 
