@@ -51,6 +51,14 @@ public final class MpqArchive implements AutoCloseable {
     /** Encryption key for block table data. */
     private static final int KEY_BLOCK_TABLE = tableKey("(block table)");
 
+    /**
+     * Files an archive holds by convention rather than by being listed. A list
+     * file does not name itself, so these have to be known rather than
+     * discovered.
+     */
+    private static final List<String> INTERNAL_NAMES =
+        List.of("(listfile)", "(attributes)", "(signature)");
+
     private static int tableKey(String name) {
         final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
         hasher.process(name);
@@ -245,6 +253,14 @@ public final class MpqArchive implements AutoCloseable {
         for (String name : names.values()) {
             namesByKey.put(MpqNames.fileKey(name), name);
         }
+        // The internal files are known by name even though a list file does not
+        // list itself. Without these they would count as unnameable, which is
+        // what unnamedBlockCount reports as data a rebuild would lose.
+        for (String internal : INTERNAL_NAMES) {
+            if (hashTable.hasFile(internal)) {
+                namesByKey.put(MpqNames.fileKey(internal), internal);
+            }
+        }
         final Map<Integer, HashTable.Mapping> byBlock = new LinkedHashMap<>();
         for (HashTable.Mapping mapping : hashTable.mappings()) {
             // Prefer a mapping whose name is known, so a block reachable by
@@ -438,6 +454,41 @@ public final class MpqArchive implements AutoCloseable {
                     source.origin(), name);
             }
         }
+    }
+
+    /**
+     * Whether this archive can list its own contents.
+     * <p>
+     * An archive without a usable {@code (listfile)} cannot: the hash table
+     * stores hashes, not names, so there is nothing to enumerate. Its files are
+     * still readable by exact name. This is a queryable fact rather than a log
+     * line, because a caller about to rebuild needs to know that names it
+     * cannot see would be dropped.
+     *
+     * @return whether {@link #names()} reflects the whole archive.
+     */
+    public boolean isEnumerable() {
+        return !names.isEmpty();
+    }
+
+    /**
+     * How many live blocks no name resolves to.
+     * <p>
+     * A rebuild can only carry over files it can name, so this is exactly how
+     * many files a rebuild would discard. Non-zero means the archive's list file
+     * is incomplete, which protected archives do deliberately. Before 2.0 this
+     * was a log warning at open time and nothing a caller could act on.
+     *
+     * @return the number of unnameable live blocks.
+     */
+    public int unnamedBlockCount() {
+        int unnamed = 0;
+        for (MpqFileEntry entry : entries()) {
+            if (entry.name().isEmpty()) {
+                unnamed++;
+            }
+        }
+        return unnamed;
     }
 
     /**

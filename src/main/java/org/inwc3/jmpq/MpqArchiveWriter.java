@@ -154,6 +154,15 @@ public final class MpqArchiveWriter {
                     new Pending(name, locale, new Content.Existing(source, entry)));
             }
         }
+        final int dropped = source.unnamedBlockCount();
+        if (dropped > 0) {
+            // Stated plainly, because it is data loss the caller may not
+            // expect: these blocks exist but nothing names them, so the rebuilt
+            // archive cannot contain them.
+            log.warn("{} of the {} files in {} cannot be named and will not be carried over."
+                + " Supply a list file covering them if they matter.",
+                dropped, source.blockCount(), source);
+        }
         log.debug("Writer seeded with {} files from {}", writer.pending.size(), source);
         return writer;
     }
