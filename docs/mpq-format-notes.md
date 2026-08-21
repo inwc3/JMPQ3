@@ -358,6 +358,14 @@ A hi-block table whose position falls outside the file is dropped and the archiv
 flagged malformed, rather than refused: reading the low words alone is exactly
 what a version 0 reader does, and the archive is otherwise fine.
 
+**This interacts with the header scan.** The plausibility check of §14 screens a
+candidate on whether its hash table fits in the file, and it has to use the
+*stored* length for the same reason: a valid version 3 archive whose compressed
+hash table ends the file has no room for the uncompressed form, so screening on
+that rejects the real header — and once rejected, a decoy planted earlier in the
+file wins the scan. Strengthening the check without accounting for compression
+turns it into the thing it was written to prevent.
+
 
 ## 13. Version 3 MD5 digests are reported, not enforced
 
@@ -381,3 +389,23 @@ tables. This library does not read those tables, but it does check their digests
 skipping them would let an archive whose HET table is the damaged one report
 clean.
 
+
+## 14. What makes a candidate header plausible
+
+Protected archives plant decoy `MPQ\x1A` signatures so a reader commits to the
+first one it finds and then fails on tables that are not there. StormLib screens
+candidates (`ERROR_FAKE_MPQ_HEADER`) rather than trusting the first hit.
+
+**Decision.** `MpqHeader.findHeader` applies a cheap test to every candidate —
+archive headers and user-data redirects alike — and keeps scanning past one that
+fails. The test requires a non-zero hash and block table position, a non-zero
+hash entry count, a sector shift that does not overflow, and room in the file for
+the hash table at its *stored* length (see §12).
+
+Two properties keep this safe to have strengthened:
+
+- The **first candidate is retained as a fallback**. If nothing in the file looks
+  plausible, that candidate is used anyway, so the scan can only ever find a
+  header where a naive scan found one — never fewer.
+- The test only rejects on things that make an archive unreadable regardless, so
+  a candidate it rejects would have failed at table-parse time in any case.

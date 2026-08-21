@@ -403,7 +403,7 @@ public record MpqHeader(
 
             if (signature == ARCHIVE_SIGNATURE) {
                 final Located candidate = new Located(position, null);
-                if (isPlausible(source, position)) {
+                if (isPlausible(source, position, forceV0)) {
                     return candidate;
                 }
                 if (fallback == null) {
@@ -420,7 +420,7 @@ public record MpqHeader(
                 final long redirected = userData.archiveHeaderOffset();
                 if (source.contains(redirected, 4) && source.i32(redirected) == ARCHIVE_SIGNATURE) {
                     final Located candidate = new Located(redirected, userData);
-                    if (isPlausible(source, redirected)) {
+                    if (isPlausible(source, redirected, forceV0)) {
                         return candidate;
                     }
                     if (fallback == null) {
@@ -441,10 +441,20 @@ public record MpqHeader(
      * {@code ERROR_FAKE_MPQ_HEADER} checks: a header whose table positions fall
      * outside the file cannot be the real one.
      */
-    private static boolean isPlausible(MpqSource source, long position) throws JMpqException {
+    private static boolean isPlausible(MpqSource source, long position, boolean forceV0)
+        throws JMpqException {
         if (!source.contains(position, SIZE_BY_VERSION[0])) {
             return false;
         }
+        // A version this library cannot parse cannot be the header it goes on to
+        // use, so accepting the candidate only ends the scan early and then
+        // fails in parseAt -- with a valid header possibly still ahead of it.
+        // Unless forceV0 is set, in which case the declared version is ignored
+        // on purpose and a garbage one is exactly what is expected.
+        if (!forceV0 && source.u16(position + 0x0C) > MAX_FORMAT_VERSION) {
+            return false;
+        }
+
         final long hashTablePosition = source.u32(position + 0x10);
         final long blockTablePosition = source.u32(position + 0x14);
         final int hashTableEntries = source.i32(position + 0x18) & 0x0FFFFFFF;
@@ -455,7 +465,7 @@ public record MpqHeader(
             && hashTableEntries > 0
             && sectorShift <= MAX_SECTOR_SIZE_SHIFT
             && source.contains(position + hashTablePosition,
-                candidateHashTableBytes(source, position, hashTableEntries))
+                candidateHashTableBytes(source, position, hashTableEntries, forceV0))
             && source.contains(position + blockTablePosition, 0);
     }
 
@@ -468,15 +478,21 @@ public record MpqHeader(
      * the scan would then settle on the decoy. That is the reverse of what this
      * check is for, so the stored length is used where the header declares one.
      *
-     * @param source  the archive bytes.
+     * Only format version 3 has the field, and only if this candidate is going
+     * to be read as version 3 -- under {@code forceV0} it will be read as
+     * version 0, where those bytes mean nothing.
+     *
+     * @param source   the archive bytes.
      * @param position the candidate header offset.
      * @param entries  declared hash table entries.
+     * @param forceV0  whether the archive will be read as version 0 regardless.
      * @return bytes to require at the hash table position.
      */
-    private static long candidateHashTableBytes(MpqSource source, long position, int entries)
-        throws JMpqException {
+    private static long candidateHashTableBytes(MpqSource source, long position, int entries,
+                                                boolean forceV0) throws JMpqException {
         final long plain = (long) entries * HASH_ENTRY_SIZE;
-        if (source.u16(position + 0x0C) < 3 || !source.contains(position, SIZE_BY_VERSION[3])) {
+        if (forceV0 || source.u16(position + 0x0C) != 3
+            || !source.contains(position, SIZE_BY_VERSION[3])) {
             return plain;
         }
         final long stored = source.i64(position + 0x44);

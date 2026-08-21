@@ -174,6 +174,61 @@ public class Version3IntegrityTests {
         }
     }
 
+    // --------------------------------------------------- unparseable decoys
+
+    /**
+     * A decoy declaring a format version this library cannot parse must not end
+     * the scan.
+     * <p>
+     * Its table positions are in range, so every other part of the plausibility
+     * test passes; accepting it stops the scan short of the real header and then
+     * fails in {@code parseAt} with "not supported", with the valid archive
+     * sitting untouched further down the file.
+     */
+    @Test
+    public void aDecoyDeclaringAnUnsupportedVersionDoesNotEndTheScan() throws IOException {
+        final byte[] real = build(new Shape(false, false, false, false));
+        final byte[] image = behindADecoy(real);
+
+        // Give the decoy in-range tables and an impossible version.
+        final ByteBuffer decoy = ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN);
+        decoy.putShort(0x0C, (short) 9);
+        decoy.putInt(0x10, 0x100);
+        decoy.putInt(0x14, 0x180);
+        decoy.putInt(0x18, 4);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.header().headerOffset(), MpqHeader.ALIGNMENT,
+                "a version that cannot be parsed cannot be the header to use");
+            Assert.assertEquals(archive.header().formatVersion(), 3);
+            Assert.assertEquals(archive.read("a.txt"), content());
+        }
+    }
+
+    /**
+     * The version screen must not apply under {@code forceV0}, which exists
+     * precisely to read archives whose declared version is garbage — the
+     * protected maps of issue #46. Warcraft III ignores the field, so a corrupt
+     * one must not stop the archive opening.
+     */
+    @Test
+    public void forceV0StillAcceptsAGarbageVersion() throws IOException {
+        final byte[] image = source();
+        ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).putShort(0x0C, (short) 0x1234);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.warcraft3())) {
+            Assert.assertEquals(archive.header().formatVersion(), 0, "read as version 0");
+            Assert.assertTrue(archive.header().malformed());
+            Assert.assertEquals(archive.read("a.txt"), content());
+        }
+
+        // Without it, the version is taken at face value and reported.
+        final systems.crigges.jmpq3.JMpqException thrown = Assert.expectThrows(
+            systems.crigges.jmpq3.JMpqException.class,
+            () -> MpqArchive.open(image, MpqOpenOptions.defaults()).close());
+        Assert.assertTrue(thrown.getMessage().contains("not supported"), thrown.getMessage());
+    }
+
     // ------------------------------------------------------------ fixtures
 
     /**
