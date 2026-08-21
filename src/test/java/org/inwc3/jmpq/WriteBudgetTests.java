@@ -216,18 +216,27 @@ public class WriteBudgetTests {
             Assert.assertEquals(b.read("a.txt"), compressible);
         }
 
-        // And fast must be the quicker of the two, or the preset is a lie.
-        Assert.assertTrue(timeToWrite(MpqWriteOptions.fast(), compressible)
-                <= timeToWrite(MpqWriteOptions.defaults().withRecompression(deflate), compressible),
-            "storing should not be slower than deflating");
-    }
+        // That fast() *is* the store path is asserted on what it produces, not
+        // on how long it took. An earlier version timed the two and compared
+        // them, which contradicted this class's own reasoning: a scheduler pause
+        // or a GC in the one measured call is enough to invert a single sample.
+        Assert.assertFalse(MpqWriteOptions.fast().recompression().recompress,
+            "fast() must not ask for recompression");
 
-    private static long timeToWrite(MpqWriteOptions options, byte[] content) throws IOException {
-        // One warm-up, then the measured run.
-        MpqArchiveWriter.create(options).put("a.txt", content).toByteArray();
-        final long start = System.nanoTime();
-        MpqArchiveWriter.create(options).put("a.txt", content).toByteArray();
-        return System.nanoTime() - start;
+        try (MpqArchive a = MpqArchive.open(stored, MpqOpenOptions.defaults());
+             MpqArchive b = MpqArchive.open(compressed, MpqOpenOptions.defaults())) {
+            final MpqFileEntry storedEntry = a.entry("a.txt").orElseThrow();
+            final MpqFileEntry deflatedEntry = b.entry("a.txt").orElseThrow();
+
+            // A stored sector occupies its natural length, so the file cannot
+            // take less room than its content; a deflated one must take less.
+            Assert.assertTrue(storedEntry.compressedSize() >= storedEntry.normalSize(),
+                "fast() stored " + storedEntry.compressedSize() + " bytes for "
+                    + storedEntry.normalSize() + " of content, so something compressed it");
+            Assert.assertTrue(deflatedEntry.compressedSize() < deflatedEntry.normalSize() / 10,
+                "deflate stored " + deflatedEntry.compressedSize() + " bytes for "
+                    + deflatedEntry.normalSize() + " of highly compressible content");
+        }
     }
 
     /**

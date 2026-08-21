@@ -75,7 +75,6 @@ a bitmask. See format note 2.
 Compression on write is deflate, with an optional [Zopfli](https://github.com/google/zopfli)
 mode for smaller output at much greater cost.
 
-<<<<<<< HEAD
 **The default stores rather than compresses.** `MpqWriteOptions.defaults()` does
 not deflate, and a file carried over from another archive keeps whatever encoding
 it already had. That is the right trade for a development loop over a large map,
@@ -83,8 +82,6 @@ and `MpqWriteOptions.fast()` says so explicitly rather than relying on a default
 staying put. Ask for `recompressed()` when the archive is a deliverable and its
 size matters.
 
-=======
->>>>>>> origin/master
 ## Quick start
 
 The 2.0 API separates reading from writing. `MpqArchive` opens an archive and
@@ -196,7 +193,6 @@ A format version 3 archive may record MD5 digests of its own tables.
 mismatch is reported rather than fatal, because the tables may still decode every
 file.
 
-<<<<<<< HEAD
 ## Performance
 
 Archives are assembled in memory, so peak heap is roughly the size of the
@@ -232,8 +228,6 @@ Opening is near-instant because the archive is memory-mapped and only its tables
 are parsed. The rebuild needed about 608 MB of heap for a 539 MB archive, which
 is the memory profile to plan for: peak is roughly the archive's size.
 
-=======
->>>>>>> origin/master
 ## Thread safety
 
 An archive opened from a `Path` is confined to the thread that opened it, because
