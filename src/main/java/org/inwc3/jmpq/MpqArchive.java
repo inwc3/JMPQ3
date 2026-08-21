@@ -256,19 +256,35 @@ public final class MpqArchive implements AutoCloseable {
     /**
      * Compares one region of the file against a recorded digest.
      * <p>
-     * A region that does not fit in the file cannot be digested, and is not
-     * counted as a mismatch: the header is describing something that is not
-     * there, which the table readers report on their own terms.
+     * A recorded digest whose region is absent, empty or outside the file counts
+     * as a mismatch rather than a pass. Nothing was hashed, so the archive
+     * cannot be said to agree with its own digests — and for the HET and BET
+     * tables, which this library does not otherwise read or validate, letting
+     * that path succeed would be the only thing standing between a damaged
+     * extended table and a clean bill of health.
      *
-     * @param offset where the region starts.
-     * @param length how long it is.
-     * @param digest the expected digest, or blank to skip.
-     * @return whether it matched, or true when there was nothing to compare.
+     * @param present whether the header says this table exists at all.
+     * @param offset  where the region starts.
+     * @param length  how long it is.
+     * @param digest  the expected digest, or blank to skip.
+     * @return whether it matched, or true when nothing was recorded.
      */
-    private boolean matchesRegion(long offset, long length, byte[] digest) throws IOException {
-        if (length <= 0 || length > Integer.MAX_VALUE - 8
-            || !source.contains(offset, length)) {
+    private boolean matchesRegion(boolean present, long offset, long length, byte[] digest)
+        throws IOException {
+        if (!MpqHeader.Extended.isRecorded(digest)) {
+            // Nothing was recorded, so there is nothing to agree or disagree
+            // with. This is the usual case for a header that left the optional
+            // digests blank.
             return true;
+        }
+        if (!present || length <= 0 || length > Integer.MAX_VALUE - 8
+            || !source.contains(offset, length)) {
+            // A digest was recorded for bytes the header cannot actually point
+            // at. Counting that as a match would let VERIFIED be reported when
+            // nothing was hashed, which is the one thing it must not mean.
+            log.warn("{} records a digest for a {} byte region at {} that is not in the file.",
+                source.origin(), length, offset);
+            return false;
         }
         return MpqHeader.matchesDigest(source.bytes(offset, (int) length), digest);
     }
@@ -287,27 +303,21 @@ public final class MpqArchive implements AutoCloseable {
         }
 
         boolean matched = header.verifyHeaderDigest(source);
-        matched &= matchesRegion(header.hashTableFileOffset(), header.hashTableStoredSize(),
-            extended.md5HashTable());
-        matched &= matchesRegion(header.blockTableFileOffset(), header.blockTableStoredSize(),
-            extended.md5BlockTable());
-        if (header.hasHiBlockTable()) {
-            matched &= matchesRegion(header.hiBlockTableFileOffset(),
-                (long) header.blockTableEntries() * MpqHeader.HI_BLOCK_ENTRY_SIZE,
-                extended.md5HiBlockTable());
-        }
+        matched &= matchesRegion(true, header.hashTableFileOffset(),
+            header.hashTableStoredSize(), extended.md5HashTable());
+        matched &= matchesRegion(true, header.blockTableFileOffset(),
+            header.blockTableStoredSize(), extended.md5BlockTable());
+        matched &= matchesRegion(header.hasHiBlockTable(), header.hiBlockTableFileOffset(),
+            (long) header.blockTableEntries() * MpqHeader.HI_BLOCK_ENTRY_SIZE,
+            extended.md5HiBlockTable());
         // The extended tables are not read by this library, but their digests
         // are still recorded, and Integrity.VERIFIED claims every recorded
         // digest matched. Skipping them would make that claim false for an
         // archive whose HET or BET table is the damaged one.
-        if (header.hetTablePosition() != 0) {
-            matched &= matchesRegion(header.hetTableFileOffset(),
-                extended.hetTableCompressedSize(), extended.md5HetTable());
-        }
-        if (header.betTablePosition() != 0) {
-            matched &= matchesRegion(header.betTableFileOffset(),
-                extended.betTableCompressedSize(), extended.md5BetTable());
-        }
+        matched &= matchesRegion(header.hetTablePosition() != 0, header.hetTableFileOffset(),
+            extended.hetTableCompressedSize(), extended.md5HetTable());
+        matched &= matchesRegion(header.betTablePosition() != 0, header.betTableFileOffset(),
+            extended.betTableCompressedSize(), extended.md5BetTable());
 
         if (!matched) {
             log.warn("{} does not match the MD5 digests in its own header;"

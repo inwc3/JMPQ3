@@ -104,11 +104,17 @@ public record MpqAttributes(
     }
 
     /**
-     * Bytes needed to hold {@code entries} attributes of the given shape.
+     * The file length StormLib would write for this shape.
+     * <p>
+     * Exact for every combination except {@link #HAS_PATCH_BIT}, where the
+     * format has no single answer: StormLib sizes that array one way and reads
+     * it another, so a patch-bit file may legally be this length or one byte
+     * longer. {@link #parse} accepts both, and {@link #toByteArray} emits the
+     * longer one, because it is the only one that holds every bit.
      *
      * @param flags   the bytemask.
      * @param entries number of blocks described.
-     * @return the exact file length.
+     * @return the length StormLib writes.
      */
     public static long sizeFor(int flags, int entries) {
         return sizeFor(flags, entries, patchBitBytesStormLibWrites(entries));

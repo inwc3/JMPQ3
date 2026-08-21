@@ -455,8 +455,32 @@ public record MpqHeader(
             && hashTableEntries > 0
             && sectorShift <= MAX_SECTOR_SIZE_SHIFT
             && source.contains(position + hashTablePosition,
-                (long) hashTableEntries * HASH_ENTRY_SIZE)
+                candidateHashTableBytes(source, position, hashTableEntries))
             && source.contains(position + blockTablePosition, 0);
+    }
+
+    /**
+     * How many bytes a candidate header's hash table actually occupies.
+     * <p>
+     * From version 3 a hash table may be stored compressed, so requiring room
+     * for the uncompressed table would rule out a valid header whose compressed
+     * table sits near the end of the file — and if a decoy header came first,
+     * the scan would then settle on the decoy. That is the reverse of what this
+     * check is for, so the stored length is used where the header declares one.
+     *
+     * @param source  the archive bytes.
+     * @param position the candidate header offset.
+     * @param entries  declared hash table entries.
+     * @return bytes to require at the hash table position.
+     */
+    private static long candidateHashTableBytes(MpqSource source, long position, int entries)
+        throws JMpqException {
+        final long plain = (long) entries * HASH_ENTRY_SIZE;
+        if (source.u16(position + 0x0C) < 3 || !source.contains(position, SIZE_BY_VERSION[3])) {
+            return plain;
+        }
+        final long stored = source.i64(position + 0x44);
+        return stored > 0 && stored < plain ? stored : plain;
     }
 
     /**
