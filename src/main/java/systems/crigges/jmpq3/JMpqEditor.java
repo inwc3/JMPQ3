@@ -696,8 +696,16 @@ public class JMpqEditor implements AutoCloseable {
             MpqArchiveWriter.from(archive, writeOptions(options, buildListfile, buildAttributes));
 
         // Files the archive holds but could not name itself, recovered from an
-        // external list file.
+        // external list file. A recovered (attributes) is skipped when a fresh
+        // one is being generated: carrying both in puts two entries under one
+        // name, which the writer refuses -- so the rebuild would fail outright
+        // rather than produce the attributes that were asked for.
         for (String name : externalNames) {
+            if (buildAttributes && sameName(name, org.inwc3.jmpq.MpqAttributes.NAME)) {
+                log.debug("Not carrying over the recovered {}; a fresh one is being generated.",
+                    name);
+                continue;
+            }
             if (!writer.contains(name) && archive.contains(name)) {
                 writer.put(name, archive.read(name));
             }
@@ -710,6 +718,13 @@ public class JMpqEditor implements AutoCloseable {
         // parameter, so an override means the path as a whole. Putting only the
         // neutral variant would leave other locales behind with stale content.
         for (Insert insert : inserts.values()) {
+            if (buildAttributes && sameName(insert.name(), org.inwc3.jmpq.MpqAttributes.NAME)) {
+                // Same collision, from the other direction: an explicit insert
+                // of (attributes) alongside a request to generate one.
+                log.warn("Ignoring the supplied {} because attributes generation was requested.",
+                    insert.name());
+                continue;
+            }
             writer.remove(insert.name());
             if (insert.bytes() != null) {
                 writer.put(insert.name(), insert.bytes());

@@ -150,6 +150,40 @@ public class WriteBudgetTests {
     }
 
     /**
+     * Pre-sizing must never reserve more than growing would have peaked at.
+     * <p>
+     * Summing the inputs is only sound when the output size follows from them.
+     * With compression it does not: a highly compressible corpus produces an
+     * archive a fraction of its input, so reserving the sum would hold memory
+     * the archive never needs -- and could fail outright on input that the old
+     * grow-as-you-go path completed. Pre-sizing is a performance change; it is
+     * not allowed to shrink what the library can handle.
+     */
+    @Test
+    public void recompressingDoesNotReserveTheWholeUncompressedCorpus() throws IOException {
+        // Compresses to almost nothing, so raw sum and output diverge sharply.
+        final byte[] compressible = new byte[4 * 1024 * 1024];
+
+        final RecompressOptions deflate = new RecompressOptions(true);
+        final MpqArchiveWriter writer = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withRecompression(deflate));
+        for (int i = 0; i < FILE_COUNT; i++) {
+            writer.put("war3mapImported/blank" + i + ".bin", compressible);
+        }
+
+        final long rawSum = (long) FILE_COUNT * compressible.length;
+        final MpqImageBuffer image = writer.build();
+        final int produced = image.toByteArray().length;
+
+        Assert.assertTrue(produced < rawSum / 10,
+            "the fixture should compress hard: " + produced + " from " + rawSum);
+        Assert.assertTrue(image.capacity() < rawSum / 2,
+            "reserved " + image.capacity() + " bytes for a " + produced
+                + " byte archive built from " + rawSum + " bytes of input;"
+                + " sizing from the raw sum is worse than growing");
+    }
+
+    /**
      * {@link MpqWriteOptions#fast()} really does store rather than compress.
      * <p>
      * Checked against compressible content, where the two settings cannot look

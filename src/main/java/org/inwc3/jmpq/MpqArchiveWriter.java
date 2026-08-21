@@ -719,20 +719,27 @@ public final class MpqArchiveWriter {
      */
     private int estimateSize() {
         final int sectorSize = options.sectorSize();
+        // Compression makes the output size unknowable, so summing the inputs
+        // would reserve the whole uncompressed corpus for an archive that ends
+        // up a fraction of it -- worse than growing, and able to fail outright
+        // where growing would have completed. Only size the buffer up front when
+        // the output size is actually derivable from the input.
+        final boolean sizesKnown = !options.recompression().recompress;
+
         long estimate = prefix.length + options.headerSize();
+        long largestFile = 0;
 
         for (Pending file : pending.values()) {
-            estimate += switch (file.content()) {
-                // A verbatim copy occupies exactly what it occupied before.
-                case Content.Existing existing -> existing.entry().compressedSize();
-                case Content.Bytes bytes -> encodedWorstCase(bytes.value().length, sectorSize);
-                // Sized from disk rather than counted as nothing. Files inserted
-                // by path are read at save time, and treating them as free is
-                // what made assembling a map from a directory grow the buffer
-                // from scratch -- the case that matters most, since it is how a
-                // build tool assembles one.
-                case Content.File source -> encodedWorstCase(sizeOf(source.path()), sectorSize);
-            };
+            final long worst = worstCaseFor(file, sectorSize);
+            largestFile = Math.max(largestFile, worst);
+            if (sizesKnown) {
+                estimate += worst;
+            }
+        }
+        if (!sizesKnown) {
+            // Enough for the biggest single file's staging region, so even the
+            // recompressing path does not reallocate just to encode one file.
+            estimate += largestFile;
         }
 
         // The tables land after the data and are not small: a maximised hash
@@ -754,6 +761,38 @@ public final class MpqArchiveWriter {
         estimate += 64L * files + 4096;
 
         return Math.clamp(estimate, 64, MpqImageBuffer.MAX_SIZE);
+    }
+
+    /**
+     * Upper bound on what one pending file will occupy.
+     *
+     * @param file       the file.
+     * @param sectorSize the archive's sector size.
+     * @return the exact stored size for a file copied verbatim, and the
+     *         worst-case encoded size otherwise.
+     */
+    private long worstCaseFor(Pending file, int sectorSize) {
+        if (file.content() instanceof Content.Existing existing
+            && canCopyVerbatim(existing, sectorSize)) {
+            // A verbatim copy occupies exactly what it occupied before.
+            return existing.entry().compressedSize();
+        }
+        return encodedWorstCase(naturalSizeOf(file), sectorSize);
+    }
+
+    /**
+     * @param file a pending file.
+     * @return its decoded size, read from disk when it lives there. Treating a
+     *         file inserted by path as costing nothing is what made assembling a
+     *         map from a directory grow the buffer from scratch -- the case that
+     *         matters most, since it is how a build tool assembles one.
+     */
+    private static long naturalSizeOf(Pending file) {
+        return switch (file.content()) {
+            case Content.Existing existing -> existing.entry().normalSize();
+            case Content.Bytes bytes -> bytes.value().length;
+            case Content.File source -> sizeOf(source.path());
+        };
     }
 
     /**
