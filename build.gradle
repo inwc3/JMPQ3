@@ -6,7 +6,11 @@ plugins {
 }
 
 group 'org.inwc3'
-version '2.0.0-SNAPSHOT'
+
+// A tagged build passes the version in, so the release workflow publishes
+// 2.0.0 rather than a snapshot of it. Local and CI builds stay a snapshot,
+// which keeps an accidental `publish` from claiming a release version.
+version = findProperty('releaseVersion') ?: '2.0.0-SNAPSHOT'
 
 java {
     toolchain {
@@ -39,8 +43,16 @@ jacoco {
 
 dependencies {
     implementation group: 'org.apache.commons', name: 'commons-compress', version: '1.27.1'
-    implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
     implementation group: 'org.tukaani', name: 'xz', version: '1.9'
+
+    // Zopfli is optional and deliberately not a published dependency. It is
+    // only reachable through RecompressOptions.useZopfli, and it lives on
+    // JitPack rather than Maven Central -- so declaring it normally would force
+    // every consumer to add the JitPack repository to resolve a transitive they
+    // will most likely never call. Callers who do want it add the same line to
+    // their own build; CompressionUtil says so if it is missing.
+    compileOnly 'com.github.eustas:CafeUndZopfli:5cdf283e67'
+    testImplementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.16'
 
     // Logging backend is a test-only concern: a library must never impose one
@@ -83,6 +95,36 @@ publishing {
             artifactId = 'jmpq3'
 
             from components.java
+
+            pom {
+                name = 'JMPQ3'
+                description = 'A Java library for reading and writing MPQ (MoPaQ) archives.'
+                url = 'https://github.com/inwc3/JMPQ3'
+                licenses {
+                    license {
+                        name = 'Apache License 2.0'
+                        url = 'https://github.com/inwc3/JMPQ3/blob/master/LICENSE.txt'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/inwc3/JMPQ3'
+                    connection = 'scm:git:https://github.com/inwc3/JMPQ3.git'
+                }
+            }
+        }
+    }
+
+    repositories {
+        // Without this the `publish` task has nowhere to go: only
+        // publishToMavenLocal exists, so the old release workflow ran
+        // `./gradlew publish` and quietly published nothing.
+        maven {
+            name = 'GitHubPackages'
+            url = uri('https://maven.pkg.github.com/inwc3/JMPQ3')
+            credentials {
+                username = System.getenv('GITHUB_ACTOR') ?: findProperty('gpr.user') ?: ''
+                password = System.getenv('GITHUB_TOKEN') ?: findProperty('gpr.key') ?: ''
+            }
         }
     }
 }

@@ -25,17 +25,48 @@ genuinely ambiguous, the interpretation chosen is recorded with its citation in
 
 ## Installation
 
-Available through [JitPack](https://jitpack.io/#inwc3/JMPQ3/):
+Released to GitHub Packages as `org.inwc3:jmpq3`. Every tag `v*` publishes
+automatically.
 
 ```gradle
 repositories {
-    maven { url 'https://jitpack.io' }
+    mavenCentral()
+    maven {
+        url = uri('https://maven.pkg.github.com/inwc3/JMPQ3')
+        credentials {
+            username = System.getenv('GITHUB_ACTOR')
+            password = System.getenv('GITHUB_TOKEN')
+        }
+    }
 }
 
 dependencies {
-    implementation 'com.github.inwc3:JMPQ3:2.0.0'
+    implementation 'org.inwc3:jmpq3:2.0.0'
 }
 ```
+
+**GitHub Packages requires authentication even for public artifacts**, so a
+token with `read:packages` is needed to resolve this — including in CI. That is
+a property of GitHub Packages, not of this library. Publishing to Maven Central
+instead would remove the requirement; it needs a Sonatype namespace and signing
+keys, which is a decision rather than a build change.
+
+Older 1.9.x releases remain on [JitPack](https://jitpack.io/#inwc3/JMPQ3/).
+
+### Optional: Zopfli
+
+`RecompressOptions.useZopfli` needs one extra dependency, deliberately not
+declared here so that consumers who never use it do not inherit a second
+repository for it:
+
+```gradle
+dependencies {
+    runtimeOnly 'com.github.eustas:CafeUndZopfli:5cdf283e67'  // needs https://jitpack.io
+}
+```
+
+Asking for Zopfli without it says so, rather than failing with
+`NoClassDefFoundError`.
 
 ## Format support
 
