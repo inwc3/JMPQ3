@@ -6,6 +6,7 @@ import systems.crigges.jmpq3.HashTable;
 import systems.crigges.jmpq3.JMpqException;
 import systems.crigges.jmpq3.Listfile;
 import systems.crigges.jmpq3.MpqNames;
+import systems.crigges.jmpq3.compression.CompressionUtil;
 import systems.crigges.jmpq3.security.MPQEncryption;
 import systems.crigges.jmpq3.security.MPQHashGenerator;
 
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SequencedMap;
+import java.util.Set;
 
 /**
  * Read-only access to an MPQ archive.
@@ -64,7 +66,8 @@ public final class MpqArchive implements AutoCloseable {
      * regenerated, so it is not lost; these two are simply dropped, which
      * {@link #filesLostOnRebuild()} has to account for.
      */
-    private static final List<String> LOST_ON_REBUILD = List.of("(attributes)", "(signature)");
+    private static final Set<String> LOST_ON_REBUILD = Set.of(
+        MpqNames.canonical("(attributes)"), MpqNames.canonical("(signature)"));
 
     private static int tableKey(String name) {
         final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
@@ -77,6 +80,9 @@ public final class MpqArchive implements AutoCloseable {
     private final HashTable hashTable;
     private final MpqFileReader reader;
     private final short defaultLocale;
+
+    /** Whether the tables matched the digests a version 3 header records. */
+    private final Integrity integrity;
 
     /** Block table rows, indexed as the hash table addresses them. */
     private final MpqFileEntry[] blocks;
@@ -107,18 +113,29 @@ public final class MpqArchive implements AutoCloseable {
         this.source = source;
         this.defaultLocale = options.defaultLocale();
         this.header = MpqHeader.parse(source, options.forceV0());
-        if (header.hiBlockTablePosition() != 0) {
-            // A hi-block table holds the upper 16 bits of each file position,
-            // for archives whose data passes 4 GiB. Reading only the low word
-            // would seek to the wrong place, so refuse rather than silently
-            // misread. Supporting it belongs with the v2-v4 read work (P2-2).
-            throw new JMpqException("This archive uses a hi-block table, for file positions"
-                + " beyond 4 GiB, which is not supported yet.");
-        }
-        this.reader = new MpqFileReader(source, header);
+        this.reader = new MpqFileReader(source, header, options.verifySectorChecksums());
         this.blocks = readBlockTable();
         this.hashTable = readHashTable();
+        this.integrity = checkTableDigests();
         readNames();
+    }
+
+    /**
+     * Whether the archive's tables matched the MD5 digests it recorded for
+     * them.
+     * <p>
+     * Only a version 3 archive records any, and StormLib treats a mismatch as
+     * something to report rather than as a reason to refuse the archive — the
+     * tables may still be perfectly readable. So this is exposed for a caller
+     * that wants to know, and never fails the open.
+     */
+    public enum Integrity {
+        /** No digests were recorded, so nothing could be checked. */
+        UNRECORDED,
+        /** Every recorded digest matched. */
+        VERIFIED,
+        /** At least one recorded digest did not match its table. */
+        MISMATCHED
     }
 
     /**
@@ -189,6 +206,142 @@ public final class MpqArchive implements AutoCloseable {
      */
     public MpqHeader header() {
         return header;
+    }
+
+    /**
+     * @return whether the archive's tables matched the digests it recorded for
+     *         them. Only a version 3 archive records any.
+     */
+    public Integrity integrity() {
+        return integrity;
+    }
+
+    /**
+     * The user data header this archive sits behind, if any.
+     * <p>
+     * Blizzard staples metadata in front of an archive this way — a StarCraft II
+     * map keeps its map info there. Exposing it lets a caller read that payload,
+     * and lets a rebuild preserve it rather than dropping it.
+     *
+     * @return the user data header, or empty when the archive starts the file.
+     */
+    public Optional<MpqUserData> userData() {
+        return Optional.ofNullable(header.userData());
+    }
+
+    /**
+     * The payload of this archive's user data header, if it has one.
+     * <p>
+     * {@link MpqUserData#payload} needs an {@link MpqSource}, which a caller
+     * holding an archive has no way to obtain, so it was unreachable from
+     * outside this package. This is the way in.
+     *
+     * @return the user data payload, or empty when the archive starts the file.
+     * @throws IOException if the bytes cannot be read.
+     */
+    public Optional<byte[]> userDataPayload() throws IOException {
+        final MpqUserData userData = header.userData();
+        return userData == null ? Optional.empty() : Optional.of(userData.payload(source));
+    }
+
+    /**
+     * The archive's {@code (attributes)} file, parsed.
+     * <p>
+     * Its arrays are indexed by block table index, so
+     * {@link MpqAttributes#crc32Of(int)} pairs with
+     * {@link MpqFileEntry#blockIndex()}.
+     *
+     * @return the attributes, or empty when the archive carries none or they
+     *         cannot be read as attributes for an archive of this size.
+     */
+    public Optional<MpqAttributes> attributes() {
+        if (!contains(MpqAttributes.NAME)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(MpqAttributes.parse(read(MpqAttributes.NAME), blocks.length));
+        } catch (IOException | RuntimeException unreadable) {
+            // Attributes are advisory: an archive whose attributes will not
+            // parse is still a perfectly good archive, and the pre-2.0 code
+            // silently misparsed them rather than saying so.
+            log.warn("{} has an unreadable (attributes): {}",
+                source.origin(), unreadable.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Compares one region of the file against a recorded digest.
+     * <p>
+     * A recorded digest whose region is absent, empty or outside the file counts
+     * as a mismatch rather than a pass. Nothing was hashed, so the archive
+     * cannot be said to agree with its own digests — and for the HET and BET
+     * tables, which this library does not otherwise read or validate, letting
+     * that path succeed would be the only thing standing between a damaged
+     * extended table and a clean bill of health.
+     *
+     * @param present whether the header says this table exists at all.
+     * @param offset  where the region starts.
+     * @param length  how long it is.
+     * @param digest  the expected digest, or blank to skip.
+     * @return whether it matched, or true when nothing was recorded.
+     */
+    private boolean matchesRegion(boolean present, long offset, long length, byte[] digest)
+        throws IOException {
+        if (!MpqHeader.Extended.isRecorded(digest)) {
+            // Nothing was recorded, so there is nothing to agree or disagree
+            // with. This is the usual case for a header that left the optional
+            // digests blank.
+            return true;
+        }
+        if (!present || length <= 0 || length > Integer.MAX_VALUE - 8
+            || !source.contains(offset, length)) {
+            // A digest was recorded for bytes the header cannot actually point
+            // at. Counting that as a match would let VERIFIED be reported when
+            // nothing was hashed, which is the one thing it must not mean.
+            log.warn("{} records a digest for a {} byte region at {} that is not in the file.",
+                source.origin(), length, offset);
+            return false;
+        }
+        return MpqHeader.matchesDigest(source.bytes(offset, (int) length), digest);
+    }
+
+    /**
+     * Checks the tables against the MD5 digests a version 3 header records.
+     * <p>
+     * Reported rather than enforced, as StormLib does: a mismatch means the
+     * digests and the tables disagree, but the tables may still decode every
+     * file. Refusing the archive would lose data that is actually recoverable.
+     */
+    private Integrity checkTableDigests() throws IOException {
+        final MpqHeader.Extended extended = header.extended();
+        if (!extended.hasDigests()) {
+            return Integrity.UNRECORDED;
+        }
+
+        boolean matched = header.verifyHeaderDigest(source);
+        matched &= matchesRegion(true, header.hashTableFileOffset(),
+            header.hashTableStoredSize(), extended.md5HashTable());
+        matched &= matchesRegion(true, header.blockTableFileOffset(),
+            header.blockTableStoredSize(), extended.md5BlockTable());
+        matched &= matchesRegion(header.hasHiBlockTable(), header.hiBlockTableFileOffset(),
+            (long) header.blockTableEntries() * MpqHeader.HI_BLOCK_ENTRY_SIZE,
+            extended.md5HiBlockTable());
+        // The extended tables are not read by this library, but their digests
+        // are still recorded, and Integrity.VERIFIED claims every recorded
+        // digest matched. Skipping them would make that claim false for an
+        // archive whose HET or BET table is the damaged one.
+        matched &= matchesRegion(header.hetTablePosition() != 0, header.hetTableFileOffset(),
+            extended.hetTableCompressedSize(), extended.md5HetTable());
+        matched &= matchesRegion(header.betTablePosition() != 0, header.betTableFileOffset(),
+            extended.betTableCompressedSize(), extended.md5BetTable());
+
+        if (!matched) {
+            log.warn("{} does not match the MD5 digests in its own header;"
+                + " its tables may be damaged.", source.origin());
+            return Integrity.MISMATCHED;
+        }
+        return Integrity.VERIFIED;
     }
 
     /**
@@ -404,6 +557,46 @@ public final class MpqArchive implements AutoCloseable {
             () -> new JMpqException("No such file in " + source.origin() + ": <" + name + ">"));
     }
 
+    /**
+     * Loads one of the archive's tables: read, decrypt, and decompress if it
+     * was stored compressed.
+     * <p>
+     * From format version 3 a table may be zlib-compressed, which the position
+     * fields alone cannot express — the header carries the stored length
+     * separately, and a stored length shorter than the entries imply is what
+     * marks it compressed. The order matters and is StormLib's
+     * {@code LoadMpqTable}: decrypt first, then decompress, because the writer
+     * compresses and then encrypts.
+     *
+     * @param fileOffset where the table starts.
+     * @param storedSize bytes it occupies in the file.
+     * @param plainSize  bytes it occupies once decoded.
+     * @param key        decryption key, or 0 for an unencrypted table.
+     * @return exactly {@code plainSize} bytes.
+     */
+    private byte[] loadTable(long fileOffset, long storedSize, long plainSize, int key)
+        throws IOException {
+        if (plainSize > Integer.MAX_VALUE - 8 || storedSize > Integer.MAX_VALUE - 8) {
+            throw new JMpqException("A table of " + plainSize + " bytes is larger than can be"
+                + " held in memory.");
+        }
+        final byte[] stored = source.bytes(fileOffset, (int) storedSize);
+
+        if (key != 0) {
+            new MPQEncryption(key, true).processSingle(ByteBuffer.wrap(stored));
+        }
+        if (storedSize >= plainSize) {
+            return stored;
+        }
+        final byte[] plain = CompressionUtil.decompress(stored, (int) storedSize, (int) plainSize,
+            header.formatVersion());
+        if (plain.length != plainSize) {
+            throw new JMpqException("A compressed table at " + fileOffset + " decoded to "
+                + plain.length + " bytes rather than the " + plainSize + " expected.");
+        }
+        return plain;
+    }
+
     private MpqFileEntry[] readBlockTable() throws IOException {
         final int count = header.blockTableEntries();
         // long arithmetic: a 2 GiB archive can describe enough block entries
@@ -414,33 +607,76 @@ public final class MpqArchive implements AutoCloseable {
             throw new JMpqException("Block table of " + count + " entries needs "
                 + tableBytes + " bytes, more than can be held in memory.");
         }
-        final byte[] encrypted = source.bytes(header.blockTableFileOffset(), (int) tableBytes);
+        final ByteBuffer plain = ByteBuffer
+            .wrap(loadTable(header.blockTableFileOffset(), header.blockTableStoredSize(),
+                tableBytes, KEY_BLOCK_TABLE))
+            .order(ByteOrder.LITTLE_ENDIAN);
 
-        final ByteBuffer plain = ByteBuffer.allocate(encrypted.length).order(ByteOrder.LITTLE_ENDIAN);
-        new MPQEncryption(KEY_BLOCK_TABLE, true).processFinal(ByteBuffer.wrap(encrypted), plain);
-        plain.rewind();
+        final int[] highWords = readHiBlockTable(count);
 
         final MpqFileEntry[] entries = new MpqFileEntry[count];
         for (int i = 0; i < count; i++) {
-            final long filePosition = Integer.toUnsignedLong(plain.getInt());
+            long filePosition = Integer.toUnsignedLong(plain.getInt());
             final int compressedSize = plain.getInt();
             final int normalSize = plain.getInt();
             final int flags = plain.getInt();
+            if (highWords.length > 0) {
+                filePosition |= (long) highWords[i] << 32;
+            }
             entries[i] = new MpqFileEntry("", (short) 0, flags, filePosition,
                 compressedSize, normalSize, i);
         }
         return entries;
     }
 
+    /**
+     * The hi-block table: the upper 16 bits of each file position, for archives
+     * whose data passes 4 GiB.
+     * <p>
+     * One {@code u16} per block entry, combined as StormLib's
+     * {@code MAKE_OFFSET64(hi, low)}. Unlike the hash and block tables it is
+     * "not encrypted, nor compressed" — StormLib's own comment — so it is read
+     * straight through.
+     *
+     * @param blockCount how many entries to expect.
+     * @return one high word per block, or an empty array when the archive has
+     *         no hi-block table.
+     */
+    private int[] readHiBlockTable(int blockCount) throws IOException {
+        if (!header.hasHiBlockTable() || blockCount == 0) {
+            return new int[0];
+        }
+        final long tableBytes = (long) blockCount * MpqHeader.HI_BLOCK_ENTRY_SIZE;
+        if (!source.contains(header.hiBlockTableFileOffset(), tableBytes)) {
+            // Reported, not worked around. An archive declaring a hi-block table
+            // is declaring that its file positions do not fit in 32 bits, so
+            // carrying on with the low words alone puts every file at the wrong
+            // offset -- reads that fail, or worse, succeed with wrong bytes.
+            // StormLib treats an unreadable hi-block table as fatal too
+            // (BuildFileTable_Classic sets dwErrCode and stops). A version 0
+            // archive never reaches here, so MPQOpenOption.FORCE_V0 remains the
+            // way to read one whose header claims a table it does not have.
+            throw new JMpqException("Archive declares a hi-block table at "
+                + header.hiBlockTableFileOffset() + " spanning " + tableBytes
+                + " bytes, which is not inside " + source.origin()
+                + ". Its file positions cannot be resolved.");
+        }
+        final int[] highWords = new int[blockCount];
+        for (int i = 0; i < blockCount; i++) {
+            highWords[i] = source.u16(header.hiBlockTableFileOffset()
+                + (long) i * MpqHeader.HI_BLOCK_ENTRY_SIZE);
+        }
+        return highWords;
+    }
+
     private HashTable readHashTable() throws IOException {
         // Bounded by MpqHeader at MAX_HASH_TABLE_ENTRIES, so this cannot
         // overflow: 0x80000 * 16 is 8 MiB.
-        final byte[] encrypted = source.bytes(header.hashTableFileOffset(),
-            header.hashTableEntries() * MpqHeader.HASH_ENTRY_SIZE);
-
-        final ByteBuffer plain = ByteBuffer.allocate(encrypted.length).order(ByteOrder.LITTLE_ENDIAN);
-        new MPQEncryption(KEY_HASH_TABLE, true).processFinal(ByteBuffer.wrap(encrypted), plain);
-        plain.rewind();
+        final long tableBytes = (long) header.hashTableEntries() * MpqHeader.HASH_ENTRY_SIZE;
+        final ByteBuffer plain = ByteBuffer
+            .wrap(loadTable(header.hashTableFileOffset(), header.hashTableStoredSize(),
+                tableBytes, KEY_HASH_TABLE))
+            .order(ByteOrder.LITTLE_ENDIAN);
 
         final HashTable table = new HashTable(header.hashTableEntries());
         table.readFromBuffer(plain);
@@ -522,7 +758,8 @@ public final class MpqArchive implements AutoCloseable {
     public int filesLostOnRebuild() {
         int lost = 0;
         for (MpqFileEntry entry : entries()) {
-            if (entry.name().isEmpty() || LOST_ON_REBUILD.contains(entry.name())) {
+            if (entry.name().isEmpty()
+                || LOST_ON_REBUILD.contains(MpqNames.canonical(entry.name()))) {
                 lost++;
             }
         }

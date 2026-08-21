@@ -213,3 +213,253 @@ short. Accepting it would hand back the missing tail as zeros at exactly the
 length the caller expected, so the corruption would pass every downstream
 check. Nothing is lost by being strict here: JMPQ3 never writes sparse sectors,
 so the only streams affected are genuinely damaged.
+
+
+## 9. Sector checksums are Adler-32 seeded with zero, not one
+
+The flag is `MPQ_FILE_SECTOR_CRC` (`0x04000000`) and the StormLib field is
+`SectorChksums`, so "CRC32" is the natural reading. It is wrong twice over.
+
+StormLib computes the value with zlib's `adler32`, and it passes a seed of `0`:
+
+```c
+// SFileReadFile.cpp, ReadMpqSectors
+DWORD dwAdlerExpected = hf->SectorChksums[dwIndex];
+// We can only check sector CRC when it is not zero
+// Neither can we check it if it is 0xFFFFFFFF.
+if(dwAdlerExpected != 0 && dwAdlerExpected != 0xFFFFFFFF)
+{
+    dwAdlerValue = adler32(0, pbInSector, dwRawBytesInThisSector);
+    if(dwAdlerValue != dwAdlerExpected)
+        { dwErrCode = ERROR_CHECKSUM_ERROR; break; }
+}
+
+// SFileAddFile.cpp, on the write side
+hf->SectorChksums[dwSectorIndex] = adler32(0, pbCompressed, nOutBuffer);
+```
+
+A *standard* Adler-32 starts its accumulators at `s1 = 1, s2 = 0`; seeding zlib
+with `0` starts them at `s1 = 0, s2 = 0`. The two results differ by 1 in the low
+half and by the byte count in the high half — for every input, without
+exception.
+
+**Decision.** `MpqChecksums.adler32` produces the seeded-zero form *via*
+`java.util.zip.Adler32`. The seeds differ by a closed form rather than anything
+structural — running the recurrence from `s1 = 1` adds 1 to the low half and one
+per byte to the high half — so the JDK's intrinsic does the work and the result
+is corrected:
+
+```
+s1(seed 0) = s1(seed 1) - 1          (mod 65521)
+s2(seed 0) = s2(seed 1) - n          (mod 65521)
+```
+
+The first implementation was a hand-written loop instead, and it was **wrong**.
+zlib chooses its `NMAX = 5552` fold interval so that `s2` cannot overflow an
+*unsigned* 32-bit accumulator; Java has no such type, and a signed `int`
+overflows at half that. A single sector of a few thousand high-valued bytes was
+therefore checksummed incorrectly — reachable in practice, because the default
+recompression setting never shrinks a sector, so raw bytes reach the checksum as
+they are.
+
+That bug survived a round trip, an all-green suite and a code review, for the
+same reason as the seed itself: the reader and the writer shared the wrong
+arithmetic and agreed with each other. `tools/mpqref.py` caught it once a
+fixture with high-valued stored sectors existed, which is now part of the
+exported set. The hand-written loop survives as `adler32Reference`, used only as
+the oracle the fast path is fuzzed against.
+
+This one is worth dwelling on, because no self-consistent test can catch it. A
+reader and a writer that both use the standard seed agree with each other on
+every archive they exchange, and disagree with every archive StormLib ever
+wrote. It was caught only by `tools/mpqref.py`, which derives the value
+independently, and it is the reason that cross-check is in CI rather than being
+a one-off.
+
+**Bytes covered.** Both quotes above take the checksum over the sector *as
+stored, minus its encryption* — after decrypting, before decompressing, and
+including the compression-type byte. The read and write sides therefore agree
+without either needing to know how the sector was compressed.
+
+**Absent values.** `0` and `0xFFFFFFFF` both mean "not recorded" and are skipped,
+so a file may legitimately carry the flag and no usable checksums.
+
+
+## 10. The checksum chunk is never encrypted, and is zlib compressed
+
+The checksums live in a chunk after the data sectors, delimited by the last two
+entries of the sector offset table — which is why a `SECTOR_CRC` file has one
+more offset entry than sectors plus one.
+
+Two properties are easy to get wrong:
+
+- **Never encrypted**, even when every data sector is. StormLib writes it
+  without encrypting, and loads it with `LoadMpqTable(..., 0, ...)` — key `0`,
+  meaning no decryption. An encrypted file therefore has encrypted sectors and a
+  plain checksum chunk side by side.
+- **Zlib compressed** when that is smaller, detected the same way a sector's
+  compression is: the stored length being shorter than the natural length of
+  `sectorCount * 4` bytes.
+
+**Decision.** `MpqFileReader.readSectorChecksums` and
+`MpqSectorWriter.encodeChecksums` follow both. The verbatim-copy path
+(`storedBytesDecrypted`) iterates only the *data* sectors when decrypting, and
+deliberately leaves the final chunk alone: decrypting it there corrupted it, and
+because the copy clears the encryption flags while keeping `SECTOR_CRC`, the
+corruption became permanent in the rebuilt archive.
+
+
+## 11. The `(attributes)` bytemask decides the layout, and several lengths are legal
+
+```
+0x00 u32  version, always 100
+0x04 u32  bytemask
+0x08      u32   crc32    [n]   when 0x01
+          u64   fileTime [n]   when 0x02
+          u8x16 md5      [n]   when 0x04
+          bits  patch    [n]   when 0x08
+```
+
+`n` is the **block table** size, so the arrays are indexed by block index and
+include the `(attributes)` file's own row — whose checksum cannot be computed
+and is left `0`, which reads back as "not recorded".
+
+Two things the pre-2.0 parser got wrong. It read the bytemask and then assumed
+CRC32-plus-FILETIME regardless, so any file carrying MD5 digests was misread.
+And it derived the count as `(length - 8) / 12 - 1`; the `- 1` has no basis in
+the layout. Its likely origin is that StormLib *tolerates* an attributes file one
+entry short — the tool that writes it is rarely the tool reading it — so
+somebody met a short file and hardcoded the short case.
+
+**Decision.** `MpqAttributes.parse` computes the expected length from the
+declared bytemask and accepts either `n` or `n - 1` entries, reporting which via
+`truncated()`. A length matching neither is an error rather than a guess. Bits
+outside the four known ones are preserved in `flags()` but their arrays cannot be
+located, so parsing stops after the known prefix — as StormLib does.
+
+### The patch-bit array has two lengths, because StormLib disagrees with itself
+
+`GetSizeOfAttributesFile` sizes it as `(dwBlockTableSize + 6) / 8`, and the
+loader sizes the same array as `(dwAttributesEntries + 7) / 8`. Those differ
+whenever `n` is congruent to 1 modulo 8: a one-block archive is allotted **zero**
+bytes for one bit, and a nine-block archive gets one byte for nine bits.
+
+This is not a reading error on our part — both expressions are in StormLib, in
+functions that describe the same array. So both lengths occur in the wild.
+
+**Decision.** `MpqAttributes.parse` accepts either length (and either, combined
+with the tolerated one-entry-short count, so four lengths in total are legal for
+one archive). Bits the file does not physically reach are read as unset rather
+than read out of bounds. What we *emit* is `(n + 7) / 8`, the length that holds
+every bit, so a write can never leave the buffer.
+
+The bit order is most-significant-first, per StormLib's
+`dwBitMask = (dwBitMask << 0x07) | (dwBitMask >> 0x01)` starting from `0x80`.
+
+
+## 12. The hi-block table is plain; the hash and block tables may not be
+
+The hi-block table supplies bits 32 to 47 of each file position, one `u16` per
+block entry, combined as StormLib's `MAKE_OFFSET64(hi, low)`. StormLib's comment
+in `BuildFileTable_Classic` is explicit: *"Load the hi-block table. It is not
+encrypted, nor compressed."*
+
+The hash and block tables are the opposite: always encrypted, and from format
+version 3 optionally compressed. Nothing in the position fields says whether a
+table is compressed — the version 3 header carries each table's *stored* length
+separately, and a stored length shorter than the entry count implies is what
+marks it compressed.
+
+**Decision.** `MpqHeader.hashTableStoredSize` / `blockTableStoredSize` return the
+stored length, and `isHashTableCompressed` / `isBlockTableCompressed` compare it
+against the plain length. `MpqArchive.loadTable` decrypts and *then* decompresses,
+which is the order StormLib's `LoadMpqTable` uses because the writer compresses
+before encrypting.
+
+A hi-block table whose position falls outside the file is dropped and the archive
+flagged malformed, rather than refused: reading the low words alone is exactly
+what a version 0 reader does, and the archive is otherwise fine.
+
+**This interacts with the header scan.** The plausibility check of §14 screens a
+candidate on whether its hash table fits in the file, and it has to use the
+*stored* length for the same reason: a valid version 3 archive whose compressed
+hash table ends the file has no room for the uncompressed form, so screening on
+that rejects the real header — and once rejected, a decoy planted earlier in the
+file wins the scan. Strengthening the check without accounting for compression
+turns it into the thing it was written to prevent.
+
+
+## 13. Version 3 MD5 digests are reported, not enforced
+
+A version 3 header carries six MD5 digests — header, hash table, block table,
+hi-block table, HET and BET. StormLib checks them and reports the result; it does
+not refuse the archive.
+
+**Decision.** `MpqArchive.integrity()` returns `UNRECORDED`, `VERIFIED` or
+`MISMATCHED`, and a mismatch is logged. Refusing to open would throw away an
+archive whose tables may decode every file perfectly.
+
+Two things follow from the digests being optional. An all-zero field counts as
+"not recorded" rather than as the digest of those bytes — and since *every*
+version 3 header carries all six fields, whether a digest exists can only be
+decided by looking at its contents, never by its presence. A header that left
+them blank must report `UNRECORDED`; reporting `VERIFIED` would claim agreement
+with digests nobody computed.
+
+And `VERIFIED` has to mean *every* recorded digest, including the HET and BET
+tables. This library does not read those tables, but it does check their digests:
+skipping them would let an archive whose HET table is the damaged one report
+clean.
+
+
+## 14. What makes a candidate header plausible
+
+Protected archives plant decoy `MPQ\x1A` signatures so a reader commits to the
+first one it finds and then fails on tables that are not there. StormLib screens
+candidates (`ERROR_FAKE_MPQ_HEADER`) rather than trusting the first hit.
+
+**Decision.** `MpqHeader.findHeader` applies a cheap test to every candidate —
+archive headers and user-data redirects alike — and keeps scanning past one that
+fails. The test requires a non-zero hash and block table position, a non-zero
+hash entry count, a sector shift that does not overflow, and room in the file for
+the hash table at its *stored* length (see §12).
+
+Two properties keep this safe to have strengthened:
+
+- The **first candidate is retained as a fallback**. If nothing in the file looks
+  plausible, that candidate is used anyway, so the scan can only ever find a
+  header where a naive scan found one — never fewer.
+- The test only rejects on things that make an archive unreadable regardless, so
+  a candidate it rejects would have failed at table-parse time in any case.
+
+
+## 15. The user data payload is bounded by the redirect, not by either size field
+
+A user data header carries two size fields and neither is the payload length.
+StormLib documents them as:
+
+```c
+DWORD cbUserDataSize;      // Maximum size of the user data
+DWORD dwHeaderOffs;        // Offset of the MPQ header, relative to the begin of this header
+DWORD cbUserDataHeader;    // Appears to be size of user data header (Starcraft II maps)
+```
+
+`cbUserDataSize` is a capacity, so an archive may reserve more area than it
+filled. `cbUserDataHeader` has no agreed meaning — note that StormLib's own
+comment says "appears to be".
+
+What StormLib hands a caller asking for the user data is neither:
+
+```c
+// SFileGetFileInfo.cpp, case SFileMpqUserData
+ha->UserDataPos + sizeof(TMPQUserData),
+ha->pUserData->dwHeaderOffs - sizeof(TMPQUserData)
+```
+
+**Decision.** `MpqUserData.payload` returns the span between the end of the user
+data header and the archive header, clamped to the file because the redirect is
+an untrusted `u32`. Both size fields are exposed for inspection and neither
+bounds anything. Reading `cbUserDataSize` as a length truncates an archive that
+reserved generously; reading it as the only bound returned the archive itself as
+metadata when it was garbage.
+

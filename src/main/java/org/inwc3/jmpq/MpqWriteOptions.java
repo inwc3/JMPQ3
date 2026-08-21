@@ -37,6 +37,9 @@ import systems.crigges.jmpq3.compression.RecompressOptions;
  * @param extraBlockEntries extra unused block table slots to emit beyond the
  *                        files written, or 0 for none. The other half of the
  *                        P1-8 extension point.
+ * @param metadata        what per-file bookkeeping to record alongside the
+ *                        data: sector checksums and an {@code (attributes)}
+ *                        file.
  */
 public record MpqWriteOptions(
     int formatVersion,
@@ -45,7 +48,42 @@ public record MpqWriteOptions(
     boolean writeListfile,
     boolean keepPrefix,
     int hashTableCapacity,
-    int extraBlockEntries) {
+    int extraBlockEntries,
+    Metadata metadata) {
+
+    /**
+     * Optional per-file bookkeeping an archive can carry (P2-3, P2-4).
+     * <p>
+     * Both are off by default, because both change the bytes of every file
+     * written and neither is required for an archive to be valid. Warcraft III
+     * does not need either; StormLib-produced archives normally carry both.
+     *
+     * @param sectorChecksums  record an Adler-32 per sector, so a reader can
+     *                         detect damage instead of returning wrong bytes.
+     * @param attributes       emit an {@code (attributes)} file holding a CRC32
+     *                         and timestamp per block.
+     * @param timestampMillis  the timestamp to record, in Unix milliseconds, or
+     *                         {@link #NOW} to read the clock. Pinning it is what
+     *                         makes a build reproducible: otherwise two runs
+     *                         over identical input differ.
+     */
+    public record Metadata(boolean sectorChecksums, boolean attributes, long timestampMillis) {
+
+        /** Read the clock when the archive is written. */
+        public static final long NOW = -1L;
+
+        /** Neither checksums nor attributes. */
+        public static final Metadata NONE = new Metadata(false, false, NOW);
+
+        /**
+         * @return the FILETIME to record, resolving {@link #NOW} against the
+         *         clock.
+         */
+        public long fileTime() {
+            return MpqAttributes.toFileTime(
+                timestampMillis == NOW ? System.currentTimeMillis() : timestampMillis);
+        }
+    }
 
     /** Highest format version this library can write. */
     public static final int MAX_WRITABLE_VERSION = 1;
@@ -79,6 +117,9 @@ public record MpqWriteOptions(
         if (recompression == null) {
             throw new IllegalArgumentException("Recompression options are required.");
         }
+        if (metadata == null) {
+            throw new IllegalArgumentException("Metadata options are required.");
+        }
     }
 
     /**
@@ -87,7 +128,7 @@ public record MpqWriteOptions(
      */
     public static MpqWriteOptions defaults() {
         return new MpqWriteOptions(0, DEFAULT_SECTOR_SIZE_SHIFT, new RecompressOptions(false),
-            true, true, 0, 0);
+            true, true, 0, 0, Metadata.NONE);
     }
 
     /**
@@ -117,7 +158,7 @@ public record MpqWriteOptions(
      */
     public MpqWriteOptions withFormatVersion(int version) {
         return new MpqWriteOptions(version, sectorSizeShift, recompression, writeListfile,
-            keepPrefix, hashTableCapacity, extraBlockEntries);
+            keepPrefix, hashTableCapacity, extraBlockEntries, metadata);
     }
 
     /**
@@ -126,7 +167,7 @@ public record MpqWriteOptions(
      */
     public MpqWriteOptions withSectorSizeShift(int shift) {
         return new MpqWriteOptions(formatVersion, shift, recompression, writeListfile,
-            keepPrefix, hashTableCapacity, extraBlockEntries);
+            keepPrefix, hashTableCapacity, extraBlockEntries, metadata);
     }
 
     /**
@@ -135,7 +176,7 @@ public record MpqWriteOptions(
      */
     public MpqWriteOptions withRecompression(RecompressOptions options) {
         return new MpqWriteOptions(formatVersion, sectorSizeShift, options, writeListfile,
-            keepPrefix, hashTableCapacity, extraBlockEntries);
+            keepPrefix, hashTableCapacity, extraBlockEntries, metadata);
     }
 
     /**
@@ -144,7 +185,7 @@ public record MpqWriteOptions(
      */
     public MpqWriteOptions withListfile(boolean write) {
         return new MpqWriteOptions(formatVersion, sectorSizeShift, recompression, write,
-            keepPrefix, hashTableCapacity, extraBlockEntries);
+            keepPrefix, hashTableCapacity, extraBlockEntries, metadata);
     }
 
     /**
@@ -153,7 +194,7 @@ public record MpqWriteOptions(
      */
     public MpqWriteOptions withPrefix(boolean keep) {
         return new MpqWriteOptions(formatVersion, sectorSizeShift, recompression, writeListfile,
-            keep, hashTableCapacity, extraBlockEntries);
+            keep, hashTableCapacity, extraBlockEntries, metadata);
     }
 
     /**
@@ -167,7 +208,7 @@ public record MpqWriteOptions(
      */
     public MpqWriteOptions withHashTableCapacity(int capacity) {
         return new MpqWriteOptions(formatVersion, sectorSizeShift, recompression, writeListfile,
-            keepPrefix, capacity, extraBlockEntries);
+            keepPrefix, capacity, extraBlockEntries, metadata);
     }
 
     /**
@@ -181,6 +222,66 @@ public record MpqWriteOptions(
      */
     public MpqWriteOptions withExtraBlockEntries(int extra) {
         return new MpqWriteOptions(formatVersion, sectorSizeShift, recompression, writeListfile,
-            keepPrefix, hashTableCapacity, extra);
+            keepPrefix, hashTableCapacity, extra, metadata);
+    }
+
+    /**
+     * @return whether files should carry per-sector checksums.
+     */
+    public boolean sectorChecksums() {
+        return metadata.sectorChecksums();
+    }
+
+    /**
+     * @return whether an {@code (attributes)} file should be emitted.
+     */
+    public boolean writeAttributes() {
+        return metadata.attributes();
+    }
+
+    /**
+     * @param metadata what bookkeeping to record.
+     * @return a copy with those metadata settings.
+     */
+    public MpqWriteOptions withMetadata(Metadata metadata) {
+        return new MpqWriteOptions(formatVersion, sectorSizeShift, recompression, writeListfile,
+            keepPrefix, hashTableCapacity, extraBlockEntries, metadata);
+    }
+
+    /**
+     * Records an Adler-32 per sector, so a reader can tell damaged data from
+     * good rather than handing back wrong bytes (P2-3).
+     *
+     * @param record whether to emit sector checksums.
+     * @return a copy with that setting.
+     */
+    public MpqWriteOptions withSectorChecksums(boolean record) {
+        return withMetadata(new Metadata(record, metadata.attributes(),
+            metadata.timestampMillis()));
+    }
+
+    /**
+     * Emits an {@code (attributes)} file holding a CRC32 and timestamp per
+     * block (P2-4).
+     *
+     * @param record whether to emit attributes.
+     * @return a copy with that setting.
+     */
+    public MpqWriteOptions withAttributes(boolean record) {
+        return withMetadata(new Metadata(metadata.sectorChecksums(), record,
+            metadata.timestampMillis()));
+    }
+
+    /**
+     * Pins the timestamp recorded in {@code (attributes)}, which is what makes
+     * a build reproducible.
+     *
+     * @param unixMillis the timestamp, or {@link Metadata#NOW} to read the
+     *                   clock.
+     * @return a copy with that timestamp.
+     */
+    public MpqWriteOptions withAttributesTimestamp(long unixMillis) {
+        return withMetadata(new Metadata(metadata.sectorChecksums(), metadata.attributes(),
+            unixMillis));
     }
 }

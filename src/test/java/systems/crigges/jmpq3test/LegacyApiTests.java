@@ -162,10 +162,11 @@ public class LegacyApiTests {
     /**
      * {@code (attributes)} round-trips through the legacy parser.
      * <p>
-     * Pinned as it behaves today rather than as it should: P2-4 covers honouring
-     * the bytemask properly, and notes that the entry count subtracts one for
-     * reasons nobody has justified. Pinning it first means that change will show
-     * up as a deliberate diff here.
+     * P2-4 has since replaced the fixed layout with one derived from the
+     * bytemask the file declares, so the entry count no longer loses one. The
+     * deprecated class keeps working; {@code MpqAttributesTests} covers what it
+     * now does, and {@link org.inwc3.jmpq.MpqAttributes} covers the format
+     * properly.
      */
     @Test
     public void attributesFileRoundTrips() {
@@ -181,9 +182,7 @@ public class LegacyApiTests {
         Assert.assertEquals(image[4], 3, "crc plus timestamp bytemask");
 
         final AttributesFile read = new AttributesFile(image);
-        // The parser subtracts one from the entry count. Documented here as
-        // current behaviour, not endorsed; see P2-4.
-        Assert.assertEquals(read.entries(), entries - 1);
+        Assert.assertEquals(read.entries(), entries);
         for (int i = 0; i < read.entries(); i++) {
             Assert.assertEquals(read.getCrc32()[i], 0x1000 + i);
         }
@@ -201,7 +200,7 @@ public class LegacyApiTests {
         Assert.assertEquals(attributes.getCrc32(new byte[0]), 0);
     }
 
-    /** Timestamps and names are addressable, which P2-4 will build on. */
+    /** Timestamps and names are addressable. */
     @Test
     public void attributesTimestampsAndNamesAreAddressable() {
         final AttributesFile attributes = new AttributesFile(3);
