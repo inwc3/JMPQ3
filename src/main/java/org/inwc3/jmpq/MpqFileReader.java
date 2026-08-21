@@ -178,7 +178,10 @@ final class MpqFileReader {
      * compressed when that makes it smaller.
      *
      * @return one checksum per data sector, or an empty array when the file
-     *         carries none or verification is off.
+     *         records none or verification is off.
+     * @throws JMpqException if the chunk is present but its bounds or length are
+     *         structurally impossible. Absent is fine; unreadable is not, since
+     *         the caller asked for these bytes to be checked.
      */
     private int[] readSectorChecksums(MpqFileEntry entry, int[] offsets, long base)
         throws IOException {
@@ -190,9 +193,20 @@ final class MpqFileReader {
         final int start = offsets[sectors];
         final int end = offsets[sectors + 1];
         final int plainSize = sectors * 4;
-        if (start < 0 || end < start || end > entry.compressedSize() || end == start) {
-            // A file can carry the flag and no checksums; StormLib treats that
-            // as "nothing to check" rather than as damage.
+
+        if (start < 0 || end < start || end > entry.compressedSize()) {
+            // Not "no checksums" -- a checksum chunk the offset table cannot
+            // locate means the table is damaged, and the data sectors it also
+            // delimits are only accidentally still in range. Skipping quietly
+            // would hand back a file that was asked to be verified and was not,
+            // which is the one thing verification must never do.
+            throw new JMpqException("The checksum chunk of <" + entry.name() + "> spans ["
+                + start + ", " + end + "), outside its " + entry.compressedSize()
+                + " stored bytes; the sector offset table is damaged.");
+        }
+        if (end == start) {
+            // An empty chunk is the legitimate case: a file may carry the flag
+            // and record nothing, which StormLib treats as nothing to check.
             return new int[0];
         }
 
@@ -202,7 +216,11 @@ final class MpqFileReader {
                 header.formatVersion());
         }
         if (chunk.length < plainSize) {
-            return new int[0];
+            // Same reasoning as above: a chunk too short to hold one checksum
+            // per sector is corrupt, not absent.
+            throw new JMpqException("The checksum chunk of <" + entry.name() + "> holds "
+                + chunk.length + " bytes but the file has " + sectors + " sectors, needing "
+                + plainSize + ".");
         }
 
         final ByteBuffer in = ByteBuffer.wrap(chunk).order(java.nio.ByteOrder.LITTLE_ENDIAN);

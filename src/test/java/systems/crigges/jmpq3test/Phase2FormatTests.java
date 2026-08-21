@@ -189,6 +189,85 @@ public class Phase2FormatTests {
         }
     }
 
+    /**
+     * A checksum chunk the offset table cannot locate is damage, not absence.
+     * <p>
+     * The distinction matters because the data sectors are delimited by the same
+     * table: if its last entries are nonsense, the sector entries are only
+     * accidentally still in range. Treating that as "no checksums recorded"
+     * hands back a file that was asked to be verified and was not — the one
+     * outcome verification must never produce. An empty chunk is different, and
+     * stays legitimate.
+     */
+    @Test
+    public void anUnreadableChecksumChunkFailsTheReadRatherThanSkippingIt() throws IOException {
+        final byte[] content = incompressible(9_000, 11);
+
+        // Last offset entry pushed past the stored bytes.
+        final byte[] beyond = checksummedArchiveWithLastOffset(content, 1 << 20);
+        try (MpqArchive archive = MpqArchive.open(beyond, MpqOpenOptions.defaults())) {
+            final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+                () -> archive.read("data.bin"));
+            Assert.assertTrue(thrown.getMessage().contains("checksum chunk"), thrown.getMessage());
+        }
+
+        // Last offset entry before the chunk starts.
+        final byte[] backwards = checksummedArchiveWithLastOffset(content, 0);
+        try (MpqArchive archive = MpqArchive.open(backwards, MpqOpenOptions.defaults())) {
+            Assert.expectThrows(JMpqException.class, () -> archive.read("data.bin"));
+        }
+
+        // Turning verification off still recovers the data, which is the escape
+        // hatch that makes failing the default read acceptable.
+        try (MpqArchive archive = MpqArchive.open(beyond,
+            MpqOpenOptions.defaults().withSectorChecksumVerification(false))) {
+            Assert.assertEquals(archive.read("data.bin"), content);
+        }
+    }
+
+    /** An empty checksum chunk means nothing was recorded, and reads fine. */
+    @Test
+    public void anEmptyChecksumChunkIsTreatedAsNoneRecorded() throws IOException {
+        final byte[] content = incompressible(9_000, 12);
+        final byte[] image = checksummedArchiveWithLastOffset(content, -1);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.read("data.bin"), content,
+                "no checksums to check is not a failure");
+        }
+    }
+
+    /**
+     * Builds a checksummed archive and rewrites the final sector offset entry,
+     * which delimits the checksum chunk. The offset table of an unencrypted file
+     * is stored plainly, so it can be edited directly.
+     *
+     * @param lastOffset the value to write, or -1 to make the chunk empty by
+     *                   copying the entry before it.
+     */
+    private static byte[] checksummedArchiveWithLastOffset(byte[] content, int lastOffset)
+        throws IOException {
+        final byte[] image = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withSectorChecksums(true))
+            .put("data.bin", content)
+            .toByteArray();
+
+        final int base;
+        final int sectors;
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final MpqFileEntry entry = archive.entry("data.bin").orElseThrow();
+            Assert.assertFalse(entry.isEncrypted(), "the offset table must be readable as is");
+            base = (int) (archive.header().headerOffset() + entry.filePosition());
+            sectors = (entry.normalSize() + archive.header().sectorSize() - 1)
+                / archive.header().sectorSize();
+        }
+
+        final ByteBuffer table = ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN);
+        final int lastAt = base + (sectors + 1) * 4;
+        table.putInt(lastAt, lastOffset >= 0 ? lastOffset : table.getInt(base + sectors * 4));
+        return image;
+    }
+
     /** Where a file's first sector payload begins, past its offset table. */
     private static int payloadStart(byte[] image, String name) throws IOException {
         try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
