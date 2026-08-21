@@ -116,23 +116,52 @@ public class MpqAttributesTests {
     }
 
     /**
-     * An unknown bit means an array of unknown length, so nothing past the
-     * known arrays can be located. The known prefix is still read.
+     * An unknown bit means an array of unknown length, so nothing past the known
+     * arrays can be located. The known prefix is still read.
+     * <p>
+     * The trailing bytes are the point. An earlier version of this test set an
+     * unknown flag without appending the array it names, so the file length
+     * still matched the known arrays exactly and the test passed without ever
+     * exercising the case it was named after — while a real file carrying an
+     * unknown array was rejected outright, losing its good checksums with it.
      */
     @Test
     public void unknownFlagsDoNotStopTheKnownArraysBeingRead() throws JMpqException {
-        final byte[] file = MpqAttributes.build(new int[]{7, 8}, new long[]{9, 10});
-        // Set a bit no version of the format defines.
-        file[4] |= 0x40;
+        final byte[] known = MpqAttributes.build(new int[]{7, 8}, new long[]{9, 10});
+        known[4] |= 0x40;
+
+        // The unknown array actually present, as a file in the wild would have.
+        final byte[] file = new byte[known.length + 32];
+        System.arraycopy(known, 0, file, 0, known.length);
+        for (int i = known.length; i < file.length; i++) {
+            file[i] = (byte) 0xA5;
+        }
 
         final MpqAttributes attributes = MpqAttributes.parse(file, 2);
         Assert.assertEquals(attributes.crc32Of(0), 7);
+        Assert.assertEquals(attributes.crc32Of(1), 8);
         Assert.assertEquals(attributes.fileTimeOf(1), 10);
         Assert.assertTrue(attributes.has(0x40), "the flag is preserved as stored");
+        Assert.assertEquals(attributes.entries(), 2);
+
         // Re-emitting drops what could not be understood, and says so by
         // emitting only the known bits.
         Assert.assertEquals(MpqAttributes.parse(attributes.toByteArray(), 2).flags(),
             MpqAttributes.HAS_CRC32 | MpqAttributes.HAS_FILETIME);
+    }
+
+    /**
+     * The leniency is confined to what an unknown bit can explain. A file whose
+     * bytemask this implementation fully understands, with bytes on the end that
+     * nothing accounts for, is still an error.
+     */
+    @Test
+    public void aTailNothingExplainsIsStillAnError() {
+        final byte[] known = MpqAttributes.build(new int[]{7, 8}, new long[]{9, 10});
+        final byte[] file = new byte[known.length + 16];
+        System.arraycopy(known, 0, file, 0, known.length);
+
+        Assert.expectThrows(JMpqException.class, () -> MpqAttributes.parse(file, 2));
     }
 
     /** The default shape round-trips through build and parse unchanged. */
@@ -305,7 +334,15 @@ public class MpqAttributesTests {
         out.putInt(0x40);
 
         Assert.assertEquals(new AttributesFile(out.array()).entries(), 0);
-        // 64 bytes is not 8, so the strict parser reports the mismatch instead.
-        Assert.expectThrows(JMpqException.class, () -> MpqAttributes.parse(out.array(), 3));
+
+        // The known prefix here is empty, and the rest is the array the unknown
+        // bit names, so parsing succeeds and reports nothing recorded. Refusing
+        // would deny an archive its attributes because of a field this
+        // implementation is explicitly willing to ignore.
+        final MpqAttributes attributes = MpqAttributes.parse(out.array(), 3);
+        Assert.assertEquals(attributes.crc32().length, 0);
+        Assert.assertEquals(attributes.fileTimes().length, 0);
+        Assert.assertEquals(attributes.crc32Of(0), 0, "nothing recorded");
+        Assert.assertTrue(attributes.has(0x40));
     }
 }

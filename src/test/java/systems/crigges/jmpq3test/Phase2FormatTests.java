@@ -689,6 +689,41 @@ public class Phase2FormatTests {
         }
     }
 
+    /**
+     * A user data header declaring more payload than fits before the archive
+     * gets clamped to where the archive starts, not to the end of the file.
+     * <p>
+     * The redirect offset is the real upper bound of the user data area. Clamping
+     * only to the file handed the caller the archive itself as though it were
+     * metadata — and for a large archive the narrowing to an array length could
+     * wrap on the way.
+     */
+    @Test
+    public void aUserDataPayloadStopsWhereTheArchiveBegins() throws IOException {
+        final byte[] inner = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+        final byte[] image = withUserData(inner, "small".getBytes(StandardCharsets.UTF_8));
+
+        // Claim the whole address space as user data.
+        ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).putInt(0x04, -1);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final byte[] payload = archive.userDataPayload().orElseThrow();
+
+            Assert.assertEquals(payload.length, MpqHeader.ALIGNMENT - MpqUserData.SIZE,
+                "the payload ends where the archive header begins");
+            Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
+
+            // And it really is metadata, not the archive: no header signature in it.
+            final ByteBuffer scan = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN);
+            for (int at = 0; at + 4 <= payload.length; at += 4) {
+                Assert.assertNotEquals(scan.getInt(at), MpqHeader.ARCHIVE_SIGNATURE,
+                    "archive bytes leaked into the payload at " + at);
+            }
+        }
+    }
+
     /** Wraps an archive behind a user data header at offset 0. */
     private static byte[] withUserData(byte[] archive, byte[] payload) {
         final byte[] out = new byte[MpqHeader.ALIGNMENT + archive.length];

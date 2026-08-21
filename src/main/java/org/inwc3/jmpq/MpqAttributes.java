@@ -197,23 +197,46 @@ public record MpqAttributes(
      * writes one and reads the other. A length matching none is reported rather
      * than guessed at.
      *
+     * When the bytemask names an array this implementation does not understand,
+     * the file is longer than the known arrays account for, and the surplus is
+     * that unknown array. The known prefix is still resolvable, so it is.
+     *
+     * @param flags      the bytemask as stored.
      * @param usable     the bytemask, restricted to arrays we understand.
      * @param blockCount block table rows the archive has.
      * @param length     the file length.
      * @return the entry count that length implies.
      * @throws JMpqException if no candidate matches.
      */
-    private static int resolveEntryCount(int usable, int blockCount, int length)
+    private static int resolveEntryCount(int flags, int usable, int blockCount, int length)
         throws JMpqException {
         final int fewest = Math.max(0, blockCount - 1);
+
+        // An exact length first, so a file with nothing unexpected in it is
+        // resolved the same way regardless of what follows.
         for (int entries = blockCount; entries >= fewest; entries--) {
             if (sizeFor(usable, entries, patchBitBytesStormLibWrites(entries)) == length
                 || sizeFor(usable, entries, patchBitBytesNeeded(entries)) == length) {
                 return entries;
             }
         }
+
+        // Then, only when the bytemask names an array this implementation does
+        // not know, a known prefix followed by that array. Without this the
+        // promise of reading the known prefix and ignoring the rest was empty:
+        // any file actually carrying an unknown array was rejected outright,
+        // taking its perfectly good checksums with it. Gated on there being an
+        // unknown bit, so a stray tail on an otherwise-known file stays an error.
+        if (flags != usable) {
+            for (int entries = blockCount; entries >= fewest; entries--) {
+                if (sizeFor(usable, entries, patchBitBytesStormLibWrites(entries)) <= length) {
+                    return entries;
+                }
+            }
+        }
+
         throw new JMpqException("An attributes file with flags 0x"
-            + Integer.toHexString(usable) + " for " + blockCount + " blocks should be "
+            + Integer.toHexString(flags) + " for " + blockCount + " blocks should be "
             + sizeFor(usable, blockCount) + " bytes, but is " + length + ".");
     }
 
@@ -249,7 +272,7 @@ public record MpqAttributes(
         // ignoring the rest is what StormLib does.
         final int usable = flags & KNOWN_FLAGS;
 
-        final int entries = resolveEntryCount(usable, blockCount, data.length);
+        final int entries = resolveEntryCount(flags, usable, blockCount, data.length);
         final boolean truncated = entries != blockCount;
 
         final int[] crc32 = (usable & HAS_CRC32) != 0 ? new int[entries] : new int[0];

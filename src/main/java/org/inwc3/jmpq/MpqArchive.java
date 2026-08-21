@@ -230,6 +230,21 @@ public final class MpqArchive implements AutoCloseable {
     }
 
     /**
+     * The payload of this archive's user data header, if it has one.
+     * <p>
+     * {@link MpqUserData#payload} needs an {@link MpqSource}, which a caller
+     * holding an archive has no way to obtain, so it was unreachable from
+     * outside this package. This is the way in.
+     *
+     * @return the user data payload, or empty when the archive starts the file.
+     * @throws IOException if the bytes cannot be read.
+     */
+    public Optional<byte[]> userDataPayload() throws IOException {
+        final MpqUserData userData = header.userData();
+        return userData == null ? Optional.empty() : Optional.of(userData.payload(source));
+    }
+
+    /**
      * The archive's {@code (attributes)} file, parsed.
      * <p>
      * Its arrays are indexed by block table index, so

@@ -38,6 +38,12 @@ public record MpqUserData(
     public static final int SIZE = 16;
 
     /**
+     * Largest payload {@link #payload} will return. Both bounds it clamps to are
+     * 64-bit, so without this the narrowing to an array length could wrap.
+     */
+    private static final long MAX_PAYLOAD = Integer.MAX_VALUE - 8L;
+
+    /**
      * Reads a user data header.
      *
      * @param source the archive bytes.
@@ -76,10 +82,21 @@ public record MpqUserData(
     public byte[] payload(MpqSource source) throws systems.crigges.jmpq3.JMpqException {
         final long start = offset + SIZE;
         final long declared = Integer.toUnsignedLong(userDataSize);
+
         // The declared size is not trustworthy: it is a plain u32 written by
-        // another tool, so clamp it to the file rather than letting it drive
-        // the allocation.
-        final long available = Math.max(0, source.size() - start);
-        return source.bytes(start, (int) Math.min(declared, available));
+        // another tool. Two bounds apply, and the tighter one is the archive
+        // header this block redirects to -- the user data area ends where the
+        // archive begins. Clamping only to the file returned the archive itself
+        // as though it were metadata.
+        final long limit = Math.min(source.size(), Math.max(start, archiveHeaderOffset()));
+        final long available = Math.max(0, limit - start);
+        final long length = Math.min(declared, available);
+
+        if (length > MAX_PAYLOAD) {
+            throw new systems.crigges.jmpq3.JMpqException("A user data header at " + offset
+                + " describes " + length + " bytes of payload, more than can be returned"
+                + " in one array.");
+        }
+        return source.bytes(start, (int) length);
     }
 }
