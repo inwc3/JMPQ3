@@ -160,6 +160,35 @@ public class Phase2FormatTests {
         }
     }
 
+    /**
+     * Asking for checksums applies them to carried-over files too, by
+     * re-encoding rather than copying. Otherwise the option quietly means "on
+     * whichever files happened to be re-encoded anyway", and the archive ends
+     * up half checksummed.
+     */
+    @Test
+    public void checksumsAreAddedToCarriedOverFilesToo() throws IOException {
+        final byte[] content = incompressible(9_500, 5);
+        final byte[] without = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put("carried.bin", content)
+            .toByteArray();
+
+        try (MpqArchive source = MpqArchive.open(without, MpqOpenOptions.defaults())) {
+            Assert.assertFalse(source.entry("carried.bin").orElseThrow()
+                .has(MpqFileEntry.FLAG_SECTOR_CRC), "nothing to carry over yet");
+
+            final byte[] with = MpqArchiveWriter
+                .from(source, MpqWriteOptions.defaults().withSectorChecksums(true))
+                .toByteArray();
+
+            try (MpqArchive rebuilt = MpqArchive.open(with, MpqOpenOptions.defaults())) {
+                Assert.assertTrue(rebuilt.entry("carried.bin").orElseThrow()
+                    .has(MpqFileEntry.FLAG_SECTOR_CRC), "the rebuild should have added them");
+                Assert.assertEquals(rebuilt.read("carried.bin"), content);
+            }
+        }
+    }
+
     /** Where a file's first sector payload begins, past its offset table. */
     private static int payloadStart(byte[] image, String name) throws IOException {
         try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {

@@ -465,23 +465,36 @@ public final class MpqArchiveWriter {
     private BlockRow writeFile(MpqImageBuffer image, int base, Pending file, int sectorSize)
         throws IOException {
         if (file.content() instanceof Content.Existing existing
-            && canCopyVerbatim(existing.archive(), sectorSize)) {
+            && canCopyVerbatim(existing, sectorSize)) {
             return copyVerbatim(image, base, file.name(), existing);
         }
         return writeEncoded(image, base, file.name(), contentOf(file), sectorSize, 0);
     }
 
     /**
-     * Whether a file from {@code source} can keep its stored bytes.
+     * Whether a file carried over from another archive can keep its stored
+     * bytes.
      * <p>
-     * Only when the sector size matches. Copying a sector offset table into an
-     * archive with a different sector size leaves the table describing the old
-     * geometry, and the file becomes unreadable — the exact bug the golden
-     * harness caught in the pre-2.0 recompression path.
+     * The sector size must match. Copying a sector offset table into an archive
+     * with a different sector size leaves the table describing the old geometry,
+     * and the file becomes unreadable — the exact bug the golden harness caught
+     * in the pre-2.0 recompression path.
+     * <p>
+     * A file that does not already carry sector checksums cannot be copied when
+     * they were asked for, either: the checksums are computed per stored sector,
+     * so adding them means re-encoding. Without this, asking for checksums
+     * quietly meant "on the files that happen to be re-encoded anyway". The
+     * reverse is fine — checksums already present stay present and stay valid,
+     * whether or not this archive asked for them.
      */
-    private boolean canCopyVerbatim(MpqArchive source, int sectorSize) {
-        return source.header().sectorSize() == sectorSize
-            && !options.recompression().recompress;
+    private boolean canCopyVerbatim(Content.Existing existing, int sectorSize) {
+        if (existing.archive().header().sectorSize() != sectorSize
+            || options.recompression().recompress) {
+            return false;
+        }
+        return !options.sectorChecksums()
+            || existing.entry().has(MpqFileEntry.FLAG_SECTOR_CRC)
+            || existing.entry().normalSize() == 0;
     }
 
     private BlockRow copyVerbatim(MpqImageBuffer image, int base, String name,
