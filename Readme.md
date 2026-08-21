@@ -75,6 +75,13 @@ a bitmask. See format note 2.
 Compression on write is deflate, with an optional [Zopfli](https://github.com/google/zopfli)
 mode for smaller output at much greater cost.
 
+**The default stores rather than compresses.** `MpqWriteOptions.defaults()` does
+not deflate, and a file carried over from another archive keeps whatever encoding
+it already had. That is the right trade for a development loop over a large map,
+and `MpqWriteOptions.fast()` says so explicitly rather than relying on a default
+staying put. Ask for `recompressed()` when the archive is a deliverable and its
+size matters.
+
 ## Quick start
 
 The 2.0 API separates reading from writing. `MpqArchive` opens an archive and
@@ -185,6 +192,31 @@ A format version 3 archive may record MD5 digests of its own tables.
 `archive.integrity()` reports `VERIFIED`, `MISMATCHED` or `UNRECORDED`; a
 mismatch is reported rather than fatal, because the tables may still decode every
 file.
+
+## Performance
+
+Archives are assembled in memory, so peak heap is roughly the size of the
+archive being written. That is the main thing to plan for with a large map.
+
+The image buffer is sized up front from what is known about the files going into
+it, so it does not reallocate while assembling — which matters more than it
+sounds: a buffer that grows by doubling copies roughly the whole archive again on
+the way up and peaks near 1.5 times its final size. `WriteBudgetTests` asserts
+that reallocation count stays at zero and that the buffer is not oversized, so
+the property is checked rather than hoped for. Those budgets are counter-based
+on purpose: a wall-clock budget tight enough to catch a regression also flakes on
+shared CI.
+
+Two things cost real time and are opt-in, so neither is paid by accident:
+
+- **Compression.** See above; the default stores.
+- **`(attributes)` generation.** The checksums it records are taken over decoded
+  content, so asking for it forces every file to be decoded — including files
+  that would otherwise have been copied verbatim, which is the fast path for a
+  rebuild.
+
+For reference, rebuilding a 139 MB archive with one file replaced takes roughly
+300 ms on a developer machine, dominated by copying stored bytes.
 
 ## Thread safety
 

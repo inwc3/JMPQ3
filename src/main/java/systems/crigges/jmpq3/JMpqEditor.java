@@ -598,8 +598,10 @@ public class JMpqEditor implements AutoCloseable {
         return MpqNames.canonical(a).equals(MpqNames.canonical(b));
     }
 
-    private MpqWriteOptions writeOptions(RecompressOptions recompress, boolean buildListfile) {
+    private MpqWriteOptions writeOptions(RecompressOptions recompress, boolean buildListfile,
+                                        boolean buildAttributes) {
         MpqWriteOptions options = MpqWriteOptions.defaults()
+            .withAttributes(buildAttributes)
             .withFormatVersion(Math.min(archive.header().formatVersion(), MpqWriteOptions.MAX_WRITABLE_VERSION))
             .withSectorSizeShift(recompress.recompress
                 ? Math.min(recompress.newSectorSizeShift, MpqHeader.MAX_SECTOR_SIZE_SHIFT)
@@ -625,7 +627,12 @@ public class JMpqEditor implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
-        close(true, true, false);
+        // Attributes off, which is what this has always produced: the flag was
+        // accepted and then ignored with a warning. Now that generation works,
+        // defaulting it on would silently add a full decode of every file to
+        // compute its CRC32 -- and that decode is exactly what the verbatim copy
+        // path exists to avoid. Callers who want them can ask.
+        close(true, false, false);
     }
 
     /**
@@ -642,9 +649,12 @@ public class JMpqEditor implements AutoCloseable {
      * Rebuilds the archive, if it is writable, and releases it.
      *
      * @param buildListfile   whether to add a {@code (listfile)} to this mpq
-     * @param buildAttributes whether to add an {@code (attributes)} file. Not
-     *                        implemented; requesting it logs a warning rather
-     *                        than silently doing nothing.
+     * @param buildAttributes whether to add an {@code (attributes)} file. This
+     *                        used to be accepted and then ignored; it is
+     *                        honoured now. It is not free: the checksums it
+     *                        records are taken over decoded content, so asking
+     *                        for them forces every file to be decoded even where
+     *                        it would otherwise have been copied verbatim.
      * @param options         recompression settings
      * @throws IOException if the rebuild fails
      */
@@ -659,15 +669,11 @@ public class JMpqEditor implements AutoCloseable {
             log.debug("Closed archive without rebuilding.");
             return;
         }
-        if (buildAttributes) {
-            log.warn("(attributes) generation is not implemented; the rebuilt archive will not have one.");
-        }
-
         try {
             // The image has to be built while the archive is still open, because
             // file content is read lazily, and written once it is closed,
             // because a mapped file cannot be replaced on Windows.
-            outputByteArray = build(options, buildListfile);
+            outputByteArray = build(options, buildListfile, buildAttributes);
         } finally {
             archive.close();
             closed = true;
@@ -684,9 +690,10 @@ public class JMpqEditor implements AutoCloseable {
      * Builds the rebuilt image: whatever the archive could name, plus anything
      * an external list file named, minus deletions, with insertions on top.
      */
-    private byte[] build(RecompressOptions options, boolean buildListfile) throws IOException {
+    private byte[] build(RecompressOptions options, boolean buildListfile,
+                         boolean buildAttributes) throws IOException {
         final MpqArchiveWriter writer =
-            MpqArchiveWriter.from(archive, writeOptions(options, buildListfile));
+            MpqArchiveWriter.from(archive, writeOptions(options, buildListfile, buildAttributes));
 
         // Files the archive holds but could not name itself, recovered from an
         // external list file.

@@ -188,6 +188,43 @@ public class LegacyApiTests {
         }
     }
 
+    /**
+     * The {@code buildAttributes} flag is honoured now, and off by default.
+     * <p>
+     * It used to be accepted and dropped with a warning. Turning it on by
+     * default once generation worked would have been a silent performance cliff:
+     * the checksums are taken over decoded content, so it forces a decode of
+     * every file precisely where the verbatim copy path would otherwise avoid
+     * one. So the plain {@code close()} keeps producing what it always produced,
+     * and asking explicitly now works.
+     */
+    @Test
+    public void legacyCloseHonoursTheAttributesFlag() throws IOException {
+        final Path without = TestResources.mpqCopy("normalMap");
+        try (JMpqEditor editor = new JMpqEditor(without, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray("a.txt", "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        try (org.inwc3.jmpq.MpqArchive archive = org.inwc3.jmpq.MpqArchive.open(without,
+            org.inwc3.jmpq.MpqOpenOptions.warcraft3())) {
+            Assert.assertTrue(archive.attributes().isEmpty(),
+                "the default close has never produced attributes");
+        }
+
+        final Path with = TestResources.mpqCopy("normalMap");
+        try (JMpqEditor editor = new JMpqEditor(with, MPQOpenOption.FORCE_V0)) {
+            editor.insertByteArray("a.txt", "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            editor.close(true, true, false);
+        }
+        try (org.inwc3.jmpq.MpqArchive archive = org.inwc3.jmpq.MpqArchive.open(with,
+            org.inwc3.jmpq.MpqOpenOptions.warcraft3())) {
+            final var attributes = archive.attributes().orElseThrow(
+                () -> new AssertionError("asked for attributes and did not get them"));
+            Assert.assertEquals(attributes.entries(), archive.header().blockTableEntries());
+            Assert.assertEquals(archive.read("a.txt"),
+                "x".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
     /** The CRC32 helper must match java.util.zip for the same bytes. */
     @Test
     public void attributesCrcMatchesTheJdk() {

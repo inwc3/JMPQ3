@@ -35,6 +35,12 @@ import java.util.Arrays;
 final class MpqImageBuffer {
     private static final int MIN_CAPACITY = 64;
 
+    /** Reallocation count, for the budget tests. */
+    private int growths;
+
+    /** Bytes copied by reallocation, for the budget tests. */
+    private long bytesCopiedByGrowth;
+
     /** Largest image this buffer will grow to, bounded by array addressing. */
     static final int MAX_SIZE = Integer.MAX_VALUE - 8;
 
@@ -184,6 +190,36 @@ final class MpqImageBuffer {
         }
     }
 
+    /**
+     * How many times this buffer has had to reallocate.
+     * <p>
+     * Exposed for the budget tests. Growth is the dominant cost of assembling a
+     * large archive: each reallocation copies everything written so far, so a
+     * buffer that doubles from a small start copies roughly the whole archive
+     * again on the way. A writer that knows the final size should reach zero.
+     *
+     * @return the number of reallocations.
+     */
+    int growths() {
+        return growths;
+    }
+
+    /**
+     * @return total bytes copied by reallocation, which is the work a correctly
+     *         pre-sized buffer avoids entirely.
+     */
+    long bytesCopiedByGrowth() {
+        return bytesCopiedByGrowth;
+    }
+
+    /**
+     * @return the backing array's current length, which is the memory this
+     *         buffer is holding.
+     */
+    int capacity() {
+        return data.length;
+    }
+
     private static void require(boolean condition, String message) {
         if (!condition) {
             throw new IllegalArgumentException(message);
@@ -203,6 +239,8 @@ final class MpqImageBuffer {
             // Saturate rather than overflow into a negative capacity.
             capacity = doubled > 0 && doubled <= MAX_SIZE ? doubled : MAX_SIZE;
         }
+        growths++;
+        bytesCopiedByGrowth += highWaterMark;
         data = Arrays.copyOf(data, capacity);
     }
 }

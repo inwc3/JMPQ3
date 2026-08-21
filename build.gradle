@@ -53,6 +53,9 @@ test {
     useTestNG()
     // FFM mapped-segment access in the read layer.
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    // Archive images are assembled on the heap, so the budget tests need room
+    // for one realistically sized map.
+    maxHeapSize = '2g'
     // Opt-in path to the third-party maps named in issues #46 and #47, which
     // are not committed here. IssueSampleTests skips when it is unset.
     // Run with: ./gradlew test -PissueSamples=/path/to/maps
