@@ -1,2 +1,5 @@
+# JitPack's newest built-in identifier is openjdk17, which is enough to *run*
+# Gradle. The Java 25 toolchain the build compiles against is downloaded by the
+# foojay resolver configured in settings.gradle.
 jdk:
   - openjdk17

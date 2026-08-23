@@ -1,0 +1,11 @@
+# Normalise line endings so an editor or script on Windows cannot turn a
+# one-line change into a whole-file diff.
+* text=auto eol=lf
+
+# Fixtures and build artefacts are binary.
+*.w3x binary
+*.w3m binary
+*.scx binary
+*.mpq binary
+*.blp binary
+*.jar binary

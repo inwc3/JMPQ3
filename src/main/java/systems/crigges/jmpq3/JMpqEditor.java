@@ -1,881 +1,545 @@
 package systems.crigges.jmpq3;
 
-import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
+import org.inwc3.jmpq.MpqArchive;
+import org.inwc3.jmpq.MpqArchiveWriter;
+import org.inwc3.jmpq.MpqFileEntry;
+import org.inwc3.jmpq.MpqHeader;
+import org.inwc3.jmpq.MpqOpenOptions;
+import org.inwc3.jmpq.MpqWriteOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import systems.crigges.jmpq3.BlockTable.Block;
 import systems.crigges.jmpq3.compression.RecompressOptions;
-import systems.crigges.jmpq3.security.MPQEncryption;
-import systems.crigges.jmpq3.security.MPQHashGenerator;
 
-import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.*;
-import java.nio.channels.FileChannel.MapMode;
-import java.nio.file.*;
-import java.util.*;
-
-import static systems.crigges.jmpq3.MpqFile.*;
+import java.nio.channels.NonWritableChannelException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 /**
- * Provides an interface for using MPQ archive files. MPQ archive files contain
- * a virtual file system used by some old games to hold data, primarily those
- * from Blizzard Entertainment.
- * <p>
- * MPQ archives are not intended as a general purpose file system. File access
- * and reading is highly efficient. File manipulation and writing is not
- * efficient and may require rebuilding a large portion of the archive file.
- * Empty directories are not supported. The full contents of the archive might
- * not be discoverable, but such files can still be accessed if their full path
- * is known. File attributes are optional.
- * <p>
- * For platform independence the implementation is pure Java.
+ * Compatibility facade over the {@code org.inwc3.jmpq} core.
+ *
+ * @deprecated use {@link MpqArchive} to read and {@link MpqArchiveWriter} to
+ *             write. This class exists so code written against JMPQ3 1.x keeps
+ *             compiling and behaving as it did; it will be removed in a future
+ *             major release.
+ *
+ * <h2>What this class is now</h2>
+ * Every method here delegates. The 1400 lines of archive logic that used to
+ * live in this file are gone, because two implementations of the same format
+ * inevitably drift: during the 2.0 work the same sector-decryption defect had
+ * to be found and fixed twice, once in each copy. There is now one
+ * implementation and this facade.
+ *
+ * <h2>Behaviour deliberately preserved</h2>
+ * <ul>
+ * <li><b>Rebuild on close.</b> A writable editor rewrites the archive when
+ * {@link #close()} runs. The core requires an explicit save instead, which is
+ * the safer design, but changing it here would silently stop existing callers
+ * from persisting their edits.</li>
+ * <li><b>Read-only downgrade.</b> An archive with no usable {@code (listfile)}
+ * cannot be enumerated, so it becomes read-only rather than risking a rebuild
+ * that drops the files it cannot name. {@link #setExternalListfile(File)}
+ * recovers it.</li>
+ * <li><b>Insert semantics.</b> {@code insertFile} stores a path and reads it at
+ * close time; {@code insertByteArray} copies immediately.</li>
+ * </ul>
+ *
+ * <h2>Thread safety</h2>
+ * Not thread safe; confine one editor to one thread. Separate editors are
+ * independent.
  */
+@Deprecated
 public class JMpqEditor implements AutoCloseable {
-    private final Logger log = LoggerFactory.getLogger(this.getClass().getName());
-    public static final int ARCHIVE_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1A}).order(ByteOrder.LITTLE_ENDIAN).getInt();
-    public static final int USER_DATA_HEADER_MAGIC = ByteBuffer.wrap(new byte[]{'M', 'P', 'Q', 0x1B}).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    private static final Logger log = LoggerFactory.getLogger(JMpqEditor.class);
 
-    /**
-     * Encryption key for hash table data.
-     */
-    private static final int KEY_HASH_TABLE;
+    /** {@code 'MPQ'}, the archive header signature. */
+    public static final int ARCHIVE_HEADER_MAGIC = MpqHeader.ARCHIVE_SIGNATURE;
 
-    /**
-     * Encryption key for block table data.
-     */
-    private static final int KEY_BLOCK_TABLE;
+    /** {@code 'MPQ'}, the user data header signature. */
+    public static final int USER_DATA_HEADER_MAGIC = MpqHeader.USER_DATA_SIGNATURE;
 
-    static {
-        final MPQHashGenerator hasher = MPQHashGenerator.getFileKeyGenerator();
-        hasher.process("(hash table)");
-        KEY_HASH_TABLE = hasher.getHash();
-        hasher.reset();
-        hasher.process("(block table)");
-        KEY_BLOCK_TABLE = hasher.getHash();
+    /** The archive being read. Replaced after a rebuild. */
+    private MpqArchive archive;
+
+    /** A file the caller inserted, resolved at close time. */
+    private record Insert(String name, byte[] bytes, Path file) {
     }
 
-    public static File tempDir;
-    private AttributesFile attributes;
-    /**
-     * MPQ format version 0 forced compatibility is being used.
-     */
-    private final boolean legacyCompatibility;
-    /**
-     * The fc.
-     */
-    private final SeekableByteChannel fc;
-    /**
-     * The header offset.
-     */
-    private long headerOffset;
-    /**
-     * The header size.
-     */
-    private int headerSize;
-    /**
-     * The archive size.
-     */
-    private long archiveSize;
-    /**
-     * The format version.
-     */
-    private int formatVersion;
-    /**
-     * The sector size shift
-     */
-    private int sectorSizeShift;
-    /**
-     * The disc block size.
-     */
-    private int discBlockSize;
-    /**
-     * The hash table file position.
-     */
-    private long hashPos;
-    /**
-     * The block table file position.
-     */
-    private long blockPos;
-    /**
-     * The hash size.
-     */
-    private int hashSize;
-    /**
-     * The block size.
-     */
-    private int blockSize;
-    /**
-     * The hash table.
-     */
-    private HashTable hashTable;
-    /**
-     * The block table.
-     */
-    private BlockTable blockTable;
-    /**
-     * The list file.
-     */
-    private Listfile listFile = new Listfile();
-    /**
-     * The internal filename.
-     */
-    static class Either {
-        Path path;
-        byte[] data;
-
-        Either(Path path) {
-            this.path = path;
-        }
-
-        Either(byte[] data) {
-            this.data = data;
-        }
-
-    }
-    private final LinkedIdentityHashMap<String, Either> filenameToData = new LinkedIdentityHashMap<>();
-    /** The files to add. */
-    /**
-     * The keep header offset.
-     */
-    private boolean keepHeaderOffset = true;
-    /**
-     * The new header size.
-     */
-    private int newHeaderSize;
-    /**
-     * The new archive size.
-     */
-    private long newArchiveSize;
-    /**
-     * The new format version.
-     */
-    private int newFormatVersion;
-    /**
-     * The new disc block size.
-     */
-    private int newSectorSizeShift;
-    /**
-     * The new disc block size.
-     */
-    private int newDiscBlockSize;
-    /**
-     * The new hash pos.
-     */
-    private long newHashPos;
-    /**
-     * The new block pos.
-     */
-    private long newBlockPos;
-    /**
-     * The new hash size.
-     */
-    private int newHashSize;
-    /**
-     * The new block size.
-     */
-    private int newBlockSize;
+    /** Insertions, keyed on canonical name, in insertion order. */
+    private final java.util.SequencedMap<String, Insert> inserts = new java.util.LinkedHashMap<>();
 
     /**
-     * If write operations are supported on the archive.
+     * Names supplied through {@link #setExternalListfile(File)}.
+     * <p>
+     * An archive with no list file cannot enumerate itself, so a rebuild has to
+     * be told which of its files to carry over.
      */
+    private final java.util.SequencedSet<String> externalNames = new java.util.LinkedHashSet<>();
+
+    /** The file this editor was opened from, or null for an in-memory archive. */
+    private final Path path;
+
+    /** The bytes an in-memory archive was opened from. */
+    private byte[] memoryImage;
+
+    private final boolean forceV0;
+    private final boolean writeRequested;
     private boolean canWrite;
+    private boolean keepHeaderOffset = true;
+    private boolean closed;
+
+    /** Names the caller deleted, so a rebuild does not carry them over. */
+    private final List<String> deleted = new ArrayList<>();
+
+    /** The rebuilt image from the most recent close. */
+    private byte[] outputByteArray;
 
     /**
-     * Creates a new MPQ editor for the MPQ file at the specified path.
-     * <p>
-     * If the archive file does not exist a new archive file will be created
-     * automatically. Any changes made to the archive might only propagate to
-     * the file system once this's close method is called.
-     * <p>
-     * When READ_ONLY option is specified then the archive file will never be
-     * modified by this editor.
+     * Opens the MPQ archive at the specified path.
      *
-     * @param mpqArchive  path to a MPQ archive file.
+     * @param mpqArchive  path to an MPQ archive file; must exist.
      * @param openOptions options to use when opening the archive.
-     * @throws JMpqException if mpq is damaged or not supported.
+     * @throws JMpqException if the archive is missing, damaged or unsupported.
      */
     public JMpqEditor(Path mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
-        // process open options
-        canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
-        legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
-        log.debug(mpqArchive.toString());
+        this.path = mpqArchive;
+        this.forceV0 = has(openOptions, MPQOpenOption.FORCE_V0);
+        this.writeRequested = !has(openOptions, MPQOpenOption.READ_ONLY);
+        this.canWrite = writeRequested;
         try {
-            setupTempDir();
-
-            final OpenOption[] fcOptions = canWrite ? new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE}
-                : new OpenOption[]{StandardOpenOption.READ};
-            fc = FileChannel.open(mpqArchive, fcOptions);
-
-            readMpq();
+            this.archive = MpqArchive.open(mpqArchive, openOptions());
+        } catch (JMpqException e) {
+            throw e;
         } catch (IOException e) {
-            throw new JMpqException(mpqArchive.toAbsolutePath() + ": " + e.getMessage());
+            throw new JMpqException("Cannot open MPQ archive " + mpqArchive.toAbsolutePath(), e);
         }
-    }
-
-    public JMpqEditor(byte[] mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
-        // process open options
-        canWrite = !Arrays.asList(openOptions).contains(MPQOpenOption.READ_ONLY);
-        legacyCompatibility = Arrays.asList(openOptions).contains(MPQOpenOption.FORCE_V0);
-        try {
-            setupTempDir();
-
-            fc = new SeekableInMemoryByteChannel(mpqArchive);
-
-            readMpq();
-        } catch (IOException e) {
-            throw new JMpqException("Byte array mpq: " + e.getMessage());
-        }
-    }
-
-    private void readMpq() throws IOException {
-        headerOffset = searchHeader();
-
-        readHeaderSize();
-
-        readHeader();
-
-        checkLegacyCompat();
-
-        readHashTable();
-
-        readBlockTable();
-
-        readListFile();
-
-        readAttributesFile();
+        downgradeIfNotEnumerable();
     }
 
     /**
-     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
+     * Opens an MPQ archive held in memory.
+     * <p>
+     * Nothing is written back to the caller's array; retrieve the rebuilt image
+     * with {@link #getOutputByteArray()} after closing.
      *
-     * @param mpqArchive  a MPQ archive file.
+     * @param mpqArchive  the archive bytes.
      * @param openOptions options to use when opening the archive.
-     * @throws JMpqException if mpq is damaged or not supported.
+     * @throws JMpqException if the archive is damaged or unsupported.
+     */
+    public JMpqEditor(byte[] mpqArchive, MPQOpenOption... openOptions) throws JMpqException {
+        this.path = null;
+        this.forceV0 = has(openOptions, MPQOpenOption.FORCE_V0);
+        this.writeRequested = !has(openOptions, MPQOpenOption.READ_ONLY);
+        this.canWrite = writeRequested;
+        // A writable editor stays open across many calls and rebuilds at close,
+        // so it must not alias the caller's array: mutating it afterwards would
+        // change the live archive underneath. A read-only editor never writes,
+        // so it can wrap and skip the copy.
+        this.memoryImage = writeRequested ? mpqArchive.clone() : mpqArchive;
+        try {
+            this.archive = MpqArchive.open(memoryImage, openOptions());
+        } catch (JMpqException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new JMpqException("Cannot open in-memory MPQ archive", e);
+        }
+        downgradeIfNotEnumerable();
+    }
+
+    /**
+     * See {@link #JMpqEditor(Path, MPQOpenOption...)}.
+     *
+     * @param mpqArchive  an MPQ archive file.
+     * @param openOptions options to use when opening the archive.
+     * @throws IOException if the archive is missing, damaged or unsupported.
      */
     public JMpqEditor(File mpqArchive, MPQOpenOption... openOptions) throws IOException {
         this(mpqArchive.toPath(), openOptions);
     }
 
     /**
-     * See {@link #JMpqEditor(Path, MPQOpenOption...)} }
-     * Kept for backwards compatibility, but deprecated
+     * See {@link #JMpqEditor(Path, MPQOpenOption...)}.
      *
-     * @param mpqArchive a MPQ archive file.
-     * @throws JMpqException if mpq is damaged or not supported.
+     * @param mpqArchive an MPQ archive file.
+     * @throws IOException if the archive is missing, damaged or unsupported.
+     * @deprecated pass the open options explicitly; this constructor silently
+     *             implies {@link MPQOpenOption#FORCE_V0}.
      */
     @Deprecated
     public JMpqEditor(File mpqArchive) throws IOException {
         this(mpqArchive.toPath(), MPQOpenOption.FORCE_V0);
     }
 
-    public static byte[] createEmptyArchive() throws IOException {
-        HashTable hashTable = new HashTable(2);
-        hashTable.setFileBlockIndex("(listfile)", HashTable.DEFAULT_LOCALE, 0);
-
-        ByteBuffer hashTableBuffer = ByteBuffer.allocate(2 * 16).order(ByteOrder.LITTLE_ENDIAN);
-        hashTable.writeToBuffer(hashTableBuffer);
-        hashTableBuffer.flip();
-        new MPQEncryption(KEY_HASH_TABLE, false).processSingle(hashTableBuffer);
-        hashTableBuffer.flip();
-
-        ByteBuffer archive = ByteBuffer.allocate(32 + 2 * 16 + 16).order(ByteOrder.LITTLE_ENDIAN);
-        archive.putInt(ARCHIVE_HEADER_MAGIC);
-        archive.putInt(32);
-        archive.putInt(archive.capacity());
-        archive.putShort((short) 0);
-        archive.putShort((short) 3);
-        archive.putInt(32);
-        archive.putInt(64);
-        archive.putInt(2);
-        archive.putInt(1);
-        archive.put(hashTableBuffer);
-        new Block(32, 0, 0, EXISTS).writeToBuffer(archive);
-        return archive.array();
+    private static boolean has(MPQOpenOption[] options, MPQOpenOption wanted) {
+        for (MPQOpenOption option : options) {
+            if (option == wanted) {
+                return true;
+            }
+        }
+        return false;
     }
 
+    private MpqOpenOptions openOptions() {
+        return forceV0 ? MpqOpenOptions.warcraft3() : MpqOpenOptions.defaults();
+    }
+
+    /**
+     * An archive that cannot enumerate itself cannot be rebuilt without losing
+     * the files whose names are unknown, so it is downgraded to read-only.
+     */
+    private void downgradeIfNotEnumerable() {
+        // Three states, not two. A parsed list file means the archive knows its
+        // own contents, even if it names nothing -- a fresh archive has an empty
+        // one and must be able to receive its first file. Both an absent list
+        // file and one that will not decode mean a rebuild would replace the
+        // archive with whatever it could name, which is nothing.
+        if (canWrite && !archive.isEnumerable()) {
+            log.warn("The mpq doesn't contain a listfile. It cannot be rebuilt.");
+            canWrite = false;
+        }
+    }
+
+    /**
+     * @return the bytes of a minimal, empty version 0 archive.
+     * @throws IOException if the image cannot be assembled.
+     */
+    public static byte[] createEmptyArchive() throws IOException {
+        return MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false)).toByteArray();
+    }
+
+    /**
+     * Writes a minimal, empty version 0 archive, creating parent directories.
+     *
+     * @param mpqArchive destination file.
+     * @throws IOException if the file cannot be written.
+     */
     public static void createEmptyArchive(File mpqArchive) throws IOException {
-        File parent = mpqArchive.getParentFile();
+        final File parent = mpqArchive.getParentFile();
         if (parent != null) {
             Files.createDirectories(parent.toPath());
         }
         Files.write(mpqArchive.toPath(), createEmptyArchive());
     }
 
-    private void checkLegacyCompat() throws IOException {
-        if (legacyCompatibility) {
-            // limit end of archive by end of file
-            archiveSize = Math.min(archiveSize, fc.size() - headerOffset);
-
-            // limit block table size by end of archive
-            blockSize = (int) (Math.min(blockSize, (archiveSize - blockPos) / 16));
-        }
-    }
-
-    private void readAttributesFile() {
-        if (hasFile("(attributes)")) {
-            try {
-                attributes = new AttributesFile(extractFileAsBytes("(attributes)"));
-            } catch (Exception ignored) {
-            }
-        }
-    }
-
     /**
-     * For use when the MPQ is missing a (listfile)
-     * Adds this custom listfile into the MPQ and uses it
-     * for rebuilding purposes.
-     * If this is not a full listfile, the end result will be missing files.
+     * For use when the MPQ is missing a {@code (listfile)}. Applies an external
+     * list of names so the archive can be enumerated and rebuilt.
      *
-     * @param externalListfilePath Path to a file containing listfile entries
+     * @param externalListfilePath file containing one name per line.
      */
     public void setExternalListfile(File externalListfilePath) {
-        if (!canWrite) {
+        if (!writeRequested) {
             log.warn("The mpq was opened as readonly, setting an external listfile will have no effect.");
             return;
         }
         if (!externalListfilePath.exists()) {
-            log.warn("External MPQ File: " + externalListfilePath.getAbsolutePath() +
-                " does not exist and will not be used");
+            log.warn("External MPQ File: {} does not exist and will not be used",
+                externalListfilePath.getAbsolutePath());
             return;
         }
         try {
-            // Read and apply listfile
-            listFile = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
-            checkListfileEntries();
-            // Operation succeeded and added a listfile so we can now write properly.
-            // (as long as it wasn't read-only to begin with)
-        } catch (Exception ex) {
-            log.warn("Could not apply external listfile: " + externalListfilePath.getAbsolutePath());
-            // The value of canWrite is not changed intentionally
-        }
-    }
-
-    /**
-     * Reads an internal Listfile name called (listfile)
-     * and applies that as the archive's listfile.
-     */
-    private void readListFile() {
-        if (hasFile("(listfile)")) {
-            try {
-                listFile = new Listfile(extractFileAsBytes("(listfile)"));
-                checkListfileEntries();
-            } catch (Exception e) {
-                log.warn("Extracting the mpq's listfile failed. It cannot be rebuild.", e);
-            }
-        } else {
-            log.warn("The mpq doesn't contain a listfile. It cannot be rebuild.");
-            canWrite = false;
-        }
-    }
-
-    /**
-     * Performs verification to see if we know all the blocks of this file.
-     * Prints warnings if we don't know all blocks.
-     *
-     * @throws JMpqException If retrieving valid blocks fails
-     */
-    private void checkListfileEntries() throws JMpqException {
-        int hiddenFiles = (hasFile("(attributes)") ? 2 : 1) + (hasFile("(signature)") ? 1 : 0);
-        if (canWrite) {
-            checkListfileCompleteness(hiddenFiles);
-        }
-    }
-
-    /**
-     * Checks listfile for completeness against block table
-     *
-     * @param hiddenFiles Num. hidden files
-     * @throws JMpqException If retrieving valid blocks fails
-     */
-    private void checkListfileCompleteness(int hiddenFiles) throws JMpqException {
-        if (listFile.getFiles().size() <= blockTable.getAllVaildBlocks().size() - hiddenFiles) {
-            log.warn("mpq's listfile is incomplete. Blocks without listfile entry will be discarded");
-        }
-        for (String fileName : listFile.getFiles()) {
-            if (!hasFile(fileName)) {
-                log.warn("listfile entry does not exist in archive and will be discarded: " + fileName);
-            }
-        }
-        listFile.getFileMap().entrySet().removeIf(file -> !hasFile(file.getValue()));
-    }
-
-    private void readBlockTable() throws IOException {
-        ByteBuffer blockBuffer = ByteBuffer.allocate(blockSize * 16).order(ByteOrder.LITTLE_ENDIAN);
-        fc.position(headerOffset + blockPos);
-        readFully(blockBuffer, fc);
-        blockBuffer.rewind();
-        blockTable = new BlockTable(blockBuffer);
-    }
-
-    private void readHashTable() throws IOException {
-        // read hash table
-        ByteBuffer hashBuffer = ByteBuffer.allocate(hashSize * 16);
-        fc.position(headerOffset + hashPos);
-        readFully(hashBuffer, fc);
-        hashBuffer.rewind();
-
-        // decrypt hash table
-        final MPQEncryption decrypt = new MPQEncryption(KEY_HASH_TABLE, true);
-        decrypt.processSingle(hashBuffer);
-        hashBuffer.rewind();
-
-        // create hash table
-        hashTable = new HashTable(hashSize);
-        hashTable.readFromBuffer(hashBuffer);
-    }
-
-    private void readHeaderSize() throws IOException {
-        // probe to sample file with
-        ByteBuffer probe = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
-        // read header size
-        fc.position(headerOffset + 4);
-        readFully(probe, fc);
-        headerSize = probe.getInt(0);
-        if (legacyCompatibility) {
-            // force version 0 header size
-            headerSize = 32;
-        } else if (headerSize < 32 || 208 < headerSize) {
-            // header too small or too big
-            throw new JMpqException("Bad header size.");
-        }
-    }
-
-    private void setupTempDir() throws JMpqException {
-        try {
-            Path path = Paths.get(System.getProperty("java.io.tmpdir") + "jmpq");
-            JMpqEditor.tempDir = path.toFile();
-            if (!JMpqEditor.tempDir.exists())
-                Files.createDirectory(path);
-
-            File[] files = JMpqEditor.tempDir.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    f.delete();
+            final Listfile supplied = new Listfile(Files.readAllBytes(externalListfilePath.toPath()));
+            int resolved = 0;
+            for (String name : supplied.getFiles()) {
+                if (archive.contains(name)) {
+                    externalNames.add(name);
+                    resolved++;
+                } else {
+                    log.debug("External listfile names <{}>, not held by the archive.", name);
                 }
             }
-        } catch (IOException e) {
-            try {
-                JMpqEditor.tempDir = Files.createTempDirectory("jmpq").toFile();
-            } catch (IOException e1) {
-                throw new JMpqException(e1);
+            // Parsing succeeded, so the question is whether the result is
+            // complete. Any resolved name means progress; none is still complete
+            // when the archive holds nothing a rebuild could lose, which is the
+            // case for an empty archive and its empty list file. Requiring a
+            // resolved name left such an archive read-only and unable to receive
+            // its first file.
+            if (resolved > 0 || archive.filesLostOnRebuild() == 0) {
+                canWrite = true;
             }
+            log.debug("Applied external listfile: {} of {} names resolved.", resolved, supplied.size());
+        } catch (IOException | RuntimeException e) {
+            log.warn("Could not apply external listfile: {}", externalListfilePath.getAbsolutePath(), e);
         }
     }
 
-//    /**
-//     * Loads a default listfile for mpqs that have none
-//     * Makes the archive readonly.
-//     */
-//    private void loadDefaultListFile() throws IOException {
-//        log.warn("The mpq doesn't come with a listfile so it cannot be rebuild");
-//        InputStream resource = getClass().getClassLoader().getResourceAsStream("DefaultListfile.txt");
-//        if (resource != null) {
-//            File tempFile = File.createTempFile("jmpq", "lf", tempDir);
-//            tempFile.deleteOnExit();
-//            try (FileOutputStream out = new FileOutputStream(tempFile)) {
-//                //copy stream
-//                byte[] buffer = new byte[1024];
-//                int bytesRead;
-//                while ((bytesRead = resource.read(buffer)) != -1) {
-//                    out.write(buffer, 0, bytesRead);
-//                }
-//            }
-//            listFile = new Listfile(Files.readAllBytes(tempFile.toPath()));
-//            canWrite = false;
-//        }
-//    }
-
-
     /**
-     * Searches the file for the MPQ archive header.
+     * Extracts every file this archive can name into {@code dest}.
      *
-     * @return the file position at which the MPQ archive starts.
-     * @throws IOException   if an error occurs while searching.
-     * @throws JMpqException if file does not contain a MPQ archive.
-     */
-    private long searchHeader() throws IOException {
-        // probe to sample file with
-        ByteBuffer probe = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
-
-        final long fileSize = fc.size();
-        for (long filePos = 0; filePos + probe.capacity() < fileSize; filePos += 0x200) {
-            probe.rewind();
-            fc.position(filePos);
-            readFully(probe, fc);
-
-            final int sample = probe.getInt(0);
-            if (sample == ARCHIVE_HEADER_MAGIC) {
-                // found archive header
-                return filePos;
-            } else if (sample == USER_DATA_HEADER_MAGIC && !legacyCompatibility) {
-                // MPQ user data header with redirect to MPQ header
-                // ignore in legacy compatibility mode
-
-                // TODO process these in some meaningful way
-
-                probe.rewind();
-                fc.position(filePos + 8);
-                readFully(probe, fc);
-
-                // add header offset and align
-                filePos += (probe.getInt(0) & 0xFFFFFFFFL);
-                filePos &= -0x200;
-            }
-        }
-
-        throw new JMpqException("No MPQ archive in file.");
-    }
-
-    /**
-     * Read the MPQ archive header from the header chunk.
-     */
-    private void readHeader() throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(headerSize).order(ByteOrder.LITTLE_ENDIAN);
-        readFully(buffer, fc);
-        buffer.rewind();
-
-        archiveSize = buffer.getInt() & 0xFFFFFFFFL;
-        formatVersion = buffer.getShort();
-        if (legacyCompatibility) {
-            // force version 0 interpretation
-            formatVersion = 0;
-        }
-
-        sectorSizeShift = buffer.getShort();
-        discBlockSize = 512 * (1 << sectorSizeShift);
-        hashPos = buffer.getInt() & 0xFFFFFFFFL;
-        blockPos = buffer.getInt() & 0xFFFFFFFFL;
-        hashSize = buffer.getInt() & 0x0FFFFFFF;
-        blockSize = buffer.getInt();
-
-        // version 1 extension
-        if (formatVersion >= 1) {
-            // TODO add high block table support
-            buffer.getLong();
-
-            // high 16 bits of file pos
-            hashPos |= (buffer.getShort() & 0xFFFFL) << 32;
-            blockPos |= (buffer.getShort() & 0xFFFFL) << 32;
-        }
-
-        // version 2 extension
-        if (formatVersion >= 2) {
-            // 64 bit archive size
-            archiveSize = buffer.getLong();
-
-            // TODO add support for BET and HET tables
-            buffer.getLong();
-            buffer.getLong();
-        }
-
-        // version 3 extension
-        if (formatVersion >= 3) {
-            // TODO add support for compression and checksums
-            buffer.getLong();
-            buffer.getLong();
-            buffer.getLong();
-            buffer.getLong();
-            buffer.getLong();
-
-            buffer.getInt();
-            final byte[] md5 = new byte[16];
-            buffer.get(md5);
-            buffer.get(md5);
-            buffer.get(md5);
-            buffer.get(md5);
-            buffer.get(md5);
-            buffer.get(md5);
-        }
-    }
-
-    /**
-     * Write header.
-     *
-     * @param buffer the buffer
-     */
-    private void writeHeader(MappedByteBuffer buffer) {
-        buffer.putInt(newHeaderSize);
-        buffer.putInt((int) newArchiveSize);
-        buffer.putShort((short) newFormatVersion);
-        buffer.putShort((short) newSectorSizeShift);
-        buffer.putInt((int) newHashPos);
-        buffer.putInt((int) newBlockPos);
-        buffer.putInt(newHashSize);
-        buffer.putInt(newBlockSize);
-
-        // TODO add full write support for versions above 1
-    }
-
-    /**
-     * Calc new table size.
-     */
-    private void calcNewTableSize() {
-        int target = listFile.getFiles().size() + 2;
-        int current = 2;
-        while (current < target) {
-            current *= 2;
-        }
-        newHashSize = current * 2;
-        newBlockSize = listFile.getFiles().size() + 2;
-    }
-
-    /**
-     * Extract all files.
-     *
-     * @param dest the dest
-     * @throws JMpqException the j mpq exception
+     * @param dest destination directory.
+     * @throws JMpqException if the destination is unusable.
      */
     public void extractAllFiles(File dest) throws JMpqException {
         if (!dest.isDirectory()) {
-            throw new JMpqException("Destination location isn't a directory");
+            throw new JMpqException("Destination location isn't a directory: " + dest);
         }
-        if (hasFile("(listfile)") && listFile != null) {
-            for (String s : listFile.getFiles()) {
-                String normalized = File.separatorChar == '\\' ? s : s.replace("\\", File.separator);
-                log.debug("extracting: " + normalized);
-                File temp = new File(dest.getAbsolutePath() + File.separator + normalized);
-                temp.getParentFile().mkdirs();
-                if (hasFile(s)) {
-                    // Prevent exception due to nonexistent listfile entries
-                    try {
-                        extractFile(s, temp);
-                    } catch (JMpqException e) {
-                        log.warn("File possibly corrupted and could not be extracted: " + s);
-                    }
-                }
+        final Path root = dest.toPath().toAbsolutePath().normalize();
+        final List<String> names = new ArrayList<>(archive.names());
+        for (String internal : List.of("(listfile)", "(attributes)", "(signature)")) {
+            if (archive.contains(internal) && !names.contains(internal)) {
+                names.add(internal);
             }
-            if (hasFile("(attributes)")) {
-                File temp = new File(dest.getAbsolutePath() + File.separator + "(attributes)");
-                extractFile("(attributes)", temp);
-            }
-            File temp = new File(dest.getAbsolutePath() + File.separator + "(listfile)");
-            extractFile("(listfile)", temp);
-        } else {
-            ArrayList<Block> blocks = blockTable.getAllVaildBlocks();
+        }
+
+        for (String name : names) {
             try {
-                int i = 0;
-                for (Block b : blocks) {
-                    if (b.hasFlag(MpqFile.ENCRYPTED)) {
-                        continue;
-                    }
-                    ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-                    fc.position(headerOffset + b.getFilePos());
-                    readFully(buf, fc);
-                    buf.rewind();
-                    MpqFile f = new MpqFile(buf, b, discBlockSize, "");
-                    f.extractToFile(new File(dest.getAbsolutePath() + File.separator + i));
-                    i++;
+                // Archive contents are untrusted: an entry naming "..\evil"
+                // must not write outside the directory the caller nominated.
+                final Path target = root.resolve(name.replace('\\', '/')).normalize();
+                if (!target.startsWith(root)) {
+                    throw new JMpqException("Refusing to extract <" + name
+                        + ">: it escapes the destination directory.");
                 }
-            } catch (IOException e) {
-                throw new JMpqException(e);
+                Files.createDirectories(target.getParent());
+                Files.write(target, archive.read(name));
+            } catch (IOException | RuntimeException e) {
+                // Best effort by definition: one damaged file must not cost the
+                // caller the rest of the archive.
+                log.warn("File possibly corrupted and could not be extracted: {}", name, e);
             }
+        }
+
+        if (!archive.isEnumerable()) {
+            // Gate on the archive's own knowledge, not on whether this list
+            // happened to be empty: an unenumerable archive holding an
+            // (attributes) file still put one name in the list, which used to
+            // suppress the fallback and hide every recoverable block.
+            extractUnnamedBlocks(root);
         }
     }
 
     /**
-     * Gets the total file count.
-     *
-     * @return the total file count
-     * @throws JMpqException the j mpq exception
+     * Fallback for an archive with no list file: dump each readable block
+     * under its block index, since there is no name to give it.
      */
-    public int getTotalFileCount() throws JMpqException {
-        return blockTable.getAllVaildBlocks().size();
+    private void extractUnnamedBlocks(Path root) {
+        int index = 0;
+        for (MpqFileEntry entry : archive.entries()) {
+            if (entry.isEncrypted() && entry.name().isEmpty()) {
+                // Without a name there is no key, so the content is not
+                // recoverable.
+                index++;
+                continue;
+            }
+            try {
+                Files.write(root.resolve(Integer.toString(index)), archive.read(entry));
+            } catch (IOException | RuntimeException e) {
+                log.warn("Block {} could not be extracted.", index, e);
+            }
+            index++;
+        }
     }
 
     /**
-     * Extracts the specified file out of the mpq to the target location.
-     *
+     * @return the number of live block table entries.
+     */
+    public int getTotalFileCount() {
+        return archive.blockCount();
+    }
+
+    /**
      * @param name name of the file
-     * @param dest destination to that the files content is written
-     * @throws JMpqException if file is not found or access errors occur
+     * @param dest destination to which the file's content is written
+     * @throws JMpqException if the file is not found or cannot be decoded
      */
     public void extractFile(String name, File dest) throws JMpqException {
         try {
-            MpqFile f = getMpqFile(name);
-            f.extractToFile(dest);
-        } catch (Exception e) {
-            throw new JMpqException(e);
+            Files.write(dest.toPath(), archive.read(name));
+        } catch (IOException e) {
+            throw wrap("Cannot extract <" + name + "> to " + dest, e);
         }
     }
 
     /**
-     * Extracts the specified file out of the mpq to the target location.
-     *
      * @param name name of the file
-     * @throws JMpqException if file is not found or access errors occur
+     * @return the file's content
+     * @throws JMpqException if the file is not found or cannot be decoded
      */
     public byte[] extractFileAsBytes(String name) throws JMpqException {
         try {
-            MpqFile f = getMpqFile(name);
-            return f.extractToBytes();
+            return archive.read(name);
         } catch (IOException e) {
-            throw new JMpqException(e);
+            throw wrap("Cannot extract <" + name + ">", e);
         }
     }
 
+    /**
+     * @param name name of the file
+     * @return the file's content decoded as UTF-8
+     * @throws JMpqException if the file is not found or cannot be decoded
+     */
     public String extractFileAsString(String name) throws JMpqException {
-        try {
-            byte[] f = extractFileAsBytes(name);
-            return new String(f);
-        } catch (IOException e) {
-            throw new JMpqException(e);
-        }
+        return new String(extractFileAsBytes(name), StandardCharsets.UTF_8);
     }
 
     /**
-     * Checks for file.
-     *
-     * @param name the name
-     * @return true, if successful
-     */
-    public boolean hasFile(String name) {
-        try {
-            hashTable.getBlockIndexOfFile(name);
-        } catch (IOException e) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Gets the file names.
-     *
-     * @return the file names
-     */
-    public List<String> getFileNames() {
-        return new ArrayList<>(listFile.getFiles());
-    }
-
-    /**
-     * Extracts the specified file out of the mpq and writes it to the target
-     * outputstream.
+     * Extracts a file to a stream. The stream is flushed but not closed.
      *
      * @param name name of the file
-     * @param dest the outputstream where the file's content is written
-     * @throws JMpqException if file is not found or access errors occur
+     * @param dest destination stream
+     * @throws JMpqException if the file is not found or cannot be decoded
      */
     public void extractFile(String name, OutputStream dest) throws JMpqException {
         try {
-            MpqFile f = getMpqFile(name);
-            f.extractToOutputStream(dest);
+            archive.readTo(name, dest);
         } catch (IOException e) {
-            throw new JMpqException(e);
+            throw wrap("Cannot extract <" + name + ">", e);
         }
     }
 
     /**
-     * Gets the mpq file.
-     *
-     * @param name the name
-     * @return the mpq file
-     * @throws IOException Signals that an I/O exception has occurred.
+     * @param name the file path
+     * @return true if this archive holds the named file
      */
-    public MpqFile getMpqFile(String name) throws IOException {
-        int pos = hashTable.getBlockIndexOfFile(name);
-        Block b = blockTable.getBlockAtPos(pos);
-
-        ByteBuffer buffer = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-        fc.position(headerOffset + b.getFilePos());
-        readFully(buffer, fc);
-        buffer.rewind();
-
-        return new MpqFile(buffer, b, discBlockSize, name);
+    public boolean hasFile(String name) {
+        return archive.contains(name);
     }
 
     /**
-     * Gets the mpq file.
-     *
-     * @param block a block
-     * @return the mpq file
-     * @throws IOException Signals that an I/O exception has occurred.
+     * @param name   the file path
+     * @param locale preferred locale
+     * @return true if this archive holds the named file
      */
-    public MpqFile getMpqFileByBlock(BlockTable.Block block) throws IOException {
-        if (block.hasFlag(MpqFile.ENCRYPTED)) {
-            throw new IOException("cant access this block");
-        }
-        ByteBuffer buffer = ByteBuffer.allocate(block.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-        fc.position(headerOffset + block.getFilePos());
-        readFully(buffer, fc);
-        buffer.rewind();
-
-        return new MpqFile(buffer, block, discBlockSize, "");
+    public boolean hasFile(String name, short locale) {
+        return archive.contains(name, locale);
     }
 
     /**
-     * Gets the mpq files.
-     *
-     * @return the mpq files
-     * @throws IOException Signals that an I/O exception has occurred.
+     * @return the names this archive's list file knows about, plus anything
+     *         inserted since opening.
      */
-    public List<MpqFile> getMpqFilesByBlockTable() throws IOException {
-        List<MpqFile> mpqFiles = new ArrayList<>();
-        ArrayList<Block> list = blockTable.getAllVaildBlocks();
-        for (Block block : list) {
-            try {
-                MpqFile mpqFile = getMpqFileByBlock(block);
-                mpqFiles.add(mpqFile);
-            } catch (IOException ignore) {
+    public List<String> getFileNames() {
+        final List<String> names = new ArrayList<>(archive.names());
+        for (String name : externalNames) {
+            if (names.stream().noneMatch(known -> sameName(known, name))) {
+                names.add(name);
             }
         }
-        return mpqFiles;
+        for (Insert insert : inserts.values()) {
+            if (names.stream().noneMatch(known -> sameName(known, insert.name()))) {
+                names.add(insert.name());
+            }
+        }
+        names.removeIf(name -> deleted.stream().anyMatch(gone -> sameName(gone, name)));
+        return names;
     }
 
     /**
-     * Deletes the specified file out of the mpq once you rebuild the mpq.
+     * @param name the file path
+     * @return a handle on the named file's raw data
+     * @throws IOException if the file is not present or cannot be read
+     */
+    public MpqFile getMpqFile(String name) throws IOException {
+        return getMpqFile(name, HashTable.DEFAULT_LOCALE);
+    }
+
+    /**
+     * @param name   the file path
+     * @param locale preferred locale
+     * @return a handle on the named file's raw data
+     * @throws IOException if the file is not present or cannot be read
+     */
+    public MpqFile getMpqFile(String name, short locale) throws IOException {
+        final MpqFileEntry entry = archive.entry(name, locale)
+            .orElseThrow(() -> new JMpqException("File Not Found <" + name + ">."));
+        return legacyFile(entry, name);
+    }
+
+    /**
+     * @param block a block
+     * @return a handle on that block's raw data
+     * @throws IOException if the block cannot be read
+     */
+    public MpqFile getMpqFileByBlock(Block block) throws IOException {
+        if (block.hasFlag(MpqFile.ENCRYPTED)) {
+            throw new JMpqException("Cannot access an encrypted block without knowing its file name.");
+        }
+        final MpqFileEntry entry = new MpqFileEntry("", (short) 0, block.getFlags(),
+            block.getFilePosition(), block.getCompressedSize(), block.getNormalSize(), 0);
+        return legacyFile(entry, "");
+    }
+
+    /**
+     * @return handles on every readable block, skipping those that cannot be
+     *         decoded without a name.
+     * @throws IOException if the block table cannot be read
+     */
+    public List<MpqFile> getMpqFilesByBlockTable() throws IOException {
+        final List<MpqFile> files = new ArrayList<>();
+        for (MpqFileEntry entry : archive.entries()) {
+            if (entry.isEncrypted()) {
+                continue;
+            }
+            try {
+                files.add(legacyFile(entry, entry.name()));
+            } catch (IOException e) {
+                log.debug("Skipping unreadable block {}", entry.blockIndex(), e);
+            }
+        }
+        return files;
+    }
+
+    private MpqFile legacyFile(MpqFileEntry entry, String name) throws IOException {
+        final ByteBuffer raw = ByteBuffer.wrap(archive.rawBytes(entry)).order(ByteOrder.LITTLE_ENDIAN);
+        final Block block = new Block(entry.filePosition(), entry.compressedSize(),
+            entry.normalSize(), entry.flags());
+        return new MpqFile(raw, block, archive.header().sectorSize(), name,
+            archive.header().formatVersion());
+    }
+
+    /**
+     * Deletes the specified file from the mpq once the editor is closed.
      *
      * @param name of the file inside the mpq
-     * @throws JMpqException if file is not found or access errors occur
      */
     public void deleteFile(String name) {
-        if (!canWrite) {
-            throw new NonWritableChannelException();
-        }
-
-        if (listFile.containsFile(name)) {
-            listFile.removeFile(name);
-            filenameToData.remove(name);
-        }
+        requireWritable();
+        inserts.remove(MpqNames.canonical(name));
+        externalNames.removeIf(known -> sameName(known, name));
+        deleted.add(name);
     }
 
     /**
-     * Inserts the specified byte array into the mpq once you close the editor.
+     * Inserts the specified byte array into the mpq once the editor is closed.
+     * <p>
+     * The array is copied, so the caller may reuse it.
      *
      * @param name     of the file inside the mpq
      * @param input    the input byte array
      * @param override whether to override an existing file with the same name
-     * @throws IllegalArgumentException when the mpq has filename and not override
      */
     public void insertByteArray(String name, byte[] input, boolean override) {
-        if (!canWrite) {
-            throw new NonWritableChannelException();
-        }
-        if ((!override) && listFile.containsFile(name)) {
-            throw new IllegalArgumentException("Archive already contains file with name: " + name);
-        }
-
-        listFile.addFile(name);
-        filenameToData.put(name, new Either(input));
+        requireWritable();
+        rejectGeneratedName(name);
+        requireAbsent(name, override);
+        // Copy on insert: the caller may reuse its array afterwards.
+        inserts.put(MpqNames.canonical(name), new Insert(name, input.clone(), null));
+        deleted.removeIf(gone -> sameName(gone, name));
     }
 
     /**
-     * Inserts the specified byte array into the mpq once you close the editor.
-     *
      * @param name  of the file inside the mpq
      * @param input the input byte array
-     * @throws IllegalArgumentException when the mpq has filename
      */
-    public void insertByteArray(String name, byte[] input) throws NonWritableChannelException, IllegalArgumentException {
+    public void insertByteArray(String name, byte[] input)
+        throws NonWritableChannelException, IllegalArgumentException {
         insertByteArray(name, input, false);
     }
 
     /**
-     * Inserts the specified file into the mpq once you close the editor.
+     * Inserts the specified file into the mpq once the editor is closed. The
+     * file is read at close time, so it must still exist then.
      *
      * @param name of the file inside the mpq
      * @param file the file
@@ -885,328 +549,273 @@ public class JMpqEditor implements AutoCloseable {
     }
 
     /**
-     * Inserts the specified file into the mpq once you close the editor.
-     *
      * @param name     of the file inside the mpq
      * @param file     the file
      * @param override whether to override an existing file with the same name
-     * @throws JMpqException if file is not found or access errors occur
      */
     public void insertFile(String name, File file, boolean override) throws IOException {
+        requireWritable();
+        rejectGeneratedName(name);
+        requireAbsent(name, override);
+        log.debug("insert file: {}", name);
+        // Stored as a path and read at close time, as 1.x did.
+        inserts.put(MpqNames.canonical(name), new Insert(name, null, file.toPath()));
+        deleted.removeIf(gone -> sameName(gone, name));
+    }
+
+    private void requireWritable() {
         if (!canWrite) {
             throw new NonWritableChannelException();
         }
-        log.info("insert file: " + name);
-        if ((!override) && listFile.containsFile(name)) {
+    }
+
+    /**
+     * The writer generates {@code (listfile)}, so supplying one would produce two
+     * entries under the same name. Rejected at insertion time rather than at
+     * close: 1.x accepted it and then wrote a broken archive, and failing when
+     * the caller can still do something about it is the lesser evil.
+     * <p>
+     * {@code (attributes)} and {@code (signature)} are not generated, so they
+     * are accepted and written as ordinary files.
+     */
+    private void rejectGeneratedName(String name) {
+        if ("(listfile)".equalsIgnoreCase(name)) {
+            throw new IllegalArgumentException("(listfile) is generated on close and cannot be"
+                + " inserted. Pass buildListfile to close(...) to control it.");
+        }
+    }
+
+    private void requireAbsent(String name, boolean override) {
+        if (override || deleted.stream().anyMatch(gone -> sameName(gone, name))) {
+            return;
+        }
+        if (inserts.containsKey(MpqNames.canonical(name)) || archive.contains(name)) {
             throw new IllegalArgumentException("Archive already contains file with name: " + name);
         }
-
-        listFile.addFile(name);
-        filenameToData.put(name, new Either(file.toPath())); // Store path, not data
     }
 
+    private static boolean sameName(String a, String b) {
+        return MpqNames.canonical(a).equals(MpqNames.canonical(b));
+    }
+
+    private MpqWriteOptions writeOptions(RecompressOptions recompress, boolean buildListfile,
+                                        boolean buildAttributes) {
+        MpqWriteOptions options = MpqWriteOptions.defaults()
+            .withAttributes(buildAttributes)
+            .withFormatVersion(Math.min(archive.header().formatVersion(), MpqWriteOptions.MAX_WRITABLE_VERSION))
+            .withSectorSizeShift(recompress.recompress
+                ? Math.min(recompress.newSectorSizeShift, MpqHeader.MAX_SECTOR_SIZE_SHIFT)
+                : archive.header().sectorSizeShift())
+            .withRecompression(recompress)
+            .withListfile(buildListfile)
+            .withPrefix(keepHeaderOffset);
+        return options;
+    }
+
+    /**
+     * Closes the archive without rebuilding it.
+     *
+     * @throws IOException if the archive cannot be released
+     * @deprecated call {@link #close()}; it does not rebuild a read-only
+     *             archive either.
+     */
+    @Deprecated
     public void closeReadOnly() throws IOException {
-        fc.close();
+        archive.close();
+        closed = true;
     }
 
+    @Override
     public void close() throws IOException {
-        close(true, true, false);
+        // Attributes off, which is what this has always produced: the flag was
+        // accepted and then ignored with a warning. Now that generation works,
+        // defaulting it on would silently add a full decode of every file to
+        // compute its CRC32 -- and that decode is exactly what the verbatim copy
+        // path exists to avoid. Callers who want them can ask.
+        close(true, false, false);
     }
 
+    /**
+     * @param buildListfile   whether to add a {@code (listfile)} to this mpq
+     * @param buildAttributes whether to add an {@code (attributes)} file
+     * @param recompress      whether to recompress existing files
+     * @throws IOException if the rebuild fails
+     */
     public void close(boolean buildListfile, boolean buildAttributes, boolean recompress) throws IOException {
         close(buildListfile, buildAttributes, new RecompressOptions(recompress));
     }
 
     /**
-     * @param buildListfile   whether or not to add a (listfile) to this mpq
-     * @param buildAttributes whether or not to add a (attributes) file to this mpq
-     * @throws IOException
+     * Rebuilds the archive, if it is writable, and releases it.
+     *
+     * @param buildListfile   whether to add a {@code (listfile)} to this mpq
+     * @param buildAttributes whether to add an {@code (attributes)} file. This
+     *                        used to be accepted and then ignored; it is
+     *                        honoured now. It is not free: the checksums it
+     *                        records are taken over decoded content, so asking
+     *                        for them forces every file to be decoded even where
+     *                        it would otherwise have been copied verbatim.
+     * @param options         recompression settings
+     * @throws IOException if the rebuild fails
      */
-    public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options) throws IOException {
-        // only rebuild if allowed
-        if (!canWrite || !fc.isOpen()) {
-            fc.close();
-            log.debug("closed readonly mpq.");
+    public void close(boolean buildListfile, boolean buildAttributes, RecompressOptions options)
+        throws IOException {
+        if (closed) {
             return;
         }
-
-        long t = System.nanoTime();
-        log.debug("Building mpq");
-        if (listFile == null) {
-            fc.close();
+        if (!canWrite) {
+            archive.close();
+            closed = true;
+            log.debug("Closed archive without rebuilding.");
             return;
         }
-        File temp = File.createTempFile("jmpq", "temp", JMpqEditor.tempDir);
-        temp.deleteOnExit();
-        try (FileChannel writeChannel = FileChannel.open(temp.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ)) {
-
-            ByteBuffer headerReader = ByteBuffer.allocate((int) ((keepHeaderOffset ? headerOffset : 0) + 4)).order(ByteOrder.LITTLE_ENDIAN);
-            fc.position((keepHeaderOffset ? 0 : headerOffset));
-            readFully(headerReader, fc);
-            headerReader.rewind();
-            writeChannel.write(headerReader);
-
-            newFormatVersion = formatVersion;
-            switch (newFormatVersion) {
-                case 0:
-                    newHeaderSize = 32;
-                    break;
-                case 1:
-                    newHeaderSize = 44;
-                    break;
-                case 2:
-                case 3:
-                    newHeaderSize = 208;
-                    break;
-            }
-            newSectorSizeShift = options.recompress ? Math.min(options.newSectorSizeShift, 15) : sectorSizeShift;
-            newDiscBlockSize = options.recompress ? 512 * (1 << newSectorSizeShift) : discBlockSize;
-            calcNewTableSize();
-
-            ArrayList<Block> newBlocks = new ArrayList<>();
-            ArrayList<String> newFiles = new ArrayList<>();
-            ArrayList<String> existingFiles = new ArrayList<>(listFile.getFiles());
-
-            sortListfileEntries(existingFiles);
-
-            log.debug("Sorted blocks");
-            if (attributes != null) {
-                attributes.setNames(existingFiles);
-            }
-            long currentPos = (keepHeaderOffset ? headerOffset : 0) + headerSize;
-
-            for (String fileName : filenameToData) {
-                existingFiles.remove(fileName);
-            }
-
-            for (String existingName : existingFiles) {
-                if (options.recompress && !existingName.endsWith(".wav")) {
-                    filenameToData.put(existingName, new Either(extractFileAsBytes(existingName)));
-                } else {
-                    newFiles.add(existingName);
-                    int pos = hashTable.getBlockIndexOfFile(existingName);
-                    Block b = blockTable.getBlockAtPos(pos);
-                    ByteBuffer buf = ByteBuffer.allocate(b.getCompressedSize()).order(ByteOrder.LITTLE_ENDIAN);
-                    fc.position(headerOffset + b.getFilePos());
-                    readFully(buf, fc);
-                    buf.rewind();
-                    MpqFile f = new MpqFile(buf, b, discBlockSize, existingName);
-                    MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, b.getCompressedSize());
-                    Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, b.getFlags());
-                    newBlocks.add(newBlock);
-                    f.writeFileAndBlock(newBlock, fileWriter);
-                    currentPos += b.getCompressedSize();
-                }
-            }
-            log.debug("Added existing files");
-            for (String newFileName : filenameToData) {
-                Either either = filenameToData.get(newFileName);
-                byte[] fileData = either.data;
-                if (either.path != null) {
-                    fileData = Files.readAllBytes(either.path);
-                }
-                newFiles.add(newFileName);
-                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, fileData.length * 2L);
-                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, 0);
-                newBlocks.add(newBlock);
-                MpqFile.writeFileAndBlock(fileData, newBlock, fileWriter, newDiscBlockSize, options);
-                currentPos += newBlock.getCompressedSize();
-                log.debug("Added file " + newFileName);
-            }
-            log.debug("Added new files");
-            if (buildListfile && !listFile.getFiles().isEmpty()) {
-                // Add listfile
-                newFiles.add("(listfile)");
-                byte[] listfileArr = listFile.asByteArray();
-                MappedByteBuffer fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, listfileArr.length * 2L);
-                Block newBlock = new Block(currentPos - (keepHeaderOffset ? headerOffset : 0), 0, 0, EXISTS | COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-                newBlocks.add(newBlock);
-                MpqFile.writeFileAndBlock(listfileArr, newBlock, fileWriter, newDiscBlockSize, "(listfile)", options);
-                currentPos += newBlock.getCompressedSize();
-                log.debug("Added listfile");
-            }
-            // if (attributes != null) {
-            // newFiles.add("(attributes)");
-            // // Only generate attributes file when there has been one before
-            // AttributesFile attributesFile = new AttributesFile(newFiles.size());
-            // // Generate new values
-            // long time = (new Date().getTime() + 11644473600000L) * 10000L;
-            // for (int i = 0; i < newFiles.size() - 1; i++) {
-            // String name = newFiles.get(i);
-            // int entry = attributes.getEntry(name);
-            // if (newFileMap.containsKey(name)){
-            // // new file
-            // attributesFile.setEntry(i, getCrc32(newFileMap.get(name)), time);
-            // }else if (entry >= 0) {
-            // // has timestamp
-            // attributesFile.setEntry(i, getCrc32(name),
-            // attributes.getTimestamps()[entry]);
-            // } else {
-            // // doesnt have timestamp
-            // attributesFile.setEntry(i, getCrc32(name), time);
-            // }
-            // }
-            // // newfiles don't contain the attributes file yet, hence -1
-            // System.out.println("added attributes");
-            // byte[] attrArr = attributesFile.buildFile();
-            // fileWriter = writeChannel.map(MapMode.READ_WRITE, currentPos,
-            // attrArr.length);
-            // newBlock = new Block(currentPos - headerOffset, 0, 0, EXISTS |
-            // COMPRESSED | ENCRYPTED | ADJUSTED_ENCRYPTED);
-            // newBlocks.add(newBlock);
-            // MpqFile.writeFileAndBlock(attrArr, newBlock, fileWriter,
-            // newDiscBlockSize, "(attributes)");
-            // currentPos += newBlock.getCompressedSize();
-            // }
-
-            newBlockSize = newBlocks.size();
-
-            newHashPos = currentPos - (keepHeaderOffset ? headerOffset : 0);
-            newBlockPos = newHashPos + newHashSize * 16L;
-
-            // generate new hash table
-            final int hashSize = newHashSize;
-            HashTable hashTable = new HashTable(hashSize);
-            int blockIndex = 0;
-            for (String file : newFiles) {
-                hashTable.setFileBlockIndex(file, HashTable.DEFAULT_LOCALE, blockIndex++);
-            }
-
-            // prepare hashtable for writing
-            final ByteBuffer hashTableBuffer = ByteBuffer.allocate(hashSize * 16);
-            hashTable.writeToBuffer(hashTableBuffer);
-            hashTableBuffer.flip();
-
-            // encrypt hash table
-            final MPQEncryption encrypt = new MPQEncryption(KEY_HASH_TABLE, false);
-            encrypt.processSingle(hashTableBuffer);
-            hashTableBuffer.flip();
-
-            // write out hash table
-            writeChannel.position(currentPos);
-            writeFully(hashTableBuffer, writeChannel);
-            currentPos = writeChannel.position();
-
-            // write out block table
-            MappedByteBuffer blocktableWriter = writeChannel.map(MapMode.READ_WRITE, currentPos, newBlockSize * 16L);
-            blocktableWriter.order(ByteOrder.LITTLE_ENDIAN);
-            BlockTable.writeNewBlocktable(newBlocks, newBlockSize, blocktableWriter);
-            currentPos += newBlockSize * 16L;
-
-            newArchiveSize = currentPos + 1 - (keepHeaderOffset ? headerOffset : 0);
-
-            MappedByteBuffer headerWriter = writeChannel.map(MapMode.READ_WRITE, (keepHeaderOffset ? headerOffset : 0L) + 4L, headerSize + 4L);
-            headerWriter.order(ByteOrder.LITTLE_ENDIAN);
-            writeHeader(headerWriter);
-
-            MappedByteBuffer tempReader = writeChannel.map(MapMode.READ_WRITE, 0, currentPos + 1);
-            tempReader.position(0);
-
-            fc.position(0);
-            fc.write(tempReader);
-            fc.truncate(fc.position());
-
-            fc.close();
+        try {
+            // The image has to be built while the archive is still open, because
+            // file content is read lazily, and written once it is closed,
+            // because a mapped file cannot be replaced on Windows.
+            outputByteArray = build(options, buildListfile, buildAttributes);
+        } finally {
+            archive.close();
+            closed = true;
         }
 
-        t = System.nanoTime() - t;
-        log.debug("Rebuild complete. Took: " + (t / 1000000) + "ms");
-    }
-
-    private void sortListfileEntries(ArrayList<String> remainingFiles) {
-        // Sort entries to preserve block table order
-        remainingFiles.sort((o1, o2) -> {
-            int pos1 = 999999999;
-            int pos2 = 999999999;
-            try {
-                pos1 = hashTable.getBlockIndexOfFile(o1);
-            } catch (IOException ignored) {
-            }
-            try {
-                pos2 = hashTable.getBlockIndexOfFile(o2);
-            } catch (IOException ignored) {
-            }
-            return pos1 - pos2;
-        });
+        if (path != null) {
+            Files.write(path, outputByteArray);
+        } else {
+            memoryImage = outputByteArray;
+        }
     }
 
     /**
-     * Utility method to fill a buffer from the given channel.
-     *
-     * @param buffer buffer to fill.
-     * @param src    channel to fill from.
-     * @throws IOException  if an exception occurs when reading.
-     * @throws EOFException if EoF is encountered before buffer is full or channel is non
-     *                      blocking.
+     * Builds the rebuilt image: whatever the archive could name, plus anything
+     * an external list file named, minus deletions, with insertions on top.
      */
-    private static void readFully(ByteBuffer buffer, ReadableByteChannel src) throws IOException {
-        while (buffer.hasRemaining()) {
-            if (src.read(buffer) < 1)
-                throw new EOFException("Cannot read enough bytes.");
+    private byte[] build(RecompressOptions options, boolean buildListfile,
+                         boolean buildAttributes) throws IOException {
+        final MpqArchiveWriter writer =
+            MpqArchiveWriter.from(archive, writeOptions(options, buildListfile, buildAttributes));
+
+        // Files the archive holds but could not name itself, recovered from an
+        // external list file. A recovered (attributes) is skipped when a fresh
+        // one is being generated: carrying both in puts two entries under one
+        // name, which the writer refuses -- so the rebuild would fail outright
+        // rather than produce the attributes that were asked for.
+        for (String name : externalNames) {
+            if (buildAttributes && sameName(name, org.inwc3.jmpq.MpqAttributes.NAME)) {
+                log.debug("Not carrying over the recovered {}; a fresh one is being generated.",
+                    name);
+                continue;
+            }
+            if (!writer.contains(name) && archive.contains(name)) {
+                writer.put(name, archive.read(name));
+            }
         }
+        for (String gone : deleted) {
+            writer.remove(gone);
+        }
+        // Insertions last, so they win over whatever the archive held. Remove
+        // every locale variant of the path first: the 1.x API has no locale
+        // parameter, so an override means the path as a whole. Putting only the
+        // neutral variant would leave other locales behind with stale content.
+        for (Insert insert : inserts.values()) {
+            if (buildAttributes && sameName(insert.name(), org.inwc3.jmpq.MpqAttributes.NAME)) {
+                // Same collision, from the other direction: an explicit insert
+                // of (attributes) alongside a request to generate one.
+                log.warn("Ignoring the supplied {} because attributes generation was requested.",
+                    insert.name());
+                continue;
+            }
+            writer.remove(insert.name());
+            if (insert.bytes() != null) {
+                writer.put(insert.name(), insert.bytes());
+            } else {
+                writer.put(insert.name(), insert.file());
+            }
+        }
+        return writer.toByteArray();
     }
 
     /**
-     * Utility method to write out a buffer to the given channel.
+     * The rebuilt archive image from the most recent {@link #close()}.
      *
-     * @param buffer buffer to write out.
-     * @param dest   channel to write to.
-     * @throws IOException if an exception occurs when writing.
+     * @return the rebuilt image, or {@code null} if no rebuild has happened.
      */
-    private static void writeFully(ByteBuffer buffer, WritableByteChannel dest) throws IOException {
-        while (buffer.hasRemaining()) {
-            if (dest.write(buffer) < 1)
-                throw new EOFException("Cannot write enough bytes.");
-        }
+    public byte[] getOutputByteArray() {
+        return outputByteArray;
     }
 
     /**
-     * @return Whether the map can be modified or not
+     * @return whether the archive can be modified.
      */
     public boolean isCanWrite() {
         return canWrite;
     }
 
     /**
-     * Whether or not to keep the data before the actual mpq in the file
-     *
-     * @param keepHeaderOffset
+     * @param keepHeaderOffset true to preserve bytes before the archive header,
+     *                         false to move the archive to offset 0.
      */
     public void setKeepHeaderOffset(boolean keepHeaderOffset) {
         this.keepHeaderOffset = keepHeaderOffset;
     }
 
+    /**
+     * @return this archive's raw {@code wFormatVersion}.
+     */
+    public int getFormatVersion() {
+        return archive.header().formatVersion();
+    }
 
     /**
-     * Get block table block table.
-     *
-     * @return the block table
+     * @return this archive's sector size in bytes.
      */
+    public int getSectorSize() {
+        return archive.header().sectorSize();
+    }
+
+    /**
+     * @return the block table.
+     * @deprecated exposes the on-disk index; use {@link MpqArchive#entries()}.
+     */
+    @Deprecated
     public BlockTable getBlockTable() {
-        return blockTable;
-    }
-
-    public HashTable getHashTable() {
-        return hashTable;
+        final List<Block> rows = new ArrayList<>();
+        for (MpqFileEntry entry : archive.rawBlocks()) {
+            rows.add(new Block(entry.filePosition(), entry.compressedSize(),
+                entry.normalSize(), entry.flags()));
+        }
+        return BlockTable.of(rows);
     }
 
     /**
-     * (non-Javadoc)
-     *
-     * @see java.lang.Object#toString()
+     * @return the hash table.
+     * @deprecated exposes the on-disk index; use {@link MpqArchive#entry(String)}.
      */
-    @Override
-    public String toString() {
-        return "JMpqEditor [headerSize=" + headerSize + ", archiveSize=" + archiveSize + ", formatVersion=" + formatVersion + ", discBlockSize=" + discBlockSize
-            + ", hashPos=" + hashPos + ", blockPos=" + blockPos + ", hashSize=" + hashSize + ", blockSize=" + blockSize + ", hashMap=" + hashTable + "]";
+    @Deprecated
+    public HashTable getHashTable() {
+        return archive.hashTable();
     }
 
     /**
-     * Returns an unmodifiable collection of all Listfile entries
-     *
-     * @return Listfile entries
+     * @return an unmodifiable view of all list file entries.
      */
     public Collection<String> getListfileEntries() {
-        return Collections.unmodifiableCollection(listFile.getFiles());
+        return Collections.unmodifiableCollection(getFileNames());
+    }
+
+    private static JMpqException wrap(String message, IOException cause) {
+        return cause instanceof JMpqException already
+            ? new JMpqException(message + ": " + already.getMessage(), already)
+            : new JMpqException(message, cause);
+    }
+
+    @Override
+    public String toString() {
+        return "JMpqEditor[" + archive + ", canWrite=" + canWrite + "]";
+    }
+
+    /** @return the archive this facade delegates to. */
+    Optional<MpqArchive> delegate() {
+        return Optional.ofNullable(archive);
     }
 }

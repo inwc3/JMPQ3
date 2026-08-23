@@ -1,0 +1,859 @@
+package systems.crigges.jmpq3test;
+
+import org.inwc3.jmpq.MpqArchive;
+import org.inwc3.jmpq.MpqArchiveWriter;
+import org.inwc3.jmpq.MpqAttributes;
+import org.inwc3.jmpq.MpqFileEntry;
+import org.inwc3.jmpq.MpqHeader;
+import org.inwc3.jmpq.MpqOpenOptions;
+import org.inwc3.jmpq.MpqUserData;
+import org.inwc3.jmpq.MpqWriteOptions;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import systems.crigges.jmpq3.JMpqException;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.zip.CRC32;
+
+/**
+ * Phase 2: sector checksums, generated attributes, the hi-block table and the
+ * user data header.
+ */
+public class Phase2FormatTests {
+
+    /** Enough content for several sectors at the default 4 KiB. */
+    private static byte[] incompressible(int length, long seed) {
+        final byte[] content = new byte[length];
+        new Random(seed).nextBytes(content);
+        return content;
+    }
+
+    private static int crc32(byte[] content) {
+        final CRC32 digest = new CRC32();
+        digest.update(content);
+        return (int) digest.getValue();
+    }
+
+    // ------------------------------------------------------- P2-3 sector CRC
+
+    /**
+     * A checksummed archive reads back byte for byte, and says so in its flags.
+     * <p>
+     * The {@code (listfile)} matters as much as the caller's files here: the
+     * writer encrypts internal files, so this is the case where a file's sectors
+     * are encrypted while its checksum chunk is not - StormLib writes that chunk
+     * without encrypting and loads it with key 0. Getting that wrong decodes the
+     * sectors correctly and the checksums as noise.
+     */
+    @Test
+    public void checksummedFilesRoundTrip() throws IOException {
+        final byte[] big = incompressible(11_000, 1);
+        final byte[] small = "small enough for one sector".getBytes(StandardCharsets.UTF_8);
+
+        final byte[] image = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withSectorChecksums(true))
+            .put("big.bin", big)
+            .put("small.txt", small)
+            .toByteArray();
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.read("big.bin"), big);
+            Assert.assertEquals(archive.read("small.txt"), small);
+
+            for (MpqFileEntry entry : archive.entries()) {
+                Assert.assertTrue(entry.has(MpqFileEntry.FLAG_SECTOR_CRC),
+                    entry.name() + " should carry checksums: " + entry.flagsToString());
+            }
+            // The encrypted-sectors-plain-checksums combination, exercised.
+            final MpqFileEntry listfile = archive.entry("(listfile)").orElseThrow();
+            Assert.assertTrue(listfile.isEncrypted());
+            Assert.assertTrue(listfile.has(MpqFileEntry.FLAG_SECTOR_CRC));
+            Assert.assertTrue(new String(archive.read("(listfile)"), StandardCharsets.UTF_8)
+                .contains("big.bin"));
+        }
+    }
+
+    /** An empty file has no sectors, so it cannot carry a checksum. */
+    @Test
+    public void anEmptyFileCarriesNoChecksum() throws IOException {
+        final byte[] image = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withSectorChecksums(true))
+            .put("empty.txt", new byte[0])
+            .toByteArray();
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final MpqFileEntry entry = archive.entry("empty.txt").orElseThrow();
+            Assert.assertFalse(entry.has(MpqFileEntry.FLAG_SECTOR_CRC), entry.flagsToString());
+            Assert.assertEquals(archive.read("empty.txt").length, 0);
+        }
+    }
+
+    /**
+     * The point of the whole feature: damaged data is reported instead of being
+     * handed back. Flipping a byte inside the first sector's payload is caught
+     * before decompression, because that is where the checksum is taken.
+     */
+    @Test
+    public void damageIsDetectedRatherThanReturned() throws IOException {
+        final byte[] content = incompressible(9_000, 2);
+        final byte[] image = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withSectorChecksums(true))
+            .put("data.bin", content)
+            .toByteArray();
+
+        final int corruptAt = payloadStart(image, "data.bin") + 3;
+        image[corruptAt] ^= 0x5A;
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+                () -> archive.read("data.bin"));
+            Assert.assertTrue(thrown.getMessage().contains("checksum"), thrown.getMessage());
+        }
+
+        // Turning verification off recovers whatever is still intact, which is
+        // occasionally what you want. It must not throw, and must not silently
+        // pretend the bytes are right.
+        try (MpqArchive archive = MpqArchive.open(image,
+            MpqOpenOptions.defaults().withSectorChecksumVerification(false))) {
+            Assert.assertNotEquals(archive.read("data.bin"), content,
+                "the byte really was corrupted");
+        }
+    }
+
+    /**
+     * A verbatim copy keeps the checksums valid.
+     * <p>
+     * This is the path where getting the checksum chunk wrong is permanent: the
+     * copy clears the encryption flags but keeps {@code SECTOR_CRC}, so a chunk
+     * mangled on the way through is written as authoritative and every later
+     * read of that file fails.
+     */
+    @Test
+    public void aVerbatimCopyKeepsChecksumsValid() throws IOException {
+        final byte[] content = incompressible(13_000, 3);
+        final byte[] first = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withSectorChecksums(true))
+            .put("carried.bin", content)
+            .toByteArray();
+
+        final byte[] second;
+        try (MpqArchive archive = MpqArchive.open(first, MpqOpenOptions.defaults())) {
+            Assert.assertTrue(archive.entry("carried.bin").orElseThrow()
+                .has(MpqFileEntry.FLAG_SECTOR_CRC));
+            second = MpqArchiveWriter.from(archive, MpqWriteOptions.defaults()).toByteArray();
+        }
+
+        try (MpqArchive archive = MpqArchive.open(second, MpqOpenOptions.defaults())) {
+            final MpqFileEntry entry = archive.entry("carried.bin").orElseThrow();
+            Assert.assertTrue(entry.has(MpqFileEntry.FLAG_SECTOR_CRC),
+                "the copy preserved the flag, so it must preserve valid checksums");
+            Assert.assertFalse(entry.isEncrypted(), "the copy is stored plain");
+            Assert.assertEquals(archive.read("carried.bin"), content);
+        }
+    }
+
+    /**
+     * Asking for checksums applies them to carried-over files too, by
+     * re-encoding rather than copying. Otherwise the option quietly means "on
+     * whichever files happened to be re-encoded anyway", and the archive ends
+     * up half checksummed.
+     */
+    @Test
+    public void checksumsAreAddedToCarriedOverFilesToo() throws IOException {
+        final byte[] content = incompressible(9_500, 5);
+        final byte[] without = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put("carried.bin", content)
+            .toByteArray();
+
+        try (MpqArchive source = MpqArchive.open(without, MpqOpenOptions.defaults())) {
+            Assert.assertFalse(source.entry("carried.bin").orElseThrow()
+                .has(MpqFileEntry.FLAG_SECTOR_CRC), "nothing to carry over yet");
+
+            final byte[] with = MpqArchiveWriter
+                .from(source, MpqWriteOptions.defaults().withSectorChecksums(true))
+                .toByteArray();
+
+            try (MpqArchive rebuilt = MpqArchive.open(with, MpqOpenOptions.defaults())) {
+                Assert.assertTrue(rebuilt.entry("carried.bin").orElseThrow()
+                    .has(MpqFileEntry.FLAG_SECTOR_CRC), "the rebuild should have added them");
+                Assert.assertEquals(rebuilt.read("carried.bin"), content);
+            }
+        }
+    }
+
+    /**
+     * A checksum chunk the offset table cannot locate is damage, not absence.
+     * <p>
+     * The distinction matters because the data sectors are delimited by the same
+     * table: if its last entries are nonsense, the sector entries are only
+     * accidentally still in range. Treating that as "no checksums recorded"
+     * hands back a file that was asked to be verified and was not - the one
+     * outcome verification must never produce. An empty chunk is different, and
+     * stays legitimate.
+     */
+    @Test
+    public void anUnreadableChecksumChunkFailsTheReadRatherThanSkippingIt() throws IOException {
+        final byte[] content = incompressible(9_000, 11);
+
+        // Last offset entry pushed past the stored bytes.
+        final byte[] beyond = checksummedArchiveWithLastOffset(content, 1 << 20);
+        try (MpqArchive archive = MpqArchive.open(beyond, MpqOpenOptions.defaults())) {
+            final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+                () -> archive.read("data.bin"));
+            Assert.assertTrue(thrown.getMessage().contains("checksum chunk"), thrown.getMessage());
+        }
+
+        // Last offset entry before the chunk starts.
+        final byte[] backwards = checksummedArchiveWithLastOffset(content, 0);
+        try (MpqArchive archive = MpqArchive.open(backwards, MpqOpenOptions.defaults())) {
+            Assert.expectThrows(JMpqException.class, () -> archive.read("data.bin"));
+        }
+
+        // Turning verification off still recovers the data, which is the escape
+        // hatch that makes failing the default read acceptable.
+        try (MpqArchive archive = MpqArchive.open(beyond,
+            MpqOpenOptions.defaults().withSectorChecksumVerification(false))) {
+            Assert.assertEquals(archive.read("data.bin"), content);
+        }
+    }
+
+    /** An empty checksum chunk means nothing was recorded, and reads fine. */
+    @Test
+    public void anEmptyChecksumChunkIsTreatedAsNoneRecorded() throws IOException {
+        final byte[] content = incompressible(9_000, 12);
+        final byte[] image = checksummedArchiveWithLastOffset(content, -1);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.read("data.bin"), content,
+                "no checksums to check is not a failure");
+        }
+    }
+
+    /**
+     * Builds a checksummed archive and rewrites the final sector offset entry,
+     * which delimits the checksum chunk. The offset table of an unencrypted file
+     * is stored plainly, so it can be edited directly.
+     *
+     * @param lastOffset the value to write, or -1 to make the chunk empty by
+     *                   copying the entry before it.
+     */
+    private static byte[] checksummedArchiveWithLastOffset(byte[] content, int lastOffset)
+        throws IOException {
+        final byte[] image = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withSectorChecksums(true))
+            .put("data.bin", content)
+            .toByteArray();
+
+        final int base;
+        final int sectors;
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final MpqFileEntry entry = archive.entry("data.bin").orElseThrow();
+            Assert.assertFalse(entry.isEncrypted(), "the offset table must be readable as is");
+            base = (int) (archive.header().headerOffset() + entry.filePosition());
+            sectors = (entry.normalSize() + archive.header().sectorSize() - 1)
+                / archive.header().sectorSize();
+        }
+
+        final ByteBuffer table = ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN);
+        final int lastAt = base + (sectors + 1) * 4;
+        table.putInt(lastAt, lastOffset >= 0 ? lastOffset : table.getInt(base + sectors * 4));
+        return image;
+    }
+
+    /** Where a file's first sector payload begins, past its offset table. */
+    private static int payloadStart(byte[] image, String name) throws IOException {
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final MpqFileEntry entry = archive.entry(name).orElseThrow();
+            final int sectors = (entry.normalSize() + archive.header().sectorSize() - 1)
+                / archive.header().sectorSize();
+            final int tableBytes = (sectors + 1 + 1) * 4;
+            return (int) (archive.header().headerOffset() + entry.filePosition() + tableBytes);
+        }
+    }
+
+    /**
+     * The seed, pinned against known values.
+     * <p>
+     * StormLib checksums sectors with {@code adler32(0, ...)}, and a standard
+     * Adler-32 starts at 1 instead. The two differ by 1 in the low half and by
+     * the byte count in the high half - for every input, which means a reader
+     * and writer that both get it wrong agree with each other and with nothing
+     * else. That is exactly what happened here, and only
+     * {@code tools/mpqref.py} noticed. These constants come from
+     * {@code zlib.adler32(data, 0)}.
+     */
+    @Test
+    public void sectorChecksumsUseTheSeedStormLibUses() throws Exception {
+        Assert.assertEquals(adler32("abc".getBytes(StandardCharsets.UTF_8)), 0x024A0126,
+            "seeding with 1 would give 0x024D0127");
+        Assert.assertEquals(adler32(new byte[0]), 0);
+        final byte[] long_ = new byte[10_000];
+        java.util.Arrays.fill(long_, (byte) 'a');
+        Assert.assertEquals(adler32(long_), 0x78ABCDE2,
+            "long enough to cross the block boundary the accumulator folds at");
+
+        // And it is not what java.util.zip.Adler32 produces, which is the trap.
+        final java.util.zip.Adler32 standard = new java.util.zip.Adler32();
+        standard.update("abc".getBytes(StandardCharsets.UTF_8));
+        Assert.assertNotEquals((int) standard.getValue(), 0x024A0126);
+    }
+
+    /** Reaches the package-private checksum used by both reader and writer. */
+    private static int adler32(byte[] data) throws Exception {
+        final Class<?> type = Class.forName("org.inwc3.jmpq.MpqChecksums");
+        final java.lang.reflect.Method method = type.getDeclaredMethod("adler32", byte[].class);
+        method.setAccessible(true);
+        return (int) method.invoke(null, (Object) data);
+    }
+
+    // ------------------------------------------------------- P2-4 attributes
+
+    /**
+     * Generated attributes describe every block, with a CRC32 taken over each
+     * file's decoded content - which is what StormLib records and what issue
+     * #11 asked for.
+     */
+    @Test
+    public void generatedAttributesDescribeEveryBlock() throws IOException {
+        final long pinned = 1_600_000_000_000L;
+        final Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("one.txt", "first".getBytes(StandardCharsets.UTF_8));
+        files.put("two.bin", incompressible(6_000, 4));
+        files.put("three.txt", "third".getBytes(StandardCharsets.UTF_8));
+
+        final MpqArchiveWriter writer = MpqArchiveWriter.create(MpqWriteOptions.defaults()
+            .withAttributes(true)
+            .withAttributesTimestamp(pinned));
+        files.forEach(writer::put);
+        final byte[] image = writer.toByteArray();
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final MpqAttributes attributes = archive.attributes().orElseThrow();
+            Assert.assertEquals(attributes.version(), MpqAttributes.VERSION);
+            Assert.assertEquals(attributes.entries(), archive.header().blockTableEntries());
+            Assert.assertFalse(attributes.truncated());
+
+            for (Map.Entry<String, byte[]> file : files.entrySet()) {
+                final int block = archive.entry(file.getKey()).orElseThrow().blockIndex();
+                Assert.assertEquals(attributes.crc32Of(block), crc32(file.getValue()),
+                    "crc of " + file.getKey());
+                Assert.assertEquals(attributes.fileTimeOf(block),
+                    MpqAttributes.toFileTime(pinned), "timestamp of " + file.getKey());
+            }
+
+            // The listfile is described too; the attributes file cannot describe
+            // itself, so its own slot stays at "not recorded".
+            final int listfile = archive.entry("(listfile)").orElseThrow().blockIndex();
+            Assert.assertEquals(attributes.crc32Of(listfile),
+                crc32(archive.read("(listfile)")));
+            final int own = archive.entry(MpqAttributes.NAME).orElseThrow().blockIndex();
+            Assert.assertEquals(attributes.crc32Of(own), 0, "its own checksum cannot exist");
+        }
+    }
+
+    /** Spare block slots get a zero checksum, which reads as "not recorded". */
+    @Test
+    public void spareBlockSlotsAreDescribedAsUnrecorded() throws IOException {
+        final byte[] image = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withAttributes(true).withExtraBlockEntries(5))
+            .put("a.txt", "a".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final MpqAttributes attributes = archive.attributes().orElseThrow();
+            // One file, the listfile, the attributes file, and five spares.
+            Assert.assertEquals(attributes.entries(), 3 + 5);
+            Assert.assertEquals(archive.header().blockTableEntries(), 3 + 5);
+            for (int i = 3; i < 8; i++) {
+                Assert.assertEquals(attributes.crc32Of(i), 0, "spare slot " + i);
+                Assert.assertEquals(attributes.fileTimeOf(i), 0L, "spare slot " + i);
+            }
+        }
+    }
+
+    /** A pinned timestamp makes the build reproducible. */
+    @Test
+    public void aPinnedTimestampMakesTheBuildReproducible() throws IOException {
+        final MpqWriteOptions options = MpqWriteOptions.defaults()
+            .withAttributes(true)
+            .withAttributesTimestamp(1_700_000_000_000L);
+
+        final byte[] first = MpqArchiveWriter.create(options)
+            .put("a.txt", "a".getBytes(StandardCharsets.UTF_8)).toByteArray();
+        final byte[] second = MpqArchiveWriter.create(options)
+            .put("a.txt", "a".getBytes(StandardCharsets.UTF_8)).toByteArray();
+
+        Assert.assertEquals(first, second, "identical input must give identical bytes");
+    }
+
+    /**
+     * Generating attributes and supplying them is refused rather than producing
+     * two entries under one name. Supplying them alone stays legal, which is how
+     * a caller preserved them before generation existed.
+     */
+    @Test
+    public void generatingAndSupplyingAttributesIsRefused() throws IOException {
+        final byte[] supplied = MpqAttributes.build(new int[2], new long[2]);
+
+        final MpqArchiveWriter both = MpqArchiveWriter
+            .create(MpqWriteOptions.defaults().withAttributes(true))
+            .put(MpqAttributes.NAME, supplied);
+        final JMpqException thrown = Assert.expectThrows(JMpqException.class, both::toByteArray);
+        Assert.assertTrue(thrown.getMessage().contains("two entries"), thrown.getMessage());
+
+        final byte[] image = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put(MpqAttributes.NAME, supplied)
+            .toByteArray();
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.read(MpqAttributes.NAME), supplied);
+        }
+    }
+
+    /**
+     * Attributes are advisory: an archive carrying ones that will not parse is
+     * still a good archive, and must open rather than being rejected.
+     */
+    @Test
+    public void unparseableAttributesDoNotStopTheArchiveOpening() throws IOException {
+        final byte[] image = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put(MpqAttributes.NAME, new byte[]{100, 0, 0, 0, 3, 0, 0, 0, 1, 2, 3})
+            .put("real.txt", "kept".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertTrue(archive.attributes().isEmpty());
+            Assert.assertEquals(archive.read("real.txt"), "kept".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Internal names are matched case-insensitively, like every other MPQ name.
+     * <p>
+     * A source spelling its attributes file {@code (ATTRIBUTES)} used to slip
+     * past the carry-over filter, which compared by exact string, and then
+     * collide with the generated one, which compares canonically - so rebuilding
+     * such an archive with attributes enabled failed outright. This is the same
+     * mistake as comparing paths without folding them, which cost a file on
+     * rebuild in Phase 0.
+     */
+    @Test
+    public void internalNamesAreCarriedOverCaseInsensitively() throws IOException {
+        final byte[] stale = MpqAttributes.build(new int[]{9, 9}, new long[]{9, 9});
+        final byte[] original = MpqArchiveWriter.create(MpqWriteOptions.defaults())
+            .put("(ATTRIBUTES)", stale)
+            .put("a.txt", "kept".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        try (MpqArchive source = MpqArchive.open(original, MpqOpenOptions.defaults())) {
+            Assert.assertTrue(source.names().contains("(ATTRIBUTES)"),
+                "the fixture must spell it in capitals");
+            // It is an attributes file whatever its case, so a rebuild drops it.
+            Assert.assertEquals(source.filesLostOnRebuild(), 1);
+
+            final byte[] rebuilt = MpqArchiveWriter
+                .from(source, MpqWriteOptions.defaults()
+                    .withAttributes(true)
+                    .withAttributesTimestamp(0))
+                .toByteArray();
+
+            try (MpqArchive archive = MpqArchive.open(rebuilt, MpqOpenOptions.defaults())) {
+                // Fresh attributes, generated -- not the stale ones carried over.
+                final MpqAttributes attributes = archive.attributes().orElseThrow();
+                Assert.assertEquals(attributes.entries(), archive.header().blockTableEntries());
+                final int block = archive.entry("a.txt").orElseThrow().blockIndex();
+                Assert.assertEquals(attributes.crc32Of(block),
+                    crc32("kept".getBytes(StandardCharsets.UTF_8)));
+                Assert.assertEquals(archive.read("a.txt"),
+                    "kept".getBytes(StandardCharsets.UTF_8));
+                // Exactly one entry under that name, whatever its spelling.
+                Assert.assertEquals(archive.names().stream()
+                    .filter(name -> name.equalsIgnoreCase(MpqAttributes.NAME)).count(), 0,
+                    "generated internals are not listed");
+            }
+        }
+    }
+
+    /** The generated list file cannot be supplied under any spelling. */
+    @Test
+    public void theGeneratedListfileIsReservedUnderEverySpelling() {
+        for (String spelling : new String[]{"(listfile)", "(LISTFILE)", "(ListFile)"}) {
+            Assert.expectThrows(IllegalArgumentException.class,
+                () -> MpqArchiveWriter.create(MpqWriteOptions.defaults())
+                    .put(spelling, new byte[1]));
+        }
+    }
+
+    // ---------------------------------------------------- P2-2 hi-block table
+
+    /**
+     * A hi-block table of zeroes changes nothing, which is the only shape a
+     * small archive can legitimately have: the table supplies bits 32 to 47 of
+     * each file position, so a non-zero entry means an archive past 4 GiB.
+     */
+    @Test
+    public void aZeroHiBlockTableLeavesPositionsAlone() throws IOException {
+        final byte[] plain = MpqArchiveWriter.create(MpqWriteOptions.defaults()
+                .withFormatVersion(1))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        final byte[] withTable = attachHiBlockTable(plain, new int[]{0, 0});
+
+        try (MpqArchive archive = MpqArchive.open(withTable, MpqOpenOptions.defaults())) {
+            Assert.assertTrue(archive.header().hasHiBlockTable());
+            Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * A non-zero entry really is applied. There is no way to store data 4 GiB
+     * into a test fixture, so the proof is that the read is attempted there:
+     * the failure names an offset above 4 GiB, which it can only do if the high
+     * word reached the file position.
+     */
+    @Test
+    public void aNonZeroHiBlockEntryMovesTheFilePosition() throws IOException {
+        final byte[] plain = MpqArchiveWriter.create(MpqWriteOptions.defaults()
+                .withFormatVersion(1))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        final byte[] withTable = attachHiBlockTable(plain, new int[]{1, 0});
+
+        try (MpqArchive archive = MpqArchive.open(withTable, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.entry("a.txt").orElseThrow().filePosition() >>> 32, 1L,
+                "the high word belongs in bits 32 and up");
+            final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+                () -> archive.read("a.txt"));
+            Assert.assertTrue(thrown.getMessage().contains("outside"), thrown.getMessage());
+        }
+    }
+
+    /**
+     * An archive claiming a hi-block table it does not hold is reported, not
+     * quietly read with the low words alone.
+     * <p>
+     * Ignoring the table looked like leniency and was not: declaring one means
+     * the file positions do not fit in 32 bits, so dropping the high words puts
+     * every file at the wrong offset - reads that fail, or worse, succeed with
+     * the wrong bytes. StormLib treats an unreadable hi-block table as fatal for
+     * the same reason.
+     * <p>
+     * The escape hatch is real rather than notional: a version 0 archive never
+     * consults the field, so a Warcraft III map whose header was corrupted into
+     * claiming one still opens under {@code FORCE_V0}.
+     */
+    @Test
+    public void aHiBlockTableOutsideTheFileIsReported() throws IOException {
+        final byte[] plain = MpqArchiveWriter.create(MpqWriteOptions.defaults()
+                .withFormatVersion(1))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        final ByteBuffer edit = ByteBuffer.wrap(plain).order(ByteOrder.LITTLE_ENDIAN);
+        final int headerAt = headerOffset(plain);
+        edit.putLong(headerAt + 0x20, 0x7FFF_FFFFL);
+
+        final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+            () -> MpqArchive.open(plain, MpqOpenOptions.defaults()).close());
+        Assert.assertTrue(thrown.getMessage().contains("hi-block table"), thrown.getMessage());
+
+        // Read as version 0, the field is not part of the header at all.
+        try (MpqArchive archive = MpqArchive.open(plain, MpqOpenOptions.warcraft3())) {
+            Assert.assertFalse(archive.header().hasHiBlockTable());
+            Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /** A table whose position is in the file but which runs off the end, likewise. */
+    @Test
+    public void aTruncatedHiBlockTableIsReported() throws IOException {
+        final byte[] plain = MpqArchiveWriter.create(MpqWriteOptions.defaults()
+                .withFormatVersion(1))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        // One byte before the end: inside the file, but far too small to hold
+        // one entry per block.
+        final ByteBuffer edit = ByteBuffer.wrap(plain).order(ByteOrder.LITTLE_ENDIAN);
+        final int headerAt = headerOffset(plain);
+        edit.putLong(headerAt + 0x20, plain.length - headerAt - 1);
+
+        final JMpqException thrown = Assert.expectThrows(JMpqException.class,
+            () -> MpqArchive.open(plain, MpqOpenOptions.defaults()).close());
+        Assert.assertTrue(thrown.getMessage().contains("hi-block table"), thrown.getMessage());
+    }
+
+    /**
+     * Appends a hi-block table to a version 1 archive and points the header at
+     * it. The table is neither encrypted nor compressed, per StormLib.
+     */
+    private static byte[] attachHiBlockTable(byte[] image, int[] highWords) {
+        final byte[] out = new byte[image.length + highWords.length * 2];
+        System.arraycopy(image, 0, out, 0, image.length);
+
+        final int headerAt = headerOffset(image);
+        final ByteBuffer edit = ByteBuffer.wrap(out).order(ByteOrder.LITTLE_ENDIAN);
+        for (int i = 0; i < highWords.length; i++) {
+            edit.putShort(image.length + i * 2, (short) highWords[i]);
+        }
+        edit.putLong(headerAt + 0x20, image.length - headerAt);
+        return out;
+    }
+
+    private static int headerOffset(byte[] image) {
+        for (int at = 0; at + 4 <= image.length; at += MpqHeader.ALIGNMENT) {
+            if (ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).getInt(at)
+                == MpqHeader.ARCHIVE_SIGNATURE) {
+                return at;
+            }
+        }
+        throw new AssertionError("no header in the test fixture");
+    }
+
+    /**
+     * A negative declared block count means no block table, not "every 16 bytes
+     * to the end of the file".
+     * <p>
+     * The count is clamped to zero, and the range check that decides whether to
+     * reinterpret an oversized table has to use the clamped value. Validating
+     * against the raw negative count made its byte length negative, so the check
+     * failed, and the recovery path then replaced the clamped zero with every row
+     * that fitted between the table and EOF - reading trailing bytes as live
+     * block entries.
+     */
+    @Test
+    public void aNegativeBlockCountDoesNotBecomeEverythingToTheEndOfTheFile() throws IOException {
+        final byte[] archive = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        // Trailing bytes after the block table, so "everything that fits" and
+        // "nothing" are observably different answers.
+        final byte[] image = new byte[archive.length + 64];
+        System.arraycopy(archive, 0, image, 0, archive.length);
+        for (int i = archive.length; i < image.length; i++) {
+            image[i] = (byte) 0xCD;
+        }
+
+        final int headerAt = headerOffset(image);
+        ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).putInt(headerAt + 0x1C, -1);
+
+        try (MpqArchive open = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(open.header().blockTableEntries(), 0,
+                "a negative count describes no blocks at all");
+            Assert.assertTrue(open.header().malformed());
+            Assert.assertEquals(open.blockCount(), 0);
+        }
+    }
+
+    // ------------------------------------------------- P2-1 user data header
+
+    /**
+     * A user data header redirects to the archive, and its payload is readable
+     * rather than discarded. The pre-2.0 code detected the signature, followed
+     * the redirect, and threw the rest away with a TODO where the model should
+     * have been.
+     */
+    @Test
+    public void aUserDataHeaderIsParsedAndItsPayloadKept() throws IOException {
+        final byte[] payload = "user data goes here".getBytes(StandardCharsets.UTF_8);
+        final byte[] inner = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+        final byte[] image = withUserData(inner, payload);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final MpqUserData userData = archive.userData().orElseThrow();
+            Assert.assertEquals(userData.offset(), 0);
+            Assert.assertEquals(userData.userDataHeaderSize(), MpqUserData.SIZE);
+            Assert.assertEquals(userData.archiveHeaderOffset(), MpqHeader.ALIGNMENT);
+            Assert.assertEquals(archive.header().headerOffset(), MpqHeader.ALIGNMENT);
+            Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
+        }
+
+        // Warcraft III ignores user data headers, and so does forceV0. The
+        // archive header is found by scanning instead, at the same place.
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.warcraft3())) {
+            Assert.assertTrue(archive.userData().isEmpty());
+            Assert.assertEquals(archive.header().headerOffset(), MpqHeader.ALIGNMENT);
+            Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * A user data header declaring more payload than fits before the archive
+     * gets clamped to where the archive starts, not to the end of the file.
+     * <p>
+     * The redirect offset is the real upper bound of the user data area. Clamping
+     * only to the file handed the caller the archive itself as though it were
+     * metadata - and for a large archive the narrowing to an array length could
+     * wrap on the way.
+     */
+    @Test
+    public void aUserDataPayloadStopsWhereTheArchiveBegins() throws IOException {
+        final byte[] inner = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+        final byte[] image = withUserData(inner, "small".getBytes(StandardCharsets.UTF_8));
+
+        // Claim the whole address space as user data.
+        ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).putInt(0x04, -1);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            final byte[] payload = archive.userDataPayload().orElseThrow();
+
+            Assert.assertEquals(payload.length, MpqHeader.ALIGNMENT - MpqUserData.SIZE,
+                "the payload ends where the archive header begins");
+            Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
+
+            // And it really is metadata, not the archive: no header signature in it.
+            final ByteBuffer scan = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN);
+            for (int at = 0; at + 4 <= payload.length; at += 4) {
+                Assert.assertNotEquals(scan.getInt(at), MpqHeader.ARCHIVE_SIGNATURE,
+                    "archive bytes leaked into the payload at " + at);
+            }
+        }
+    }
+
+    /**
+     * A declared user data size smaller than the gap does not shorten the
+     * payload either.
+     * <p>
+     * {@code cbUserDataSize} is documented as the <em>maximum</em> size of the
+     * area - a capacity, not a length - and StormLib ignores it when handing back
+     * the user data, using the span to the archive header instead. An archive
+     * that reserved a 512-byte area and filled five bytes of it still has 496
+     * bytes of user data area, and that is what a caller gets.
+     */
+    @Test
+    public void theDeclaredUserDataSizeDoesNotBoundThePayload() throws IOException {
+        final byte[] inner = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+        final byte[] image = withUserData(inner, "five!".getBytes(StandardCharsets.UTF_8));
+
+        // Declare far less than the area actually spans.
+        ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN).putInt(0x04, 5);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.userData().orElseThrow().userDataSize(), 5);
+            Assert.assertEquals(archive.userDataPayload().orElseThrow().length,
+                MpqHeader.ALIGNMENT - MpqUserData.SIZE,
+                "the span to the archive header is what defines the payload");
+            Assert.assertEquals(archive.read("a.txt"),
+                "content".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /** Wraps an archive behind a user data header at offset 0. */
+    private static byte[] withUserData(byte[] archive, byte[] payload) {
+        final byte[] out = new byte[MpqHeader.ALIGNMENT + archive.length];
+        final ByteBuffer edit = ByteBuffer.wrap(out).order(ByteOrder.LITTLE_ENDIAN);
+        edit.putInt(MpqHeader.USER_DATA_SIGNATURE);
+        edit.putInt(payload.length);
+        edit.putInt(MpqHeader.ALIGNMENT);
+        edit.putInt(MpqUserData.SIZE);
+        edit.put(payload);
+        System.arraycopy(archive, 0, out, MpqHeader.ALIGNMENT, archive.length);
+        return out;
+    }
+
+    // --------------------------------------------- P2-5b decoy header scanning
+
+    /**
+     * A decoy {@code MPQ\x1A} in front of the real archive no longer ends the
+     * scan. Protected maps plant these precisely so a reader commits to the
+     * first signature it sees and then fails on tables that are not there.
+     */
+    @Test
+    public void aDecoyHeaderDoesNotEndTheScan() throws IOException {
+        final byte[] real = MpqArchiveWriter.create(MpqWriteOptions.defaults().withPrefix(false))
+            .put("a.txt", "content".getBytes(StandardCharsets.UTF_8))
+            .toByteArray();
+
+        final byte[] image = new byte[MpqHeader.ALIGNMENT + real.length];
+        final ByteBuffer edit = ByteBuffer.wrap(image).order(ByteOrder.LITTLE_ENDIAN);
+        // A header-shaped decoy whose tables point far outside the file.
+        edit.putInt(0, MpqHeader.ARCHIVE_SIGNATURE);
+        edit.putInt(4, 32);
+        edit.putInt(0x10, 0x7FFF_0000);
+        edit.putInt(0x14, 0x7FFF_1000);
+        edit.putInt(0x18, 16);
+        System.arraycopy(real, 0, image, MpqHeader.ALIGNMENT, real.length);
+
+        try (MpqArchive archive = MpqArchive.open(image, MpqOpenOptions.defaults())) {
+            Assert.assertEquals(archive.header().headerOffset(), MpqHeader.ALIGNMENT,
+                "the scan should have walked past the decoy");
+            Assert.assertEquals(archive.read("a.txt"), "content".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    // ------------------------------------------- reference cross-verification
+
+    /**
+     * Exports checksummed and attributed archives for
+     * {@code tools/mpqref.py verify}, which now checks the Adler-32 of every
+     * sector itself. That is the only independent confirmation available that
+     * the values this writer records are the values the format calls for, rather
+     * than merely values this library agrees with itself about.
+     */
+    @Test
+    public void exportForReferenceVerification() throws IOException {
+        final Path out = Path.of("build", "phase2");
+        final Path archives = out.resolve("archives");
+        Files.createDirectories(archives);
+
+        final Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("small.txt", "one sector only".getBytes(StandardCharsets.UTF_8));
+        files.put("multi.bin", incompressible(20_000, 7));
+        files.put("compressible.txt", "abcabcabc".repeat(2_000).getBytes(StandardCharsets.UTF_8));
+        files.put("empty.txt", new byte[0]);
+
+        final StringBuilder expected = new StringBuilder("# archive\tname\tsize\tmd5\n");
+
+        // 8 KiB sectors of incompressible data are stored raw, so a whole
+        // sector of high-valued bytes reaches the checksum. That is what
+        // overflows a signed 32-bit Adler accumulator -- and it is invisible to a
+        // round trip, because both sides would share the same wrong arithmetic.
+        // Only the reference can see it, which is why this shape is exported.
+        files.put("wide.bin", incompressible(40_000, 21));
+        // High-valued bytes, stored raw: the default recompression setting never
+        // shrinks a sector, so these reach the checksum as they are. A run of
+        // 0xFF is what pushes the Adler accumulator past a signed 32-bit range.
+        final byte[] high = new byte[40_000];
+        java.util.Arrays.fill(high, (byte) 0xFF);
+        files.put("high.bin", high);
+
+        final MpqWriteOptions[] shapes = {
+            MpqWriteOptions.defaults().withSectorChecksums(true),
+            MpqWriteOptions.defaults().withAttributes(true).withAttributesTimestamp(0),
+            MpqWriteOptions.defaults().withSectorChecksums(true).withAttributes(true)
+                .withAttributesTimestamp(0).withFormatVersion(1),
+            MpqWriteOptions.defaults().withSectorChecksums(true).withSectorSizeShift(4),
+        };
+
+        for (int shape = 0; shape < shapes.length; shape++) {
+            final MpqArchiveWriter writer = MpqArchiveWriter.create(shapes[shape]);
+            files.forEach(writer::put);
+            final String name = "phase2-" + shape + ".mpq";
+            Files.write(archives.resolve(name), writer.toByteArray());
+
+            for (Map.Entry<String, byte[]> file : files.entrySet()) {
+                expected.append(name).append('\t').append(file.getKey()).append('\t')
+                    .append(file.getValue().length).append('\t')
+                    .append(TestHelper.md5(file.getValue())).append('\n');
+            }
+        }
+
+        Files.writeString(out.resolve("expected.tsv"), expected.toString());
+    }
+}

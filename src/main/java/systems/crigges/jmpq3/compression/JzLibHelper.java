@@ -1,157 +1,120 @@
 package systems.crigges.jmpq3.compression;
 
-import com.jcraft.jzlib.Deflater;
-import com.jcraft.jzlib.GZIPException;
-import com.jcraft.jzlib.Inflater;
-import com.jcraft.jzlib.JZlib;
-
 import java.util.Arrays;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 /**
- * Faster jzlib helper tuned for level 0 (no compression).
- * NOTE: Not thread-safe.
+ * Deflate and inflate for MPQ sectors.
+ *
+ * <h2>Why not jzlib any more (P3-2)</h2>
+ * This used to wrap {@code com.jcraft:jzlib}, a pure-Java zlib port last
+ * released in 2011. {@link Deflater} and {@link Inflater} do the same job
+ * through the JDK's bundled zlib, which is native and maintained, so the
+ * dependency bought nothing but a supply-chain risk and a slower codec on the
+ * hottest path in the library.
+ * <p>
+ * The class name and signatures are unchanged because they are public API that
+ * tests and downstream code call.
+ *
+ * <h2>Thread safety</h2>
+ * Every call creates and ends its own {@link Inflater}/{@link Deflater}. An
+ * older version held them in static fields with a shared scratch array and
+ * documented itself as "not thread-safe"; two archives compressed at the same
+ * time silently produced corrupt sectors.
  */
-public class JzLibHelper {
-    // If your consumer accepts RAW DEFLATE (no zlib header/Adler32),
-    // set this to true for level 0 to shave a bit more overhead.
-    private static final boolean RAW_NOWRAP_FOR_LEVEL0 = false;
+public final class JzLibHelper {
 
-    private static final Inflater INF = new Inflater();
-    private static Deflater DEF;
-    private static int currentLevel = Integer.MIN_VALUE;
-    private static boolean currentNowrap = false;
+    private JzLibHelper() {
+    }
 
-    private static byte[] comp = new byte[1024];
-
+    /**
+     * @param bytes      buffer holding the deflate stream.
+     * @param offset     index of the first stream byte.
+     * @param uncompSize expected size of the inflated output.
+     * @return the inflated bytes.
+     */
     public static byte[] inflate(byte[] bytes, int offset, int uncompSize) {
-        byte[] out = new byte[uncompSize];
-
-        INF.init(); // default = zlib wrapper
-        // Use correct remaining length (original used bytes.length - 1)
-        INF.setInput(bytes, offset, bytes.length - offset, true);
-
-        int outPos = 0;
-        while (outPos < uncompSize) {
-            // Provide remaining space in one go
-            INF.setOutput(out, outPos, uncompSize - outPos);
-            int rc = INF.inflate(JZlib.Z_NO_FLUSH);
-
-            if (rc == JZlib.Z_STREAM_END) {
-                outPos = (int) INF.getTotalOut();
-                break;
-            }
-            if (rc == JZlib.Z_OK || rc == JZlib.Z_BUF_ERROR) {
-                // Update outPos from total_out (cumulative)
-                outPos = (int) INF.getTotalOut();
-
-                // If no input left AND we didn't hit STREAM_END, break to avoid spin
-                if (INF.avail_in == 0 && rc == JZlib.Z_BUF_ERROR) break;
-                continue;
-            }
-            INF.end();
-            throw new RuntimeException("inflate error: " + rc);
-        }
-
-        INF.end();
-        return out;
+        return inflate(bytes, offset, bytes.length - offset, uncompSize);
     }
 
-    public static byte[] deflate(byte[] bytes, boolean strongDeflate) {
-        final int level = strongDeflate ? JZlib.Z_BEST_COMPRESSION : JZlib.Z_NO_COMPRESSION;
-        final boolean nowrap = (!strongDeflate) && RAW_NOWRAP_FOR_LEVEL0; // raw only for level 0
-
-        ensureDeflater(level, nowrap);
-        ensureCompCapacity(bytes.length, !nowrap);
-
-        // Attach full input/output once; jzlib manages avail_* internally
-        DEF.setInput(bytes, 0, bytes.length, true);
-        DEF.setOutput(comp, 0, comp.length);
-
-        // Main compress loop
-        while (true) {
-            int rc = DEF.deflate(JZlib.Z_NO_FLUSH);
-            if (rc == JZlib.Z_OK || rc == JZlib.Z_BUF_ERROR) {
-                // If all input consumed, move to finish
-                if (DEF.avail_in == 0) break;
-
-                // If out buffer is full, grow and reattach at current position
-                if (DEF.avail_out == 0) {
-                    growComp();
-                    DEF.setOutput(comp, (int) DEF.getTotalOut(), comp.length - (int) DEF.getTotalOut());
-                }
-                continue;
-            }
-            throw new RuntimeException("deflate(Z_NO_FLUSH) error: " + rc);
+    /**
+     * Inflates a zlib stream.
+     * <p>
+     * A stream that ends early yields what it produced rather than an error:
+     * the caller compares the length against what the block table promised and
+     * reports the shortfall with the file's name attached, which is a better
+     * diagnostic than one from in here. Genuinely malformed data is a different
+     * matter and is thrown.
+     *
+     * @param bytes      buffer holding the deflate stream.
+     * @param offset     index of the first stream byte.
+     * @param length     number of stream bytes available.
+     * @param uncompSize expected size of the inflated output.
+     * @return the inflated bytes, truncated to what the stream actually
+     *         produced.
+     */
+    public static byte[] inflate(byte[] bytes, int offset, int length, int uncompSize) {
+        if (uncompSize == 0) {
+            return new byte[0];
         }
+        final byte[] out = new byte[uncompSize];
+        final Inflater inflater = new Inflater();
 
-        // Finish
-        while (true) {
-            if (DEF.avail_out == 0) {
-                growComp();
-                DEF.setOutput(comp, (int) DEF.getTotalOut(), comp.length - (int) DEF.getTotalOut());
-            }
-            int rc = DEF.deflate(JZlib.Z_FINISH);
-            if (rc == JZlib.Z_STREAM_END) break;
-            if (rc != JZlib.Z_OK && rc != JZlib.Z_BUF_ERROR) {
-                throw new RuntimeException("deflate(Z_FINISH) error: " + rc);
-            }
-        }
-
-        int outLen = (int) DEF.getTotalOut();
-        byte[] out = Arrays.copyOf(comp, outLen);
-
-        // Ready for next call: re-init with desired params then
-        // set again in ensureDeflater() on next invocation.
-        return out;
-    }
-
-    // -------------------- INTERNALS --------------------
-
-    private static void ensureDeflater(int level, boolean nowrap) {
         try {
-            if (DEF == null) {
-                DEF = new Deflater(level, nowrap);
-                currentLevel = level;
-                currentNowrap = nowrap;
-            } else {
-                if (currentLevel != level || currentNowrap != nowrap) {
-                    // Re-init with new level/nowrap (supported by jzlib)
-                    DEF.init(level, nowrap);
-                    currentLevel = level;
-                    currentNowrap = nowrap;
-                } else {
-                    // Same settings; start a fresh stream
-                    DEF.init(level, nowrap);
+            inflater.setInput(bytes, offset, length);
+
+            int outPos = 0;
+            while (outPos < uncompSize && !inflater.finished()) {
+                final int produced = inflater.inflate(out, outPos, uncompSize - outPos);
+                if (produced == 0) {
+                    // No progress and nothing left to feed it: the stream stops
+                    // short of what the block table claimed.
+                    if (inflater.needsInput() || inflater.needsDictionary()) {
+                        break;
+                    }
                 }
+                outPos += produced;
             }
-
-        } catch (GZIPException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void ensureCompCapacity(int inputLen, boolean zlibWrapper) {
-        int worst = worstCaseZlibSize(inputLen, zlibWrapper);
-        if (comp.length < worst) {
-            comp = new byte[worst];
-        } else {
-            // Attach the full buffer from start for this stream
-            DEF.setOutput(comp, 0, comp.length);
+            return outPos == uncompSize ? out : Arrays.copyOf(out, outPos);
+        } catch (DataFormatException e) {
+            throw new IllegalStateException("inflate error: " + e.getMessage(), e);
+        } finally {
+            inflater.end();
         }
     }
 
     /**
-     * Worst-case for stored blocks + optional zlib header/adler.
-     * Each stored block (<=65535 bytes) = 5 bytes overhead.
+     * @param bytes         data to compress.
+     * @param strongDeflate {@code true} for maximum compression. {@code false}
+     *                      is no longer a meaningful request - see
+     *                      {@link CompressionUtil#compress} - and is treated as
+     *                      maximum compression rather than silently producing
+     *                      something larger than the input.
+     * @return the deflate stream.
      */
-    private static int worstCaseZlibSize(int n, boolean zlibWrapper) {
-        int blocks = (n + 65534) / 65535;       // number of 5-byte stored block headers
-        int storedOverhead = blocks * 5;
-        int header = zlibWrapper ? 2 /*zlib header*/ + 4 /*Adler32*/ : 0;
-        return n + storedOverhead + header + 16; // a little slack
-    }
+    public static byte[] deflate(byte[] bytes, boolean strongDeflate) {
+        final Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION);
+        try {
+            deflater.setInput(bytes);
+            deflater.finish();
 
-    private static void growComp() {
-        comp = Arrays.copyOf(comp, comp.length * 2);
+            // Worst case for incompressible input: stored blocks, each covering
+            // at most 65535 bytes at a cost of 5 bytes, plus the zlib wrapper.
+            final int blocks = (int) (((long) bytes.length + 65534) / 65535);
+            byte[] out = new byte[bytes.length + blocks * 5 + 6 + 16];
+
+            int written = 0;
+            while (!deflater.finished()) {
+                if (written == out.length) {
+                    out = Arrays.copyOf(out, out.length * 2);
+                }
+                written += deflater.deflate(out, written, out.length - written);
+            }
+            return written == out.length ? out : Arrays.copyOf(out, written);
+        } finally {
+            deflater.end();
+        }
     }
 }
