@@ -105,6 +105,8 @@ try (MpqArchive source = MpqArchive.open(sourcePath, MpqOpenOptions.warcraft3())
 
 - File-backed archives map their bytes and parse the tables on open.
 - Byte-array archives are read without an input copy.
+- Locale enumeration indexes the hash table once per table version. Writer
+  name lookups use an index, and removing a path visits only its locale variants.
 - Writers size the output buffer from the planned contents instead of growing
   it repeatedly.
 - Rebuilds copy stored file sectors when the sector size is unchanged. This is
@@ -112,6 +114,10 @@ try (MpqArchive source = MpqArchive.open(sourcePath, MpqOpenOptions.warcraft3())
 - `MpqWriteOptions.defaults()` stores data and skips `(attributes)` generation.
   Use `recompressed()` or enable attributes only when output size or metadata
   requires it.
+- Recompression runs sufficiently large sector batches in parallel on Java's
+  common fork/join pool, with ordered output and bounded temporary buffers.
+  Set `RecompressOptions.parallelCompression = false` to use serial compression.
+  Zopfli remains serial because each codec instance needs a large scratch buffer.
 
 The writer assembles the complete image in memory. Plan for heap roughly equal
 to the output archive, plus any input or replacement file arrays you retain.

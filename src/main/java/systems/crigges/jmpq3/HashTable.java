@@ -68,6 +68,9 @@ public class HashTable {
      */
     private int blockTableSize = Integer.MAX_VALUE;
 
+    /** Bucket-ordered locale lists, invalidated by every table mutation. */
+    private volatile java.util.Map<Long, java.util.List<Short>> localesByKey;
+
     /**
      * Construct an empty hash table with the specified capacity.
      * <p>
@@ -114,6 +117,7 @@ public class HashTable {
      * @param blockTableSize number of entries in the archive's block table.
      */
     public void setBlockTableSize(int blockTableSize) {
+        localesByKey = null;
         this.blockTableSize = blockTableSize;
     }
 
@@ -123,6 +127,8 @@ public class HashTable {
      * @param src decrypted hash table bytes.
      */
     public void readFromBuffer(ByteBuffer src) {
+        localesByKey = null;
+        mappingNumber = 0;
         for (final Bucket entry : buckets) {
             entry.readFromBuffer(src);
 
@@ -276,6 +282,7 @@ public class HashTable {
      * @throws IOException if the mapping cannot be created.
      */
     public void setFileBlockIndex(String name, short locale, int blockIndex) throws IOException {
+        localesByKey = null;
         if (blockIndex < 0 || blockIndex > BLOCK_INDEX_MASK) {
             throw new IllegalArgumentException(
                 "Block index must be between 0 and " + BLOCK_INDEX_MASK + ", was " + blockIndex + ".");
@@ -324,6 +331,7 @@ public class HashTable {
      * @param index bucket to clear.
      */
     private void removeFileEntry(int index) {
+        localesByKey = null;
         final int bi = buckets[index].blockTableIndex;
         if (bi == ENTRY_UNUSED || bi == ENTRY_DELETED) {
             throw new IllegalArgumentException("Bucket already clear.");
@@ -354,6 +362,34 @@ public class HashTable {
      * @param blockIndex block table row holding the data.
      */
     public record Mapping(long key, short locale, int blockIndex) {
+    }
+
+    /**
+     * Returns all live locales for a path in bucket order. The index is built
+     * once per table version, so enumerating every path does not scan the table
+     * for every file. Concurrent reads are safe; mutations require confinement.
+     *
+     * @param name file path.
+     * @return immutable locale list, empty for an unknown path.
+     */
+    public java.util.List<Short> localesOf(String name) {
+        var index = localesByKey;
+        if (index == null) {
+            synchronized (this) {
+                index = localesByKey;
+                if (index == null) {
+                    final java.util.Map<Long, java.util.List<Short>> built = new java.util.HashMap<>();
+                    for (Mapping mapping : mappings()) {
+                        built.computeIfAbsent(mapping.key(), key -> new java.util.ArrayList<>())
+                            .add(mapping.locale());
+                    }
+                    built.replaceAll((key, locales) -> java.util.List.copyOf(locales));
+                    index = java.util.Map.copyOf(built);
+                    localesByKey = index;
+                }
+            }
+        }
+        return index.getOrDefault(MpqNames.fileKey(name), java.util.List.of());
     }
 
     /**
