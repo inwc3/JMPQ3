@@ -481,14 +481,7 @@ public final class MpqArchive implements AutoCloseable {
      *         not hold the path at all.
      */
     public List<Short> localesOf(String name) {
-        final long key = MpqNames.fileKey(name);
-        final List<Short> locales = new ArrayList<>(1);
-        for (HashTable.Mapping mapping : hashTable.mappings()) {
-            if (mapping.key() == key) {
-                locales.add(mapping.locale());
-            }
-        }
-        return locales;
+        return hashTable.localesOf(name);
     }
 
     /**

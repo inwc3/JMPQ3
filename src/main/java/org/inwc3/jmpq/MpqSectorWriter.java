@@ -20,6 +20,9 @@ import java.nio.ByteBuffer;
  * equals its natural length.
  */
 public final class MpqSectorWriter {
+    /** Bound temporary payloads even when a file contains millions of sectors. */
+    private static final int MAX_BATCH_SECTORS = 64;
+    private static final int MAX_BATCH_BYTES = 8 * 1024 * 1024;
     /** Compression-type byte for deflate, the only codec this writer emits. */
     private static final byte TYPE_DEFLATE = 0x02;
 
@@ -75,24 +78,43 @@ public final class MpqSectorWriter {
         offsets[0] = tableBytes;
 
         region.position(tableBytes);
-        for (int i = 0; i < dataSectors; i++) {
-            final int from = i * sectorSize;
-            final int length = Math.min(sectorSize, content.length - from);
-            final byte[] raw = new byte[length];
-            System.arraycopy(content, from, raw, 0, length);
+        // Zopfli allocates a large scratch buffer per call; multiplying that
+        // across workers can exhaust otherwise sufficient heaps. Keep it serial.
+        final boolean parallel = recompress.recompress && recompress.parallelCompression
+            && !recompress.useZopfli && content.length >= 256 * 1024;
+        final int batchSize = parallel
+            ? Math.min(MAX_BATCH_SECTORS, Math.max(1, MAX_BATCH_BYTES / sectorSize)) : 1;
+        for (int first = 0; first < dataSectors; first += batchSize) {
+            final int start = first;
+            final int count = Math.min(batchSize, dataSectors - first);
+            final byte[][] payloads = new byte[count][];
+            // Avoid scheduling overhead for stored data and small inputs. Only
+            // heap bytes enter workers: mapped reads and image writes stay on
+            // the caller thread. Encounter order is restored below.
+            if (parallel && count >= 8) {
+                java.util.stream.IntStream.range(0, count).parallel().forEach(offset ->
+                    payloads[offset] = encodeSectorAt(content, start + offset, sectorSize, recompress));
+            } else {
+                for (int offset = 0; offset < count; offset++) {
+                    payloads[offset] = encodeSectorAt(content, start + offset, sectorSize, recompress);
+                }
+            }
 
-            final byte[] payload = encodeSector(raw, recompress);
-            if (checksums) {
-                // Over the stored sector before encrypting it, which is the
-                // same bytes a reader sees after decrypting. StormLib takes the
-                // checksum at exactly these two points.
-                adler[i] = MpqChecksums.adler32(payload);
+            for (int offset = 0; offset < count; offset++) {
+                final int i = start + offset;
+                final byte[] payload = payloads[offset];
+                if (checksums) {
+                    // Over the stored sector before encrypting it, which is the
+                    // same bytes a reader sees after decrypting. StormLib takes the
+                    // checksum at exactly these two points.
+                    adler[i] = MpqChecksums.adler32(payload);
+                }
+                if (encrypt) {
+                    new MPQEncryption(baseKey + i, false).processSingle(ByteBuffer.wrap(payload));
+                }
+                region.put(payload);
+                offsets[i + 1] = offsets[i] + payload.length;
             }
-            if (encrypt) {
-                new MPQEncryption(baseKey + i, false).processSingle(ByteBuffer.wrap(payload));
-            }
-            region.put(payload);
-            offsets[i + 1] = offsets[i] + payload.length;
         }
 
         if (checksums) {
@@ -120,6 +142,15 @@ public final class MpqSectorWriter {
 
         image.advance(compressedSize);
         return compressedSize;
+    }
+
+    private static byte[] encodeSectorAt(byte[] content, int sector, int sectorSize,
+                                         RecompressOptions recompress) {
+        final int from = sector * sectorSize;
+        final int length = Math.min(sectorSize, content.length - from);
+        final byte[] raw = new byte[length];
+        System.arraycopy(content, from, raw, 0, length);
+        return encodeSector(raw, recompress);
     }
 
     /**

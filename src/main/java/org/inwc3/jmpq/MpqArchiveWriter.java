@@ -149,6 +149,14 @@ public final class MpqArchiveWriter {
     /** Pending files, keyed on canonical name, in insertion order. */
     private final SequencedMap<Key, Pending> pending = new LinkedHashMap<>();
 
+    /** Keys for each path, so name-only operations touch only its variants. */
+    private final java.util.Map<String, Set<Key>> keysByName = new java.util.HashMap<>();
+
+    private void putPending(Key key, Pending file) {
+        pending.put(key, file);
+        keysByName.computeIfAbsent(key.canonicalName(), name -> new java.util.HashSet<>()).add(key);
+    }
+
     /** Bytes preceding the archive header in the source, if any are kept. */
     private byte[] prefix = new byte[0];
 
@@ -196,7 +204,7 @@ public final class MpqArchiveWriter {
                 if (entry == null || entry.locale() != locale) {
                     continue;
                 }
-                writer.pending.put(new Key(MpqNames.canonical(name), locale),
+                writer.putPending(new Key(MpqNames.canonical(name), locale),
                     new Pending(name, locale, new Content.Existing(source, entry)));
             }
         }
@@ -236,7 +244,7 @@ public final class MpqArchiveWriter {
      */
     public MpqArchiveWriter put(String name, short locale, byte[] content) {
         requireUsableName(name);
-        pending.put(new Key(MpqNames.canonical(name), locale),
+        putPending(new Key(MpqNames.canonical(name), locale),
             new Pending(name, locale, new Content.Bytes(content.clone())));
         return this;
     }
@@ -262,7 +270,7 @@ public final class MpqArchiveWriter {
      */
     public MpqArchiveWriter put(String name, short locale, Path file) {
         requireUsableName(name);
-        pending.put(new Key(MpqNames.canonical(name), locale),
+        putPending(new Key(MpqNames.canonical(name), locale),
             new Pending(name, locale, new Content.File(file)));
         return this;
     }
@@ -276,7 +284,12 @@ public final class MpqArchiveWriter {
     public boolean remove(String name) {
         // Removes every locale variant: a caller naming a path without a locale
         // means the path, not one translation of it.
-        return pending.keySet().removeIf(key -> key.canonicalName().equals(MpqNames.canonical(name)));
+        final Set<Key> keys = keysByName.remove(MpqNames.canonical(name));
+        if (keys == null) {
+            return false;
+        }
+        keys.forEach(pending::remove);
+        return true;
     }
 
     /**
@@ -287,7 +300,16 @@ public final class MpqArchiveWriter {
      * @return whether it was present.
      */
     public boolean remove(String name, short locale) {
-        return pending.remove(new Key(MpqNames.canonical(name), locale)) != null;
+        final Key key = new Key(MpqNames.canonical(name), locale);
+        if (pending.remove(key) == null) {
+            return false;
+        }
+        final Set<Key> keys = keysByName.get(key.canonicalName());
+        keys.remove(key);
+        if (keys.isEmpty()) {
+            keysByName.remove(key.canonicalName());
+        }
+        return true;
     }
 
     /**
@@ -296,7 +318,7 @@ public final class MpqArchiveWriter {
      */
     public boolean contains(String name) {
         final String canonical = MpqNames.canonical(name);
-        return pending.keySet().stream().anyMatch(key -> key.canonicalName().equals(canonical));
+        return keysByName.containsKey(canonical);
     }
 
     /**
